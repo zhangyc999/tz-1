@@ -1,0 +1,18 @@
+
+#define ETH_CMD_IDLE 		((U32)0xE7000000)
+
+
+
+
+
+
+#define ETH_CMD_HORIZp 	((U32)0xE7000100)
+#define ETH_CMD_HORIZn 	((U32)0xE7000101)
+
+#define ETH_CMD_VERITp 	((U32)0xE700E100)
+#define ETH_CMD_VERITn 	((U32)0xE700E101)
+
+#define ETH_CMD_PROPp  	((U32)0xE7000900)
+#define ETH_CMD_PROPn  	((U32)0xE7000901)
+
+#define ETH_CMD_LEVE   	((U32)0xE700EE01)
