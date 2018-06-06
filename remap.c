@@ -70,3 +70,17 @@ MSG_Q_ID remap_addr_msg(u8 addr)
                 return 0;
         }
 }
+
+int remap_form_index(u8 form)
+{
+        switch (form) {
+        case 0xC0:
+                return 0;
+        case 0xC3:
+                return 1;
+        case 0xC6:
+                return 2;
+        default:
+                return -1;
+        }
+}
