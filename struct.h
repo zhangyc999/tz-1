@@ -15,6 +15,7 @@ struct frame_can {
         u8 prio;
         u8 data[8];
         u32 tsc;
+        struct frame_can *next;
 };
 
 struct frame_cyl_rx {
