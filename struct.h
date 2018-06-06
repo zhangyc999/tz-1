@@ -8,6 +8,17 @@ struct main {
         int data;
 };
 
+struct udp_cmd {
+        u16 head;
+        u8 res0;
+        u8 res1;
+        struct main cmd;
+        u8 res2;
+        u8 res3;
+        u8 res4;
+        u8 check;
+};
+
 struct frame_can {
         u8 src;
         u8 dest;

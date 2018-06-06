@@ -79,19 +79,19 @@ IMPORT u8 sysInumTbl[];
 
 #define write_byte(addr, data) \
 {                              \
-    *(u8 *)addr = data;        \
+        *(u8 *)addr = data;    \
 }
 
-#define write_reg_byte(addr, reg, data) \
-{                                       \
-    *(u8 *)addr = (u8)reg;              \
-    *(u8 *)(addr + 0x1000) = (u8)data;  \
+#define write_reg_byte(addr, reg, data)    \
+{                                          \
+        *(u8 *)addr = (u8)reg;             \
+        *(u8 *)(addr + 0x1000) = (u8)data; \
 }
 
 #define read_reg_byte(addr, reg) \
 ({                               \
-    *(u8 *)addr = (u8)reg;       \
-    *(u8 *)(addr + 0x1000);      \
+        *(u8 *)addr = (u8)reg;   \
+        *(u8 *)(addr + 0x1000);  \
 })
 
 extern MSG_Q_ID remap_addr_msg(u8 addr);
