@@ -1,4 +1,5 @@
 #include "addr.h"
+#include "struct.h"
 #include "type.h"
 #include "vx.h"
 
@@ -92,15 +93,6 @@ IMPORT u8 sysInumTbl[];
     *(u8 *)addr = (u8)reg;       \
     *(u8 *)(addr + 0x1000);      \
 })
-
-struct frame_can {
-        u8 src;
-        u8 dest;
-        u8 form;
-        u8 prio;
-        u8 data[8];
-        u32 tsc;
-};
 
 extern MSG_Q_ID remap_addr_msg(u8 addr);
 extern MSG_Q_ID msg_can[];

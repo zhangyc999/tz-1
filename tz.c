@@ -1,22 +1,9 @@
 #include "addr.h"
+#include "struct.h"
 #include "type.h"
 #include "vx.h"
 
 #define SYS_TICK_PER_SEC 200
-
-struct frame_can {
-        u8 src;
-        u8 dest;
-        u8 form;
-        u8 prio;
-        u8 data[8];
-        u32 tsc;
-};
-
-struct main {
-        int type;
-        int data;
-};
 
 extern void t_main(void);
 extern void t_udp(void);
