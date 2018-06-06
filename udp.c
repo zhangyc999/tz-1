@@ -7,6 +7,17 @@
 #define CLIENT_PORT 4201
 #define GROUP_ADDRESS "234.1.1.9"
 
+struct udp_cmd {
+        u16 head;
+        u8 res0;
+        u8 res1;
+        struct main cmd;
+        u8 res2;
+        u8 res3;
+        u8 res4;
+        u8 check;
+};
+
 extern int udp_socket;
 extern MSG_Q_ID msg_main;
 
