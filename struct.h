@@ -8,17 +8,6 @@ struct main {
         int data;
 };
 
-struct udp_cmd {
-        u16 head;
-        u8 res0;
-        u8 res1;
-        struct main cmd;
-        u8 res2;
-        u8 res3;
-        u8 res4;
-        u8 check;
-};
-
 struct frame_can {
         u8 src;
         u8 dest;
@@ -26,6 +15,45 @@ struct frame_can {
         u8 prio;
         u8 data[8];
         u32 tsc;
+};
+
+struct frame_cyl_rx {
+        u8 src;
+        u8 dest;
+        u8 form;
+        u8 prio;
+        union {
+                u8 fault[8];
+                struct {
+                        s16 pos;
+                        s16 vel;
+                        s16 ampr;
+                        u8 fault;
+                        u8 io;
+                } state;
+        } data;
+        u32 tsc;
+        struct frame_cyl_rx *next;
+};
+
+struct frame_cyl_tx {
+        u8 src;
+        u8 dest;
+        u8 form;
+        u8 prio;
+        union {
+                u8 fault[8];
+                u8 query[8];
+                struct {
+                        s16 pos;
+                        s16 vel;
+                        s16 ampr;
+                        u8 exec;
+                        u8 enable;
+                } cmd;
+        } data;
+        u32 tsc;
+        struct frame_cyl_tx *next;
 };
 
 #endif /* STRUCT_H_ */
