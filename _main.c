@@ -2,27 +2,27 @@
 #include "type.h"
 #include "vx.h"
 
-#define UMASK_TASK_NOTIFY 0xFFFF0000
-#define TASK_NOTIFY_UDP   0x5A010000
-#define TASK_NOTIFY_PWR   0x5A020000
-#define TASK_NOTIFY_SWH   0x5A100000
+#define UNMASK_TASK_NOTIFY 0xFFFF0000
+#define TASK_NOTIFY_UDP    0x5A010000
+#define TASK_NOTIFY_PWR    0x5A020000
+#define TASK_NOTIFY_SWH    0x5A100000
 
-#define UMASK_TASK_STATE 0x0000FFFF
-#define TASK_STATE_FAULT 0x000000E0
-#define TASK_STATE_OK    0x000000D7
+#define UNMASK_TASK_STATE 0x0000FFFF
+#define TASK_STATE_FAULT  0x000000E0
+#define TASK_STATE_OK     0x000000D7
 
-#define UMASK_CMD_ACT   0xFF00F00F
-#define UMASK_CMD_MOD   0x00F00000
-#define UMASK_CMD_DIR   0x000F0000
-#define CMD_IDLE        0x00000000
-#define CMD_ACT_GEND    0xEC001001
-#define CMD_ACT_GENS    0xEC001002
-#define CMD_ACT_PSU     0xEC001003
-#define CMD_ACT_SWH     0xEC002001
-#define CMD_MODE_AUTO   0x00000000
-#define CMD_MODE_MANUAL 0x00E00000
-#define CMD_DIR_POSI    0x00000000
-#define CMD_DIR_NEGA    0x000C0000
+#define UNMASK_CMD_ACT   0xFF00F00F
+#define UNMASK_CMD_MOD   0x00F00000
+#define UNMASK_CMD_DIR   0x000F0000
+#define CMD_IDLE         0x00000000
+#define CMD_ACT_GEND     0xEC001001
+#define CMD_ACT_GENS     0xEC001002
+#define CMD_ACT_PSU      0xEC001003
+#define CMD_ACT_SWH      0xEC002001
+#define CMD_MODE_AUTO    0x00000000
+#define CMD_MODE_MANUAL  0x00E00000
+#define CMD_DIR_POSI     0x00000000
+#define CMD_DIR_NEGA     0x000C0000
 
 #define FLAG_PWR 0x00000001
 #define FLAG_SWH 0x00000002
@@ -46,7 +46,7 @@ void t_main(void)
                         continue;
                 }
                 tmp = 0;
-                switch (rx.type & UMASK_TASK_NOTIFY) {
+                switch (rx.type & UNMASK_TASK_NOTIFY) {
                 case TASK_NOTIFY_PWR:
                         tmp = FLAG_PWR;
                         break;
@@ -57,16 +57,16 @@ void t_main(void)
                         break;
                 }
                 if (tmp) {
-                        if ((rx.type & UMASK_TASK_STATE) == TASK_STATE_OK)
+                        if ((rx.type & UNMASK_TASK_STATE) == TASK_STATE_OK)
                                 flag |=  tmp;
                         else
                                 flag &= ~tmp;
                 }
-                if ((rx.type & UMASK_TASK_NOTIFY) != TASK_NOTIFY_UDP)
+                if ((rx.type & UNMASK_TASK_NOTIFY) != TASK_NOTIFY_UDP)
                         continue;
-                switch (verify & UMASK_CMD_ACT) {
+                switch (verify & UNMASK_CMD_ACT) {
                 case CMD_IDLE:
-                        switch (rx.type & UMASK_CMD_ACT) {
+                        switch (rx.type & UNMASK_CMD_ACT) {
                         case CMD_IDLE:
                         case CMD_ACT_GEND:
                         case CMD_ACT_GENS:
@@ -81,7 +81,7 @@ void t_main(void)
                 case CMD_ACT_GEND:
                 case CMD_ACT_GENS:
                 case CMD_ACT_PSU:
-                        switch (rx.type & UMASK_CMD_ACT) {
+                        switch (rx.type & UNMASK_CMD_ACT) {
                         case CMD_IDLE:
                                 verify = rx.type;
                                 break;
@@ -100,7 +100,7 @@ void t_main(void)
                         }
                         break;
                 case CMD_ACT_SWH:
-                        switch (rx.type & UMASK_CMD_ACT) {
+                        switch (rx.type & UNMASK_CMD_ACT) {
                         case CMD_IDLE:
                         case CMD_ACT_GEND:
                         case CMD_ACT_GENS:
