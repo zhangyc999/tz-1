@@ -7,7 +7,6 @@
 
 extern void t_main(void);
 extern void t_udp(void);
-extern void t_udp(void);
 extern void t_can(void);
 extern void t_swh(void);
 

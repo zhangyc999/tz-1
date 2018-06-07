@@ -41,8 +41,6 @@ void t_main(void)
                         else
                                 flag &= ~tmp;
                 }
-                if ((rx.type & UNMASK_TASK_NOTIFY) != TASK_NOTIFY_UDP)
-                        continue;
                 switch (verify & UNMASK_CMD_ACT) {
                 case CMD_IDLE:
                         switch (rx.type & UNMASK_CMD_ACT) {

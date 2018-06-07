@@ -40,7 +40,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         int delay = period;
         u32 prev;
         int len;
-        int tmp[20];
+        int tmp[sizeof(struct frame_can)];
         struct main cmd;
         struct main state;
         struct main state_old;
@@ -108,7 +108,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         delay = 0;
                 len = msgQReceive(msg_swh, (char *)&tmp, sizeof(tmp), delay);
                 switch (len) {
-                case 8:
+                case sizeof(struct main):
                         cmd = *(struct main *)&tmp;
                         switch (verify) {
                         case CMD_IDLE:
@@ -125,7 +125,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         }
                         delay -= tickGet() - prev;
                         break;
-                case 4:
+                case sizeof(struct frame_can):
                         can = *(FRAME_RX *)&tmp;
                         switch (can.src) {
                         case ADDR_SWH0:
@@ -144,7 +144,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 break;
                         }
                         has_received[i] = 1;
-                        j = remap_fomr_index(can.form);
+                        j = remap_form_index(can.form);
                         switch (j) {
                         case 0:
                         case 1:
@@ -242,6 +242,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         delay -= tickGet() - prev;
                         break;
                 default:
+#if 0
                         for (i = 0; i < n; i++) {
                                 if (has_received[i]) {
                                         has_received[i] = 0;
@@ -259,6 +260,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         if (ctr_comm[i] == -10)
                                                 result[i] |= RESULT_FAULT_COMM;
                                 }
+                        }
+                        for (i = 0; i < n; i++) {
                                 if (result[i] & UNMASK_RESULT_FAULT)
                                         break;
                         }
@@ -276,6 +279,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
                                 state_old = state;
                         }
+#endif
                         for (i = 0; i < n; i++) {
                                 switch (verify) {
                                 case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
@@ -290,13 +294,24 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         if ((result[i] & UNMASK_RESULT_RUNNING) == 0)
                                                 tx[i].data.cmd.enable = 0x3C;
                                         msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
+                                        break;
                                 case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA5;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.cmd.pos = 0x1100;
+                                        tx[i].data.cmd.vel = plan_vel(avg_vel[i], 50, len_pass, len_remain);
+                                        tx[i].data.cmd.ampr = 1000;
+                                        tx[i].data.cmd.exec = 0x9A;
+                                        tx[i].data.cmd.enable = 0xC3;
+                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
+                                        break;
                                 case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
                                         tx[i].dest = addr[i];
                                         tx[i].form = 0xA5;
                                         tx[i].prio = 0x08;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        tx[i].data.cmd.vel = plan_vel(avg_vel[i], 1, len_pass, len_remain);
+                                        tx[i].data.cmd.vel = plan_vel(avg_vel[i], -50, len_pass, len_remain);
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;
                                         tx[i].data.cmd.enable = 0xC3;
@@ -351,8 +366,7 @@ int plan_vel(int vel_cur, int acc, int len_pass, int len_remain)
         int len_stop = 0;
         int vel_plan = 0;
         if (vel_cur > VEL_PLAN_SLOW)
-                len_stop = (vel_cur * vel_cur - VEL_PLAN_SLOW * VEL_PLAN_SLOW) /
-                           2 / acc / 25 + LEN_PLAN_SLOW;
+                len_stop = (vel_cur * vel_cur - VEL_PLAN_SLOW * VEL_PLAN_SLOW) / 2 / acc / 25 + LEN_PLAN_SLOW;
         else
                 len_stop = 0;
         if (len_remain > len_stop) {
