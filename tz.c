@@ -10,7 +10,6 @@ extern void t_udp(void);
 extern void t_can(void);
 extern void t_swh(void);
 
-int udp_socket;
 MSG_Q_ID msg_can[2];
 MSG_Q_ID msg_main;
 MSG_Q_ID msg_pwr;
@@ -20,7 +19,6 @@ MSG_Q_ID msg_dbg;
 void tz(void)
 {
         sysClkRateSet(SYS_TICK_PER_SEC);
-        udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
         msg_can[0] = msgQCreate(64, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_can[1] = msgQCreate(64, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_main = msgQCreate(32, sizeof(struct main), MSG_Q_FIFO);
