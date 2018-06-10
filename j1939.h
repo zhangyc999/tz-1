@@ -1,0 +1,16 @@
+#ifndef J1939_H_
+#define J1939_H_
+
+#define J1939_PRIO_QUERY      0x0C
+#define J1939_PRIO_SERVO_CTRL 0x08
+
+#define J1939_FORM_QUERY      0x5C
+#define J1939_FORM_SERVO_AMPR 0xA3
+#define J1939_FORM_SERVO_VEL  0xA5
+
+#define J1939_SERVO_ASYNC     0x9A
+#define J1939_SERVO_SYNC      0xA9
+#define J1939_SERVO_DISABLE   0x3C
+#define J1939_SERVO_ENABLE    0xC3
+
+#endif /* J1939_H_ */

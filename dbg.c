@@ -9,6 +9,7 @@ void dbg(void)
 {
         struct frame_can buf;
         u16 total[48];
+        bzero((char *)total, sizeof(total));
         printf("\
 \033[1;1HVSLF   |----|--|-- -- -- -- -- -- -- --| LVL(0) |----|--|-- -- -- -- -- -- -- --\
 \033[2;1HVSLB   |----|--|-- -- -- -- -- -- -- --| LVL(1) |----|--|-- -- -- -- -- -- -- --\

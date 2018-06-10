@@ -18,7 +18,6 @@ struct udp_cmd {
         u8 check;
 };
 
-extern int udp_socket;
 extern MSG_Q_ID msg_main;
 
 void t_udp(void)
@@ -29,25 +28,28 @@ void t_udp(void)
         struct sockaddr_in client;
         struct ip_mreq group;
         int size = sizeof(struct sockaddr_in);
+        int sfd = socket(AF_INET, SOCK_DGRAM, 0);
+        u_long iMode = 1;
+        ioctl(sfd, FIONBIO, (int)&iMode);
         bzero((char *)&server, size);
-        server.sin_len = (u8)size;
+        server.sin_len = (u_char)size;
         server.sin_family = AF_INET;
         server.sin_port = htons(SERVER_PORT);
         server.sin_addr.s_addr = htonl(INADDR_ANY);
-        bind(udp_socket, (struct sockaddr *)&server, size);
+        bind(sfd, (struct sockaddr *)&server, size);
         bzero((char *)&client, size);
-        client.sin_len = (u8)size;
+        client.sin_len = (u_char)size;
         client.sin_family = AF_INET;
         client.sin_port = htons(CLIENT_PORT);
         client.sin_addr.s_addr = inet_addr(GROUP_ADDRESS);
         group.imr_multiaddr.s_addr = inet_addr(GROUP_ADDRESS);
         group.imr_interface.s_addr = inet_addr(SERVER_ADDRESS);
         routeAdd(GROUP_ADDRESS, SERVER_ADDRESS);
-        setsockopt(udp_socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group));
+        setsockopt(sfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group));
         taskDelay(20);
         for (;;) {
-                sendto(udp_socket, msg, sizeof(msg), 0, (struct sockaddr *)&client, size);
-                if (ERROR != recvfrom(udp_socket, (char *)&udp, sizeof(udp), 0, (struct sockaddr *)&client, &size))
+                sendto(sfd, msg, sizeof(msg), 0, (struct sockaddr *)&client, size);
+                if (ERROR != recvfrom(sfd, (char *)&udp, sizeof(udp), 0, (struct sockaddr *)&client, &size))
                         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
                 taskDelay(20);
         }
