@@ -4,6 +4,9 @@
 
 extern MSG_Q_ID msg_pwr;
 extern MSG_Q_ID msg_swh;
+extern MSG_Q_ID msg_rse;
+extern MSG_Q_ID msg_swv;
+extern MSG_Q_ID msg_prp;
 
 MSG_Q_ID remap_addr_msg(u8 addr)
 {
@@ -21,17 +24,17 @@ MSG_Q_ID remap_addr_msg(u8 addr)
         case ADDR_RSE1:
         case ADDR_RSE2:
         case ADDR_RSE3:
-                return 0;
+                return msg_rse;
         case ADDR_SWV0:
         case ADDR_SWV1:
         case ADDR_SWV2:
         case ADDR_SWV3:
-                return 0;
+                return msg_swv;
         case ADDR_PRP0:
         case ADDR_PRP1:
         case ADDR_PRP2:
         case ADDR_PRP3:
-                return 0;
+                return msg_prp;
         case ADDR_FX:
         case ADDR_FY0:
         case ADDR_FY1:

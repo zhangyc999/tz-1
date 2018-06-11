@@ -35,15 +35,15 @@ typedef struct frame_cyl_tx FRAME_TX;
 
 extern MSG_Q_ID msg_can[];
 extern MSG_Q_ID msg_main;
-extern MSG_Q_ID msg_swh;
+extern MSG_Q_ID msg_prp;
 
-int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
-s16 plan_vel(int vel_cur, int len_pass, int len_remain, int period);
-int max_of_n(int *buf, int n);
-int min_of_n(int *buf, int n);
-struct frame_can *can_cllst_init(struct frame_can buf[], int len);
+extern int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+extern s16 plan_vel(int vel_cur, int len_pass, int len_remain, int period);
+extern int max_of_n(int *buf, int n);
+extern int min_of_n(int *buf, int n);
+extern struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 
-void t_swh(void) /* Task: SWing arm of Horizontal */
+void t_prp(void) /* Task: PRoP */
 {
         int period = PERIOD_SLOW;
         u32 prev;
@@ -58,11 +58,11 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         FRAME_TX tx[4];
         int verify = CMD_IDLE;
         int has_received[4] = {0};
-        int n = 1;
+        int n = 4;
         int i;
         int j;
         int max_form = 3;
-        int addr[4] = {ADDR_SWH0, ADDR_SWH1, ADDR_SWH2, ADDR_SWH3};
+        int addr[4] = {ADDR_PRP0, ADDR_PRP1, ADDR_PRP2, ADDR_PRP3};
         int cable[4] = {0, 0, 1, 1};
         int cur_vel[4] = {0};
         int sum_pos[4] = {0};
@@ -80,22 +80,16 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         int max_vel[4] = {1000, 1000, 1000, 1000};
         int max_ampr[4] = {1000, 1000, 1000, 1000};
         int safe_pos[4] = {10000, 10000, 10000, 10000};
-        int err_sync_01 = 10;
-        int err_sync_23 = 10;
-        int err_sync_0123 = 20;
+        int err_sync = 20;
         int ctr_ok_pos[4] = {0};
         int ctr_ok_vel[4] = {0};
         int ctr_ok_ampr[4] = {0};
-        int ctr_ok_sync_01 = 0;
-        int ctr_ok_sync_23 = 0;
-        int ctr_ok_sync_0123 = 0;
+        int ctr_ok_sync = 0;
         int ctr_ok_stop[4] = {0};
         int ctr_err_pos[4] = {0};
         int ctr_err_vel[4] = {0};
         int ctr_err_ampr[4] = {0};
-        int ctr_err_sync_01 = 0;
-        int ctr_err_sync_23 = 0;
-        int ctr_err_sync_0123 = 0;
+        int ctr_err_sync = 0;
         int ctr_err_stop[4] = {0};
         int ctr_fault[4] = {0};
         int ctr_io[4] = {0};
@@ -105,12 +99,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         int tmp_vel;
         int tmp_ampr;
         int tmp_running;
-        int tmp_sync_01;
-        int tmp_sync_23;
-        int tmp_sync_0123;
-        int sub_01;
-        int sub_23;
-        int sub_0123;
+        int tmp_sync;
+        int sub;
         int len_remain = 0;
         int len_pass = 0;
         int max_len_posi = MAX_LEN;
@@ -123,66 +113,66 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                 prev = tickGet();
                 if (period < 0 || period > PERIOD_SLOW)
                         period = 0;
-                len = msgQReceive(msg_swh, (char *)&tmp, sizeof(tmp), period);
+                len = msgQReceive(msg_prp, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
                         cmd = (struct main *)&tmp;
                         switch (verify) {
                         case CMD_IDLE:
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                 switch (cmd->type) {
                                 case CMD_IDLE:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd->type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_POSI:
                                 switch (cmd->type) {
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd->type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_NEGA:
                                 switch (cmd->type) {
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd->type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_POSI:
                                 switch (cmd->type) {
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd->type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
                                 switch (cmd->type) {
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd->type;
                                         break;
                                 default:
@@ -197,16 +187,16 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                 case sizeof(struct frame_can):
                         can = (FRAME_RX *)&tmp;
                         switch (can->src) {
-                        case ADDR_SWH0:
+                        case ADDR_PRP0:
                                 i = 0;
                                 break;
-                        case ADDR_SWH1:
+                        case ADDR_PRP1:
                                 i = 1;
                                 break;
-                        case ADDR_SWH2:
+                        case ADDR_PRP2:
                                 i = 2;
                                 break;
-                        case ADDR_SWH3:
+                        case ADDR_PRP3:
                                 i = 3;
                                 break;
                         default:
@@ -293,32 +283,14 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         default:
                                 break;
                         }
-                        sub_01 = avg_pos[0] - avg_pos[1];
-                        sub_23 = avg_pos[2] - avg_pos[3];
-                        sub_0123 = (avg_pos[0] - avg_pos[3] + avg_pos[1] - avg_pos[2]) / 2;
-                        tmp_sync_01 = judge_filter(&ctr_ok_sync_01, &ctr_err_sync_01, sub_01, -err_sync_01, err_sync_01, 10);
-                        tmp_sync_23 = judge_filter(&ctr_ok_sync_23, &ctr_err_sync_23, sub_23, -err_sync_23, err_sync_23, 10);
-                        tmp_sync_0123 = judge_filter(&ctr_ok_sync_0123, &ctr_err_sync_0123, sub_0123, -err_sync_0123, err_sync_0123, 10);
-                        if (tmp_sync_01 == -1) {
-                                result[0] |= RESULT_FAULT_SYNC;
-                                result[1] |= RESULT_FAULT_SYNC;
-                        } else if (tmp_sync_01 == 1) {
-                                result[0] &= ~RESULT_FAULT_SYNC;
-                                result[1] &= ~RESULT_FAULT_SYNC;
-                        }
-                        if (tmp_sync_23 == -1) {
-                                result[2] |= RESULT_FAULT_SYNC;
-                                result[3] |= RESULT_FAULT_SYNC;
-                        } else if (tmp_sync_23 == 1) {
-                                result[2] &= ~RESULT_FAULT_SYNC;
-                                result[3] &= ~RESULT_FAULT_SYNC;
-                        }
-                        if (tmp_sync_0123 == -1) {
+                        sub = max_of_n(avg_pos, n) - min_of_n(avg_pos, n);
+                        tmp_sync = judge_filter(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, 10);
+                        if (tmp_sync == -1) {
                                 result[0] |= RESULT_FAULT_SYNC;
                                 result[1] |= RESULT_FAULT_SYNC;
                                 result[2] |= RESULT_FAULT_SYNC;
                                 result[3] |= RESULT_FAULT_SYNC;
-                        } else if (tmp_sync_0123 == 1) {
+                        } else if (tmp_sync == 1) {
                                 result[0] &= ~RESULT_FAULT_SYNC;
                                 result[1] &= ~RESULT_FAULT_SYNC;
                                 result[2] &= ~RESULT_FAULT_SYNC;
@@ -346,7 +318,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 result[i] |= RESULT_FAULT_COMM;
                                 }
                         }
-                        state.type = TASK_NOTIFY_SWH;
+                        state.type = TASK_NOTIFY_PRP;
                         state.data = 0;
                         for (i = 0; i < n; i++) {
                                 if (result[i] & UNMASK_RESULT_FAULT)
@@ -372,18 +344,18 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
 #endif
                         switch (verify) {
                         case CMD_IDLE:
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                 max_len_posi = MAX_LEN - min_of_n(avg_pos, n) * 20;
                                 max_len_nega = max_of_n(avg_pos, n) * 20;
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_POSI:
                                 len_remain = MAX_LEN - min_of_n(avg_pos, n) * 20;
                                 len_pass = max_len_posi - len_remain;
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
                                 len_remain = max_of_n(avg_pos, n) * 20;
                                 len_pass = max_len_nega - len_remain;
                                 break;
@@ -391,8 +363,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 break;
                         }
                         switch (verify) {
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                 for (i = 0; i < n; i++) {
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
@@ -414,8 +386,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 else
                                         period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_POSI:
                                 for (i = 0; i < n; i++) {
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
@@ -429,32 +401,18 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 }
                                 period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                if (len_remain > PLAN_LEN_AMPR) {
-                                        for (i = 0; i < n; i++) {
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = J1939_FORM_SERVO_VEL;
-                                                tx[i].prio = J1939_PRIO_SERVO_CTRL;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel = -plan_vel(abs(cur_vel[i]), len_pass, len_remain, PERIOD_FAST);
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                                tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
-                                                msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
-                                        }
-                                } else {
-                                        for (i = 0; i < n; i++) {
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = J1939_FORM_SERVO_AMPR;
-                                                tx[i].prio = J1939_PRIO_SERVO_CTRL;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel = 0x3322;
-                                                tx[i].data.cmd.ampr = -100;
-                                                tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                                tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
-                                                msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
-                                        }
+                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                for (i = 0; i < n; i++) {
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = J1939_FORM_SERVO_VEL;
+                                        tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                        tx[i].data.cmd.pos = 0x1100;
+                                        tx[i].data.cmd.vel = -plan_vel(abs(cur_vel[i]), len_pass, len_remain, PERIOD_FAST);
+                                        tx[i].data.cmd.ampr = 1000;
+                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
+                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
+                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
                                 }
                                 period = PERIOD_FAST;
                                 break;
@@ -479,83 +437,4 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         break;
                 }
         }
-}
-
-int judge_filter(int *ok, int *err, int value, int min, int max, int ctr)
-{
-        if (value >= min && value < max) {
-                *err = 0;
-                if (*ok < ctr)
-                        (*ok)++;
-        } else {
-                *ok = 0;
-                if (*err < ctr)
-                        (*err)++;
-        }
-        if (*ok == ctr)
-                return 1;
-        else if (*err == ctr)
-                return -1;
-        else
-                return 0;
-}
-
-s16 plan_vel(int vel_cur, int len_pass, int len_remain, int period)
-{
-        int len_stop = 0;
-        s16 vel_plan = 0;
-        int delta = MAX_ACC * period / sysClkRateGet();
-        if (vel_cur >= PLAN_VEL_LOW)
-                len_stop = (int)((vel_cur * vel_cur - PLAN_VEL_LOW * PLAN_VEL_LOW) / 2.0 / MAX_ACC + PLAN_LEN_LOW + 0.5);
-        else
-                len_stop = 0;
-        if (len_remain > len_stop) {
-                if (len_pass < PLAN_LEN_LOW) {
-                        vel_plan = PLAN_VEL_LOW;
-                } else {
-                        if (vel_cur < PLAN_VEL_HIGH - delta)
-                                vel_plan = vel_cur + delta;
-                        else
-                                vel_plan = PLAN_VEL_HIGH;
-                }
-        } else {
-                if (len_remain > PLAN_LEN_LOW) {
-                        if (vel_cur > PLAN_VEL_LOW + delta)
-                                vel_plan = vel_cur - delta;
-                        else
-                                vel_plan = PLAN_VEL_LOW;
-                } else {
-                        if (len_remain > 0)
-                                vel_plan = PLAN_VEL_LOW;
-                        else
-                                vel_plan = 0;
-                }
-        }
-        return vel_plan;
-}
-
-int max_of_n(int *buf, int n)
-{
-        if (n > 1)
-                return max(*buf, max_of_n(buf + 1, n - 1));
-        return *buf;
-}
-
-int min_of_n(int *buf, int n)
-{
-        if (n > 1)
-                return min(*buf, min_of_n(buf + 1, n - 1));
-        return *buf;
-}
-
-struct frame_can *can_cllst_init(struct frame_can buf[], int len)
-{
-        int i;
-        for (i = 0; i < len - 1; i++) {
-                bzero((char *)&buf[i], sizeof(buf[i]));
-                buf[i].next = &buf[i + 1];
-        }
-        bzero((char *)&buf[i], sizeof(buf[i]));
-        buf[i].next = &buf[0];
-        return buf;
 }

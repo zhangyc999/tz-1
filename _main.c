@@ -9,6 +9,9 @@
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_pwr;
 extern MSG_Q_ID msg_swh;
+extern MSG_Q_ID msg_rse;
+extern MSG_Q_ID msg_swv;
+extern MSG_Q_ID msg_prp;
 
 void t_main(void)
 {
@@ -92,6 +95,12 @@ void t_main(void)
                         default:
                                 break;
                         }
+                        break;
+                case CMD_ACT_RSE:
+                        break;
+                case CMD_ACT_SWV:
+                        break;
+                case CMD_ACT_PRP:
                         break;
                 default:
                         break;
