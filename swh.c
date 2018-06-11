@@ -79,6 +79,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         int max_pos[4] = {1000, 1000, 1000, 1000};
         int max_vel[4] = {1000, 1000, 1000, 1000};
         int max_ampr[4] = {1000, 1000, 1000, 1000};
+        int safe_pos[4] = {10000, 10000, 10000, 10000};
         int err_sync_01 = 10;
         int err_sync_23 = 10;
         int err_sync_0123 = 20;
@@ -128,13 +129,65 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         cmd = (struct main *)&tmp;
                         switch (verify) {
                         case CMD_IDLE:
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                verify = cmd->type;
+                                switch (cmd->type) {
+                                case CMD_IDLE:
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                        verify = cmd->type;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                switch (cmd->type) {
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                        verify = cmd->type;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                switch (cmd->type) {
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                        verify = cmd->type;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                switch (cmd->type) {
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                        verify = cmd->type;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                switch (cmd->type) {
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                        verify = cmd->type;
+                                        break;
+                                default:
+                                        break;
+                                }
                                 break;
                         default:
                                 break;
@@ -293,24 +346,29 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 result[i] |= RESULT_FAULT_COMM;
                                 }
                         }
+                        state.type = TASK_NOTIFY_SWH;
+                        state.data = 0;
                         for (i = 0; i < n; i++) {
                                 if (result[i] & UNMASK_RESULT_FAULT)
                                         break;
                         }
                         if (i != n) {
-                                state.type = TASK_NOTIFY_SWH | TASK_STATE_FAULT;
-                                state.data = 0;
-                                if (state_old.type != state.type)
-                                        msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
-                                state_old = state;
+                                state.type |= TASK_STATE_FAULT;
                                 verify = verify & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
                         } else {
-                                state.type = TASK_NOTIFY_SWH | TASK_STATE_OK;
-                                state.data = 0;
-                                if (state_old.type != state.type)
-                                        msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
-                                state_old = state;
+                                state.type |= TASK_STATE_OK;
                         }
+                        for (i = 0; i < n; i++) {
+                                if (avg_pos[i] < safe_pos[i])
+                                        break;
+                        }
+                        if (i != n)
+                                state.type |= TASK_STATE_DANGER;
+                        else
+                                state.type |= TASK_STATE_SAFE;
+                        if (state_old.type != state.type)
+                                msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
+                        state_old = state;
 #endif
                         switch (verify) {
                         case CMD_IDLE:
@@ -360,6 +418,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         period = PERIOD_FAST;
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
                                 for (i = 0; i < n; i++) {
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
@@ -375,6 +434,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 period = PERIOD_FAST;
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
                                 if (len_remain > PLAN_LEN_AMPR) {
                                         for (i = 0; i < n; i++) {
                                                 tx[i].dest = addr[i];
@@ -403,11 +463,6 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 }
                                 period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                period = PERIOD_FAST;
-                                break;
-                        case CMD_IDLE:
                         default:
                                 for (i = 0; i < n; i++) {
                                         tx[i].dest = addr[i];
