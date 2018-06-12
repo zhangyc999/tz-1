@@ -7,50 +7,39 @@
 #define CLIENT_PORT 4201
 #define GROUP_ADDRESS "234.1.1.9"
 
-struct udp_cmd {
-        u16 head;
-        u8 res0;
-        u8 res1;
-        struct main cmd;
-        u8 res2;
-        u8 res3;
-        u8 res4;
-        u8 check;
-};
-
 extern MSG_Q_ID msg_main;
 
 void t_udp(void)
 {
         static char msg[] = {'\xFE', '\xC7', '\x13', '\xF7', '\x11', '\x22', '\x33', '\x44'};
-        struct udp_cmd udp;
+        struct frame_udp_rx rx;
         struct sockaddr_in server;
         struct sockaddr_in client;
         struct ip_mreq group;
         int size = sizeof(struct sockaddr_in);
-        int sfd = socket(AF_INET, SOCK_DGRAM, 0);
-        u_long iMode = 1;
-        ioctl(sfd, FIONBIO, (int)&iMode);
+        int fd = socket(AF_INET, SOCK_DGRAM, 0);
+        u_long mode = 1;
         bzero((char *)&server, size);
         server.sin_len = (u_char)size;
         server.sin_family = AF_INET;
         server.sin_port = htons(SERVER_PORT);
         server.sin_addr.s_addr = htonl(INADDR_ANY);
-        bind(sfd, (struct sockaddr *)&server, size);
         bzero((char *)&client, size);
         client.sin_len = (u_char)size;
         client.sin_family = AF_INET;
         client.sin_port = htons(CLIENT_PORT);
         client.sin_addr.s_addr = inet_addr(GROUP_ADDRESS);
+        ioctl(fd, FIONBIO, (int)&mode);
+        bind(fd, (struct sockaddr *)&server, size);
         group.imr_multiaddr.s_addr = inet_addr(GROUP_ADDRESS);
         group.imr_interface.s_addr = inet_addr(SERVER_ADDRESS);
         routeAdd(GROUP_ADDRESS, SERVER_ADDRESS);
-        setsockopt(sfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group));
+        setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&group, sizeof(group));
         taskDelay(20);
         for (;;) {
-                sendto(sfd, msg, sizeof(msg), 0, (struct sockaddr *)&client, size);
-                if (ERROR != recvfrom(sfd, (char *)&udp, sizeof(udp), 0, (struct sockaddr *)&client, &size))
-                        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+                sendto(fd, msg, sizeof(msg), 0, (struct sockaddr *)&client, size);
+                if (ERROR != recvfrom(fd, (char *)&rx, sizeof(rx), 0, (struct sockaddr *)&client, &size))
+                        msgQSend(msg_main, (char *)&rx.cmd, sizeof(rx.cmd), NO_WAIT, MSG_PRI_NORMAL);
                 taskDelay(20);
         }
 }

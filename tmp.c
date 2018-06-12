@@ -15,10 +15,98 @@ struct udp_cmd {
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_swh;
 
-void tmp(int type)
+void swh(void)
 {
         struct udp_cmd udp;
-        udp.cmd.type = type;
+        udp.cmd.type = 0xEC0A2001;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void swhp(void)
+{
+        struct udp_cmd udp;
+        udp.cmd.type = 0xEC002001;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void swhn(void)
+{
+        struct udp_cmd udp;
+        udp.cmd.type = 0xEC0C2001;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void rse(void)
+{
+        struct udp_cmd udp;
+        udp.cmd.type = 0xEC0A2002;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void rsep(void)
+{
+        struct udp_cmd udp;
+        udp.cmd.type = 0xEC002002;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void rsen(void)
+{
+        struct udp_cmd udp;
+        udp.cmd.type = 0xEC0C2002;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void swv(void)
+{
+        struct udp_cmd udp;
+        udp.cmd.type = 0xEC0A2003;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void swvp(void)
+{
+        struct udp_cmd udp;
+        udp.cmd.type = 0xEC002003;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void swvn(void)
+{
+        struct udp_cmd udp;
+        udp.cmd.type = 0xEC0C2003;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void prp(void)
+{
+        struct udp_cmd udp;
+        udp.cmd.type = 0xEC0A2004;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void prpp(void)
+{
+        struct udp_cmd udp;
+        udp.cmd.type = 0xEC002004;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void prpn(void)
+{
+        struct udp_cmd udp;
+        udp.cmd.type = 0xEC0C2004;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }

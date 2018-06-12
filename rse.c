@@ -52,7 +52,7 @@ void t_rse(void) /* Task: RaiSE arm */
         struct main *cmd;
         struct main state;
         struct main state_old;
-        FRAME_RX *can;
+        struct frame_can *can;
         struct frame_can rx[4][3][MAX_LEN_CLLST];
         FRAME_RX *p[4][3];
         FRAME_TX tx[4];
@@ -185,7 +185,7 @@ void t_rse(void) /* Task: RaiSE arm */
                         period -= tickGet() - prev;
                         break;
                 case sizeof(struct frame_can):
-                        can = (FRAME_RX *)&tmp;
+                        can = (struct frame_can *)&tmp;
                         switch (can->src) {
                         case ADDR_RSE0:
                                 i = 0;
@@ -215,12 +215,12 @@ void t_rse(void) /* Task: RaiSE arm */
                                 sum_ampr[i] -= p[i][j]->data.state.ampr;
                                 fault_old[i] = p[i][j]->data.state.fault;
                                 io_old[i] = p[i][j]->data.state.io;
-                                p[i][j]->data.state.pos = can->data.state.pos;
-                                p[i][j]->data.state.vel = can->data.state.vel;
-                                p[i][j]->data.state.ampr = can->data.state.ampr;
-                                p[i][j]->data.state.fault = can->data.state.fault;
-                                p[i][j]->data.state.io = can->data.state.io;
-                                cur_vel[i] = can->data.state.vel;
+                                p[i][j]->data.state.pos = ((FRAME_RX *)can)->data.state.pos;
+                                p[i][j]->data.state.vel = ((FRAME_RX *)can)->data.state.vel;
+                                p[i][j]->data.state.ampr = ((FRAME_RX *)can)->data.state.ampr;
+                                p[i][j]->data.state.fault = ((FRAME_RX *)can)->data.state.fault;
+                                p[i][j]->data.state.io = ((FRAME_RX *)can)->data.state.io;
+                                cur_vel[i] = ((FRAME_RX *)can)->data.state.vel;
                                 sum_pos[i] += p[i][j]->data.state.pos;
                                 sum_vel[i] += p[i][j]->data.state.vel;
                                 sum_ampr[i] += p[i][j]->data.state.ampr;

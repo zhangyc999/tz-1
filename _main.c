@@ -46,21 +46,13 @@ void t_main(void)
                 }
                 switch (verify & UNMASK_CMD_ACT) {
                 case CMD_IDLE:
-                        switch (rx.type & UNMASK_CMD_ACT) {
-                        case CMD_IDLE:
-                        case CMD_ACT_GEND:
-                        case CMD_ACT_GENS:
-                        case CMD_ACT_PSU:
-                        case CMD_ACT_SWH:
-                                verify = rx.type;
-                                break;
-                        default:
-                                break;
-                        }
-                        break;
                 case CMD_ACT_GEND:
                 case CMD_ACT_GENS:
                 case CMD_ACT_PSU:
+                case CMD_ACT_SWH:
+                case CMD_ACT_RSE:
+                case CMD_ACT_SWV:
+                case CMD_ACT_PRP:
                         switch (rx.type & UNMASK_CMD_ACT) {
                         case CMD_IDLE:
                                 verify = rx.type;
@@ -74,33 +66,27 @@ void t_main(void)
                                 break;
                         case CMD_ACT_SWH:
                                 verify = rx.type;
-                                break;
-                        default:
-                                break;
-                        }
-                        break;
-                case CMD_ACT_SWH:
-                        switch (rx.type & UNMASK_CMD_ACT) {
-                        case CMD_IDLE:
-                        case CMD_ACT_GEND:
-                        case CMD_ACT_GENS:
-                        case CMD_ACT_PSU:
-                                verify = rx.type;
-                                break;
-                        case CMD_ACT_SWH:
-                                verify = rx.type;
                                 tx.type = rx.type;
                                 msgQSend(msg_swh, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
+                        case CMD_ACT_RSE:
+                                verify = rx.type;
+                                tx.type = rx.type;
+                                msgQSend(msg_rse, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
+                                break;
+                        case CMD_ACT_SWV:
+                                verify = rx.type;
+                                tx.type = rx.type;
+                                msgQSend(msg_swv, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
+                                break;
+                        case CMD_ACT_PRP:
+                                verify = rx.type;
+                                tx.type = rx.type;
+                                msgQSend(msg_prp, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
+                                break;
                         default:
                                 break;
                         }
-                        break;
-                case CMD_ACT_RSE:
-                        break;
-                case CMD_ACT_SWV:
-                        break;
-                case CMD_ACT_PRP:
                         break;
                 default:
                         break;
