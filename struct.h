@@ -18,6 +18,56 @@ struct frame_can {
         struct frame_can *next;
 };
 
+struct frame_gend_rx {
+        u8 src;
+        u8 dest;
+        u8 form;
+        u8 prio;
+        union {
+                u8 fault[8];
+        } data;
+        u32 tsc;
+        struct frame_gend_rx *next;
+};
+
+struct frame_gend_tx {
+        u8 src;
+        u8 dest;
+        u8 form;
+        u8 prio;
+        union {
+                u8 fault[8];
+                u8 query[8];
+        } data;
+        u32 tsc;
+        struct frame_gend_tx *next;
+};
+
+struct frame_gens_rx {
+        u8 src;
+        u8 dest;
+        u8 form;
+        u8 prio;
+        union {
+                u8 fault[8];
+        } data;
+        u32 tsc;
+        struct frame_gens_rx *next;
+};
+
+struct frame_gens_tx {
+        u8 src;
+        u8 dest;
+        u8 form;
+        u8 prio;
+        union {
+                u8 fault[8];
+                u8 query[8];
+        } data;
+        u32 tsc;
+        struct frame_gens_tx *next;
+};
+
 struct frame_psu_rx {
         u8 src;
         u8 dest;
@@ -32,12 +82,11 @@ struct frame_psu_rx {
                         u8 xor;
                 } io;
                 struct {
-                        u16 volt24;
-                        u16 ampr24;
-                        u16 volt500;
-                        u16 ampr500;
+                        u16 volt_24;
+                        u16 ampr_24;
+                        u16 volt_500;
+                        u16 ampr_500;
                 } state;
-
         } data;
         u32 tsc;
         struct frame_psu_rx *next;
