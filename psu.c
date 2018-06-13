@@ -4,9 +4,6 @@
 #include "type.h"
 #include "vx.h"
 
-typedef struct frame_psu_rx FRAME_RX;
-typedef struct frame_psu_tx FRAME_TX;
-
 #define PERIOD_SLOW 200
 #define PERIOD_FAST 20
 
@@ -20,6 +17,9 @@ typedef struct frame_psu_tx FRAME_TX;
 #define RESULT_FAULT_VOLT_500 0x00001000
 #define RESULT_FAULT_AMPR_500 0x00002000
 #define RESULT_FAULT_COMM     0x00004000
+
+typedef struct frame_psu_rx FRAME_RX;
+typedef struct frame_psu_tx FRAME_TX;
 
 extern u8 check_xor(u8 *buf, int n);
 extern MSG_Q_ID msg_can[];
