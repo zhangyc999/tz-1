@@ -280,6 +280,7 @@ void t_prp(void) /* Task: PRoP */
                                         result[i] |= RESULT_RUNNING;
                                 else if (tmp_running == 1)
                                         result[i] &= ~RESULT_RUNNING;
+                                break;
                         default:
                                 break;
                         }

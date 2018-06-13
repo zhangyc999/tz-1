@@ -290,6 +290,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         result[i] |= RESULT_RUNNING;
                                 else if (tmp_running == 1)
                                         result[i] &= ~RESULT_RUNNING;
+                                break;
                         default:
                                 break;
                         }
