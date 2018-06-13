@@ -241,18 +241,18 @@ void t_psu(void)
         }
 }
 
-int psu_delay(struct main *cmd, int state)
+int psu_delay(struct main *cmd, int cur)
 {
         int tmp;
         int i;
-        tmp = cmd->data ^ state;
-        for (i = 0; i < 32; i++) {
-                if (tmp & (0x00000001 << i))
+        tmp = cmd->data ^ cur;
+        for (i = 0; i < sizeof(tmp) - 1; i++) {
+                if (tmp & 1 << i)
                         break;
         }
         if (cmd->type == (CMD_ACT_PSU | CMD_DIR_POSI))
-                state |= (1 << i);
+                cur |= 1 << i;
         else if (cmd->type == (CMD_ACT_PSU | CMD_DIR_NEGA))
-                state &= ~(1 << i);
-        return state;
+                cur &= ~(1 << i);
+        return cur;
 }
