@@ -1,4 +1,3 @@
-#include "addr.h"
 #include "define.h"
 #include "j1939.h"
 #include "struct.h"
@@ -62,7 +61,7 @@ void t_rse(void) /* Task: RaiSE arm */
         int i;
         int j;
         int max_form = 3;
-        int addr[4] = {ADDR_RSE0, ADDR_RSE1, ADDR_RSE2, ADDR_RSE3};
+        int addr[4] = {J1939_ADDR_RSE0, J1939_ADDR_RSE1, J1939_ADDR_RSE2, J1939_ADDR_RSE3};
         int cable[4] = {1, 1, 1, 1};
         int cur_vel[4] = {0};
         int sum_pos[4] = {0};
@@ -187,16 +186,16 @@ void t_rse(void) /* Task: RaiSE arm */
                 case sizeof(struct frame_can):
                         can = (struct frame_can *)&tmp;
                         switch (can->src) {
-                        case ADDR_RSE0:
+                        case J1939_ADDR_RSE0:
                                 i = 0;
                                 break;
-                        case ADDR_RSE1:
+                        case J1939_ADDR_RSE1:
                                 i = 1;
                                 break;
-                        case ADDR_RSE2:
+                        case J1939_ADDR_RSE2:
                                 i = 2;
                                 break;
-                        case ADDR_RSE3:
+                        case J1939_ADDR_RSE3:
                                 i = 3;
                                 break;
                         default:

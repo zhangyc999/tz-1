@@ -1,4 +1,3 @@
-#include "addr.h"
 #include "define.h"
 #include "j1939.h"
 #include "struct.h"
@@ -109,10 +108,10 @@ void t_pwr(void)
                 case sizeof(struct frame_can):
                         can = (struct frame_can *)&tmp;
                         switch (can->src) {
-                        case ADDR_GEND:
-                        case ADDR_GENS:
+                        case J1939_ADDR_GEND:
+                        case J1939_ADDR_GENS:
                                 break;
-                        case ADDR_PSU:
+                        case J1939_ADDR_PSU:
                                 has_received_psu = 1;
                                 i = remap_form_index(can->form);
                                 switch (i) {
@@ -228,7 +227,7 @@ void t_pwr(void)
                                 break;
                         case CMD_ACT_PSU | CMD_DIR_POSI:
                         case CMD_ACT_PSU | CMD_DIR_NEGA:
-                                tx_gend.dest = ADDR_GEND;
+                                tx_gend.dest = J1939_ADDR_GEND;
                                 tx_gend.form = J1939_FORM_QUERY;
                                 tx_gend.prio = J1939_PRIO_QUERY;
                                 tx_gend.data.query[0] = 0x00;
@@ -239,7 +238,7 @@ void t_pwr(void)
                                 tx_gend.data.query[5] = 0x55;
                                 tx_gend.data.query[6] = 0x66;
                                 tx_gend.data.query[7] = 0x77;
-                                tx_gens.dest = ADDR_GENS;
+                                tx_gens.dest = J1939_ADDR_GENS;
                                 tx_gens.form = J1939_FORM_QUERY;
                                 tx_gens.prio = J1939_PRIO_QUERY;
                                 tx_gens.data.query[0] = 0x00;
@@ -250,7 +249,7 @@ void t_pwr(void)
                                 tx_gens.data.query[5] = 0x55;
                                 tx_gens.data.query[6] = 0x66;
                                 tx_gens.data.query[7] = 0x77;
-                                tx_psu.dest = ADDR_PSU;
+                                tx_psu.dest = J1939_ADDR_PSU;
                                 tx_psu.form = J1939_FORM_PSU_CTRL;
                                 tx_psu.prio = J1939_PRIO_PSU_CTRL;
                                 tx_psu.data.io.v24 = 0; /* WQ */
@@ -263,7 +262,7 @@ void t_pwr(void)
                                 period = PERIOD_FAST;
                                 break;
                         default:
-                                tx_gend.dest = ADDR_GEND;
+                                tx_gend.dest = J1939_ADDR_GEND;
                                 tx_gend.form = J1939_FORM_QUERY;
                                 tx_gend.prio = J1939_PRIO_QUERY;
                                 tx_gend.data.query[0] = 0x00;
@@ -274,7 +273,7 @@ void t_pwr(void)
                                 tx_gend.data.query[5] = 0x55;
                                 tx_gend.data.query[6] = 0x66;
                                 tx_gend.data.query[7] = 0x77;
-                                tx_gens.dest = ADDR_GENS;
+                                tx_gens.dest = J1939_ADDR_GENS;
                                 tx_gens.form = J1939_FORM_QUERY;
                                 tx_gens.prio = J1939_PRIO_QUERY;
                                 tx_gens.data.query[0] = 0x00;
@@ -285,7 +284,7 @@ void t_pwr(void)
                                 tx_gens.data.query[5] = 0x55;
                                 tx_gens.data.query[6] = 0x66;
                                 tx_gens.data.query[7] = 0x77;
-                                tx_psu.dest = ADDR_PSU;
+                                tx_psu.dest = J1939_ADDR_PSU;
                                 tx_psu.form = J1939_FORM_QUERY;
                                 tx_psu.prio = J1939_PRIO_QUERY;
                                 tx_psu.data.query[0] = 0x00;

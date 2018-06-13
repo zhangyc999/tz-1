@@ -1,4 +1,4 @@
-#include "addr.h"
+#include "j1939.h"
 #include "struct.h"
 #include "type.h"
 #include "vx.h"
@@ -121,7 +121,7 @@ void t_can(void)
                         if (sizeof(buf) != msgQReceive(msg_can[i], (char *)&buf, sizeof(buf), NO_WAIT))
                                 continue;
                         buf.tsc = tickGet();
-                        id[0] = ADDR_MAIN;
+                        id[0] = J1939_ADDR_MAIN;
                         id[1] = buf.dest;
                         id[2] = buf.form;
                         id[3] = buf.prio;
@@ -163,7 +163,7 @@ static void isr_can_rx0(void)
         * (int *)id >>= 3;
         buf.src = id[0];
         buf.dest = id[1];
-        if (buf.dest != ADDR_MAIN)
+        if (buf.dest != J1939_ADDR_MAIN)
                 goto WRONG;
         buf.form = id[2];
         buf.prio = id[3];
@@ -203,7 +203,7 @@ static void isr_can_rx1(void)
         * (int *)id >>= 3;
         buf.src = id[0];
         buf.dest = id[1];
-        if (buf.dest != ADDR_MAIN)
+        if (buf.dest != J1939_ADDR_MAIN)
                 goto WRONG;
         buf.form = id[2];
         buf.prio = id[3];

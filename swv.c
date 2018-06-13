@@ -1,4 +1,3 @@
-#include "addr.h"
 #include "define.h"
 #include "j1939.h"
 #include "struct.h"
@@ -62,7 +61,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
         int i;
         int j;
         int max_form = 3;
-        int addr[4] = {ADDR_SWV0, ADDR_SWV1, ADDR_SWV2, ADDR_SWV3};
+        int addr[4] = {J1939_ADDR_SWV0, J1939_ADDR_SWV1, J1939_ADDR_SWV2, J1939_ADDR_SWV3};
         int cable[4] = {0, 0, 1, 1};
         int cur_vel[4] = {0};
         int sum_pos[4] = {0};
@@ -187,16 +186,16 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                 case sizeof(struct frame_can):
                         can = (struct frame_can *)&tmp;
                         switch (can->src) {
-                        case ADDR_SWV0:
+                        case J1939_ADDR_SWV0:
                                 i = 0;
                                 break;
-                        case ADDR_SWV1:
+                        case J1939_ADDR_SWV1:
                                 i = 1;
                                 break;
-                        case ADDR_SWV2:
+                        case J1939_ADDR_SWV2:
                                 i = 2;
                                 break;
-                        case ADDR_SWV3:
+                        case J1939_ADDR_SWV3:
                                 i = 3;
                                 break;
                         default:

@@ -1,4 +1,4 @@
-#include "addr.h"
+#include "j1939.h"
 #include "struct.h"
 #include "type.h"
 #include "vx.h"
@@ -49,148 +49,148 @@ void t_udp(void)
 #if 0
                 msgQReceive(msg_udp, (char *)&can, sizeof(can), NO_WAIT);
                 switch (can.src) {
-                case ADDR_VSLF:
+                case J1939_ADDR_VSLF:
                         offset = 1;
                         break;
-                case ADDR_VSLB:
+                case J1939_ADDR_VSLB:
                         offset = 2;
                         break;
-                case ADDR_SWH0:
+                case J1939_ADDR_SWH0:
                         offset = 3;
                         break;
-                case ADDR_SWH1:
+                case J1939_ADDR_SWH1:
                         offset = 4;
                         break;
-                case ADDR_SWH2:
+                case J1939_ADDR_SWH2:
                         offset = 5;
                         break;
-                case ADDR_SWH3:
+                case J1939_ADDR_SWH3:
                         offset = 6;
                         break;
-                case ADDR_RSE0:
+                case J1939_ADDR_RSE0:
                         offset = 7;
                         break;
-                case ADDR_RSE1:
+                case J1939_ADDR_RSE1:
                         offset = 8;
                         break;
-                case ADDR_RSE2:
+                case J1939_ADDR_RSE2:
                         offset = 9;
                         break;
-                case ADDR_RSE3:
+                case J1939_ADDR_RSE3:
                         offset = 10;
                         break;
-                case ADDR_SWV0:
+                case J1939_ADDR_SWV0:
                         offset = 11;
                         break;
-                case ADDR_SWV1:
+                case J1939_ADDR_SWV1:
                         offset = 12;
                         break;
-                case ADDR_SWV2:
+                case J1939_ADDR_SWV2:
                         offset = 13;
                         break;
-                case ADDR_SWV3:
+                case J1939_ADDR_SWV3:
                         offset = 14;
                         break;
-                case ADDR_PRP0:
+                case J1939_ADDR_PRP0:
                         offset = 15;
                         break;
-                case ADDR_PRP1:
+                case J1939_ADDR_PRP1:
                         offset = 16;
                         break;
-                case ADDR_PRP2:
+                case J1939_ADDR_PRP2:
                         offset = 17;
                         break;
-                case ADDR_PRP3:
+                case J1939_ADDR_PRP3:
                         offset = 18;
                         break;
-                case ADDR_FY0:
+                case J1939_ADDR_FY0:
                         offset = 19;
                         break;
-                case ADDR_FY1:
+                case J1939_ADDR_FY1:
                         offset = 20;
                         break;
-                case ADDR_BY0:
+                case J1939_ADDR_BY0:
                         offset = 21;
                         break;
-                case ADDR_BY1:
+                case J1939_ADDR_BY1:
                         offset = 22;
                         break;
-                case ADDR_PSU:
+                case J1939_ADDR_PSU:
                         offset = 23;
                         break;
-                case ADDR_GEND:
+                case J1939_ADDR_GEND:
                         offset = 24;
                         break;
-                case ADDR_LVL0:
+                case J1939_ADDR_LVL0:
                         offset = 25;
                         break;
-                case ADDR_LVL1:
+                case J1939_ADDR_LVL1:
                         offset = 26;
                         break;
-                case ADDR_FX:
+                case J1939_ADDR_FX:
                         offset = 27;
                         break;
-                case ADDR_BX:
+                case J1939_ADDR_BX:
                         offset = 28;
                         break;
-                case ADDR_FZ:
+                case J1939_ADDR_FZ:
                         offset = 29;
                         break;
-                case ADDR_BZ:
+                case J1939_ADDR_BZ:
                         offset = 30;
                         break;
-                case ADDR_MOM0:
+                case J1939_ADDR_MOM0:
                         offset = 31;
                         break;
-                case ADDR_MOM1:
+                case J1939_ADDR_MOM1:
                         offset = 32;
                         break;
-                case ADDR_MOM2:
+                case J1939_ADDR_MOM2:
                         offset = 33;
                         break;
-                case ADDR_MOM3:
+                case J1939_ADDR_MOM3:
                         offset = 34;
                         break;
-                case ADDR_SDT:
+                case J1939_ADDR_SDT:
                         offset = 35;
                         break;
-                case ADDR_SDS0:
+                case J1939_ADDR_SDS0:
                         offset = 36;
                         break;
-                case ADDR_SDS1:
+                case J1939_ADDR_SDS1:
                         offset = 37;
                         break;
-                case ADDR_SDS2:
+                case J1939_ADDR_SDS2:
                         offset = 38;
                         break;
-                case ADDR_SDS3:
+                case J1939_ADDR_SDS3:
                         offset = 39;
                         break;
-                case ADDR_SDF0:
+                case J1939_ADDR_SDF0:
                         offset = 40;
                         break;
-                case ADDR_SDF1:
+                case J1939_ADDR_SDF1:
                         offset = 41;
                         break;
-                case ADDR_SDF2:
+                case J1939_ADDR_SDF2:
                         offset = 42;
                         break;
-                case ADDR_SDF3:
+                case J1939_ADDR_SDF3:
                         offset = 43;
                         break;
-                case ADDR_SDB0:
+                case J1939_ADDR_SDB0:
                         offset = 44;
                         break;
-                case ADDR_SDB1:
+                case J1939_ADDR_SDB1:
                         offset = 45;
                         break;
-                case ADDR_SDB2:
+                case J1939_ADDR_SDB2:
                         offset = 46;
                         break;
-                case ADDR_SDB3:
+                case J1939_ADDR_SDB3:
                         offset = 47;
                         break;
-                case ADDR_GENS:
+                case J1939_ADDR_GENS:
                         offset = 48;
                         break;
                 default:
