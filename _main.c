@@ -3,11 +3,16 @@
 #include "type.h"
 #include "vx.h"
 
-#define FLAG_PWR 0x00000001
-#define FLAG_SWH 0x00000002
+#define FLAG_GEN 0x00000001
+#define FLAG_PSU 0x00000002
+#define FLAG_SWH 0x00000004
+#define FLAG_RSE 0x00000008
+#define FLAG_SWV 0x00000010
+#define FLAG_PRP 0x00000020
 
 extern MSG_Q_ID msg_main;
-extern MSG_Q_ID msg_pwr;
+extern MSG_Q_ID msg_gen;
+extern MSG_Q_ID msg_psu;
 extern MSG_Q_ID msg_swh;
 extern MSG_Q_ID msg_rse;
 extern MSG_Q_ID msg_swv;
@@ -29,11 +34,23 @@ void t_main(void)
                 }
                 tmp = 0;
                 switch (rx.type & UNMASK_TASK_NOTIFY) {
-                case TASK_NOTIFY_PWR:
-                        tmp = FLAG_PWR;
+                case TASK_NOTIFY_GEN:
+                        tmp = FLAG_GEN;
+                        break;
+                case TASK_NOTIFY_PSU:
+                        tmp = FLAG_PSU;
                         break;
                 case TASK_NOTIFY_SWH:
                         tmp = FLAG_SWH;
+                        break;
+                case TASK_NOTIFY_RSE:
+                        tmp = FLAG_RSE;
+                        break;
+                case TASK_NOTIFY_SWV:
+                        tmp = FLAG_SWV;
+                        break;
+                case TASK_NOTIFY_PRP:
+                        tmp = FLAG_PRP;
                         break;
                 default:
                         break;
@@ -59,10 +76,14 @@ void t_main(void)
                                 break;
                         case CMD_ACT_GEND:
                         case CMD_ACT_GENS:
+                                verify = rx.type;
+                                tx.type = rx.type;
+                                msgQSend(msg_gen, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
+                                break;
                         case CMD_ACT_PSU:
                                 verify = rx.type;
                                 tx.type = rx.type;
-                                msgQSend(msg_pwr, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
+                                msgQSend(msg_psu, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         case CMD_ACT_SWH:
                                 verify = rx.type;

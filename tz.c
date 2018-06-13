@@ -14,7 +14,8 @@ extern void t_prp(void);
 
 MSG_Q_ID msg_can[2];
 MSG_Q_ID msg_main;
-MSG_Q_ID msg_pwr;
+MSG_Q_ID msg_gen;
+MSG_Q_ID msg_psu;
 MSG_Q_ID msg_swh;
 MSG_Q_ID msg_rse;
 MSG_Q_ID msg_swv;
@@ -28,7 +29,8 @@ void tz(void)
         msg_can[0] = msgQCreate(64, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_can[1] = msgQCreate(64, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_main = msgQCreate(32, sizeof(struct main), MSG_Q_FIFO);
-        msg_pwr = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
+        msg_gen = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
+        msg_psu = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_swh = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_rse = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_swv = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
