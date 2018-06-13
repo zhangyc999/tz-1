@@ -7,7 +7,7 @@ extern MSG_Q_ID msg_dbg;
 
 void dbg(void)
 {
-        struct frame_can buf;
+        struct frame_can can;
         u16 total[48];
         bzero((char *)total, sizeof(total));
         printf("\
@@ -38,8 +38,8 @@ void dbg(void)
         for (;;) {
                 taskDelay(sysClkRateGet() / 20);
                 while (msgQNumMsgs(msg_dbg) > 0) {
-                        msgQReceive(msg_dbg, (char *)&buf, sizeof(buf), NO_WAIT);
-                        switch (buf.src) {
+                        msgQReceive(msg_dbg, (char *)&can, sizeof(can), NO_WAIT);
+                        switch (can.src) {
                         case ADDR_VSLF:
                                 printf("\033[1;9H%04X", ++total[0]);
                                 break;
@@ -187,7 +187,7 @@ void dbg(void)
                         default:
                                 break;
                         }
-                        printf("|%02x|%02x %02x %02x %02x %02x %02x %02x %02x", buf.form, buf.data[0], buf.data[1], buf.data[2], buf.data[3], buf.data[4], buf.data[5], buf.data[6], buf.data[7]);
+                        printf("|%02x|%02x %02x %02x %02x %02x %02x %02x %02x", can.form, can.data[0], can.data[1], can.data[2], can.data[3], can.data[4], can.data[5], can.data[6], can.data[7]);
                 }
         }
 }

@@ -19,6 +19,7 @@
 #define RESULT_FAULT_AMPR_500 0x00002000
 #define RESULT_FAULT_COMM     0x00004000
 
+extern u8 check_xor(u8 *buf, int n);
 extern MSG_Q_ID msg_can[];
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_pwr;

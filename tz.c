@@ -20,6 +20,7 @@ MSG_Q_ID msg_swh;
 MSG_Q_ID msg_rse;
 MSG_Q_ID msg_swv;
 MSG_Q_ID msg_prp;
+MSG_Q_ID msg_udp;
 MSG_Q_ID msg_dbg;
 
 void tz(void)
@@ -33,6 +34,7 @@ void tz(void)
         msg_rse = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_swv = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_prp = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
+        msg_udp = msgQCreate(128, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_dbg = msgQCreate(128, sizeof(struct frame_can), MSG_Q_FIFO);
         taskSpawn("MAIN", 90, VX_FP_TASK, 20000, (FUNCPTR)t_main, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("UDP", 90, VX_FP_TASK, 20000, (FUNCPTR)t_udp, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
