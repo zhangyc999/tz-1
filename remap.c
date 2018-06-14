@@ -2,7 +2,8 @@
 #include "type.h"
 #include "vx.h"
 
-extern MSG_Q_ID msg_pwr;
+extern MSG_Q_ID msg_gen;
+extern MSG_Q_ID msg_psu;
 extern MSG_Q_ID msg_swh;
 extern MSG_Q_ID msg_rse;
 extern MSG_Q_ID msg_swv;
@@ -13,8 +14,9 @@ MSG_Q_ID remap_addr_msg(u8 addr)
         switch (addr) {
         case J1939_ADDR_GEND:
         case J1939_ADDR_GENS:
+                return msg_gen;
         case J1939_ADDR_PSU:
-                return msg_pwr;
+                return msg_psu;
         case J1939_ADDR_SWH0:
         case J1939_ADDR_SWH1:
         case J1939_ADDR_SWH2:

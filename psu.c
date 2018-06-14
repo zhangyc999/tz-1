@@ -76,7 +76,7 @@ void t_psu(void)
         int tmp_volt_500;
         int tmp_ampr_500;
         for (i = 0; i < max_form; i++)
-                p[i] = (FRAME_RX *)can_cllst_init(rx[2][i], MAX_LEN_CLLST);
+                p[i] = (FRAME_RX *)can_cllst_init(rx[i], MAX_LEN_CLLST);
         for (;;) {
                 prev = tickGet();
                 if (period < 0 || period > PERIOD_SLOW)

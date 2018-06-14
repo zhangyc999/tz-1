@@ -96,6 +96,7 @@ IMPORT u8 sysInumTbl[];
 
 extern MSG_Q_ID remap_addr_msg(u8 addr);
 extern MSG_Q_ID msg_can[];
+extern MSG_Q_ID msg_udp;
 extern MSG_Q_ID msg_dbg;
 
 static void isr_can_rx0(void);
@@ -180,6 +181,7 @@ static void isr_can_rx0(void)
         if (!msg)
                 goto WRONG;
         msgQSend(msg, (char *)&buf, sizeof(buf), NO_WAIT, MSG_PRI_NORMAL);
+        msgQSend(msg_udp, (char *)&buf, sizeof(buf), NO_WAIT, MSG_PRI_NORMAL);
         msgQSend(msg_dbg, (char *)&buf, sizeof(buf), NO_WAIT, MSG_PRI_NORMAL);
 WRONG:
         write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
@@ -220,6 +222,7 @@ static void isr_can_rx1(void)
         if (!msg)
                 goto WRONG;
         msgQSend(msg, (char *)&buf, sizeof(buf), NO_WAIT, MSG_PRI_NORMAL);
+        msgQSend(msg_udp, (char *)&buf, sizeof(buf), NO_WAIT, MSG_PRI_NORMAL);
         msgQSend(msg_dbg, (char *)&buf, sizeof(buf), NO_WAIT, MSG_PRI_NORMAL);
 WRONG:
         write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
