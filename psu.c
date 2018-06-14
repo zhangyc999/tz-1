@@ -87,12 +87,8 @@ void t_psu(void)
                         cmd = (struct main *)&tmp;
                         switch (verify) {
                         case CMD_IDLE:
-                        case CMD_ACT_GEND | CMD_DIR_POSI:
-                        case CMD_ACT_GEND | CMD_DIR_NEGA:
-                        case CMD_ACT_GENS | CMD_DIR_POSI:
-                        case CMD_ACT_GENS | CMD_DIR_NEGA:
-                        case CMD_ACT_PSU | CMD_DIR_POSI:
-                        case CMD_ACT_PSU | CMD_DIR_NEGA:
+                        case CMD_ACT_PSU_24 | CMD_DIR_POSI:
+                        case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
                                 verify = cmd->type;
                                 break;
                         default:
@@ -208,8 +204,8 @@ void t_psu(void)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
                         state_old = state;
                         switch (verify) {
-                        case CMD_ACT_PSU | CMD_DIR_POSI:
-                        case CMD_ACT_PSU | CMD_DIR_NEGA:
+                        case CMD_ACT_PSU_24 | CMD_DIR_POSI:
+                        case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
                                 tx.prio = J1939_PRIO_PSU_CTRL;
@@ -250,9 +246,9 @@ int psu_delay(struct main *cmd, int cur)
                 if (tmp & 1 << i)
                         break;
         }
-        if (cmd->type == (CMD_ACT_PSU | CMD_DIR_POSI))
+        if (cmd->type == (CMD_ACT_PSU_24 | CMD_DIR_POSI))
                 cur |= 1 << i;
-        else if (cmd->type == (CMD_ACT_PSU | CMD_DIR_NEGA))
+        else if (cmd->type == (CMD_ACT_PSU_24 | CMD_DIR_NEGA))
                 cur &= ~(1 << i);
         return cur;
 }
