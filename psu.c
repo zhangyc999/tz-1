@@ -26,16 +26,18 @@ extern MSG_Q_ID msg_can[];
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_psu;
 
+int psu_delay(int cur, int old);
+
 void t_psu(void)
 {
         int period = PERIOD_SLOW;
         u32 prev;
         int len;
         int tmp[sizeof(struct frame_can)];
-        struct main *cmd;
+        struct main cmd;
         struct main state;
         struct main state_old;
-        struct frame_can *can;
+        struct frame_can can;
         struct frame_can rx[3][MAX_LEN_CLLST];
         FRAME_RX *p[3];
         FRAME_TX tx;
@@ -75,6 +77,7 @@ void t_psu(void)
         int tmp_ampr_24;
         int tmp_volt_500;
         int tmp_ampr_500;
+        int cmd_old = 0;
         for (i = 0; i < max_form; i++)
                 p[i] = (FRAME_RX *)can_cllst_init(rx[i], MAX_LEN_CLLST);
         for (;;) {
@@ -84,12 +87,12 @@ void t_psu(void)
                 len = msgQReceive(msg_psu, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
-                        cmd = (struct main *)&tmp;
+                        cmd = *(struct main *)&tmp;
                         switch (verify) {
                         case CMD_IDLE:
                         case CMD_ACT_PSU_24 | CMD_DIR_POSI:
                         case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
-                                verify = cmd->type;
+                                verify = cmd.type;
                                 break;
                         default:
                                 break;
@@ -97,14 +100,14 @@ void t_psu(void)
                         period -= tickGet() - prev;
                         break;
                 case sizeof(struct frame_can):
-                        can = (struct frame_can *)&tmp;
+                        can = *(struct frame_can *)&tmp;
                         has_received = 1;
-                        i = remap_form_index(can->form);
+                        i = remap_form_index(can.form);
                         switch (i) {
                         case 0:
                                 p[i] = p[i]->next;
                                 fault_old = p[i]->data.io.fault;
-                                p[i]->data.io.fault = ((FRAME_RX *)can)->data.io.fault;
+                                p[i]->data.io.fault = ((FRAME_RX *)&can)->data.io.fault;
                                 if (fault_old == p[i]->data.io.fault) {
                                         if (ctr_fault < 10)
                                                 ctr_fault++;
@@ -137,10 +140,10 @@ void t_psu(void)
                                 sum_ampr_24 -= p[i]->data.state.ampr_24;
                                 sum_volt_500 -= p[i]->data.state.volt_500;
                                 sum_ampr_500 -= p[i]->data.state.ampr_500;
-                                p[i]->data.state.volt_24 = ((FRAME_RX *)can)->data.state.volt_24;
-                                p[i]->data.state.ampr_24 = ((FRAME_RX *)can)->data.state.ampr_24;
-                                p[i]->data.state.volt_500 = ((FRAME_RX *)can)->data.state.volt_500;
-                                p[i]->data.state.ampr_500 = ((FRAME_RX *)can)->data.state.ampr_500;
+                                p[i]->data.state.volt_24 = ((FRAME_RX *)&can)->data.state.volt_24;
+                                p[i]->data.state.ampr_24 = ((FRAME_RX *)&can)->data.state.ampr_24;
+                                p[i]->data.state.volt_500 = ((FRAME_RX *)&can)->data.state.volt_500;
+                                p[i]->data.state.ampr_500 = ((FRAME_RX *)&can)->data.state.ampr_500;
                                 sum_volt_24 += p[i]->data.state.volt_24;
                                 sum_ampr_24 += p[i]->data.state.ampr_24;
                                 sum_volt_500 += p[i]->data.state.volt_500;
@@ -205,12 +208,23 @@ void t_psu(void)
                         state_old = state;
                         switch (verify) {
                         case CMD_ACT_PSU_24 | CMD_DIR_POSI:
+                                tx.dest = J1939_ADDR_PSU;
+                                tx.form = J1939_FORM_PSU_CTRL;
+                                tx.prio = J1939_PRIO_PSU_CTRL;
+                                tx.data.io.v24 = psu_delay(cmd.data, cmd_old);
+                                cmd_old = tx.data.io.v24;
+                                tx.data.io.v500 = 0;
+                                tx.data.io.res = 0x66;
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
+                                msgQSend(msg_can[0], (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_URGENT);
+                                period = PERIOD_FAST;
+                                break;
                         case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
                                 tx.prio = J1939_PRIO_PSU_CTRL;
-                                tx.data.io.v24 = 0; /* WQ */
-                                tx.data.io.v500 = 0; /* WQ */
+                                tx.data.io.v24 = 0;
+                                tx.data.io.v500 = 0;
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
                                 msgQSend(msg_can[0], (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_URGENT);
@@ -237,18 +251,20 @@ void t_psu(void)
         }
 }
 
-int psu_delay(struct main *cmd, int cur)
+int psu_delay(int cur, int old)
 {
         int tmp;
         int i;
-        tmp = cmd->data ^ cur;
-        for (i = 0; i < sizeof(tmp) - 1; i++) {
+        if (cur == old)
+                return cur;
+        tmp = cur ^ old;
+        for (i = 0; i < 32; i++) {
                 if (tmp & 1 << i)
                         break;
         }
-        if (cmd->type == (CMD_ACT_PSU_24 | CMD_DIR_POSI))
-                cur |= 1 << i;
-        else if (cmd->type == (CMD_ACT_PSU_24 | CMD_DIR_NEGA))
-                cur &= ~(1 << i);
-        return cur;
+        if (cur & 1 << i)
+                old |= 1 << i;
+        else
+                old &= ~(1 << i);
+        return old;
 }

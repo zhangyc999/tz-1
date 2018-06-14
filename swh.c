@@ -48,10 +48,10 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         u32 prev;
         int len;
         int tmp[sizeof(struct frame_can)];
-        struct main *cmd;
+        struct main cmd;
         struct main state;
         struct main state_old;
-        struct frame_can *can;
+        struct frame_can can;
         struct frame_can rx[4][3][MAX_LEN_CLLST];
         FRAME_RX *p[4][3];
         FRAME_TX tx[4];
@@ -125,12 +125,12 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                 len = msgQReceive(msg_swh, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
-                        cmd = (struct main *)&tmp;
+                        cmd = *(struct main *)&tmp;
                         switch (verify) {
                         case CMD_IDLE:
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                switch (cmd->type) {
+                                switch (cmd.type) {
                                 case CMD_IDLE:
                                 case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
                                 case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
@@ -138,51 +138,51 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
                                 case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
                                 case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                        verify = cmd->type;
+                                        verify = cmd.type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                switch (cmd->type) {
+                                switch (cmd.type) {
                                 case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
                                 case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
                                 case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                        verify = cmd->type;
+                                        verify = cmd.type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                switch (cmd->type) {
+                                switch (cmd.type) {
                                 case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
                                 case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
                                 case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                        verify = cmd->type;
+                                        verify = cmd.type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                switch (cmd->type) {
+                                switch (cmd.type) {
                                 case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
                                 case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
                                 case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                        verify = cmd->type;
+                                        verify = cmd.type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                switch (cmd->type) {
+                                switch (cmd.type) {
                                 case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
                                 case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
                                 case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                        verify = cmd->type;
+                                        verify = cmd.type;
                                         break;
                                 default:
                                         break;
@@ -194,8 +194,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         period -= tickGet() - prev;
                         break;
                 case sizeof(struct frame_can):
-                        can = (struct frame_can *)&tmp;
-                        switch (can->src) {
+                        can = *(struct frame_can *)&tmp;
+                        switch (can.src) {
                         case J1939_ADDR_SWH0:
                                 i = 0;
                                 break;
@@ -212,7 +212,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 break;
                         }
                         has_received[i] = 1;
-                        j = remap_form_index(can->form);
+                        j = remap_form_index(can.form);
                         switch (j) {
                         case 0:
                         case 1:
@@ -224,12 +224,12 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 sum_ampr[i] -= p[i][j]->data.state.ampr;
                                 fault_old[i] = p[i][j]->data.state.fault;
                                 io_old[i] = p[i][j]->data.state.io;
-                                p[i][j]->data.state.pos = ((FRAME_RX *)can)->data.state.pos;
-                                p[i][j]->data.state.vel = ((FRAME_RX *)can)->data.state.vel;
-                                p[i][j]->data.state.ampr = ((FRAME_RX *)can)->data.state.ampr;
-                                p[i][j]->data.state.fault = ((FRAME_RX *)can)->data.state.fault;
-                                p[i][j]->data.state.io = ((FRAME_RX *)can)->data.state.io;
-                                cur_vel[i] = ((FRAME_RX *)can)->data.state.vel;
+                                p[i][j]->data.state.pos = ((FRAME_RX *)&can)->data.state.pos;
+                                p[i][j]->data.state.vel = ((FRAME_RX *)&can)->data.state.vel;
+                                p[i][j]->data.state.ampr = ((FRAME_RX *)&can)->data.state.ampr;
+                                p[i][j]->data.state.fault = ((FRAME_RX *)&can)->data.state.fault;
+                                p[i][j]->data.state.io = ((FRAME_RX *)&can)->data.state.io;
+                                cur_vel[i] = ((FRAME_RX *)&can)->data.state.vel;
                                 sum_pos[i] += p[i][j]->data.state.pos;
                                 sum_vel[i] += p[i][j]->data.state.vel;
                                 sum_ampr[i] += p[i][j]->data.state.ampr;
