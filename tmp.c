@@ -15,6 +15,14 @@ struct udp_cmd {
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_swh;
 
+void psu(int data)
+{
+        struct udp_cmd udp;
+        udp.cmd.type = 0xEC001002;
+        udp.cmd.data = data;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
 void swh(void)
 {
         struct udp_cmd udp;

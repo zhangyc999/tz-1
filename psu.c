@@ -33,7 +33,7 @@ void t_psu(void)
         int period = PERIOD_SLOW;
         u32 prev;
         int len;
-        int tmp[sizeof(struct frame_can)];
+        u8 tmp[sizeof(struct frame_can)];
         struct main cmd;
         struct main state;
         struct main state_old;
@@ -87,7 +87,7 @@ void t_psu(void)
                 len = msgQReceive(msg_psu, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
-                        cmd = *(struct main *)&tmp;
+                        cmd = *(struct main *)tmp;
                         switch (verify) {
                         case CMD_IDLE:
                         case CMD_ACT_PSU_24 | CMD_DIR_POSI:
@@ -100,7 +100,7 @@ void t_psu(void)
                         period -= tickGet() - prev;
                         break;
                 case sizeof(struct frame_can):
-                        can = *(struct frame_can *)&tmp;
+                        can = *(struct frame_can *)tmp;
                         has_received = 1;
                         i = remap_form_index(can.form);
                         switch (i) {
@@ -213,7 +213,7 @@ void t_psu(void)
                                 tx.prio = J1939_PRIO_PSU_CTRL;
                                 tx.data.io.v24 = psu_delay(cmd.data, cmd_old);
                                 cmd_old = tx.data.io.v24;
-                                tx.data.io.v500 = 0;
+                                tx.data.io.v500 = tx.data.io.v24 >> 16;
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
                                 msgQSend(msg_can[0], (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_URGENT);

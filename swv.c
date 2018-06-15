@@ -5,7 +5,7 @@
 #include "vx.h"
 
 #define PERIOD_SLOW 200
-#define PERIOD_FAST 8
+#define PERIOD_FAST 20
 
 #define MAX_LEN_CLLST 16
 
@@ -47,7 +47,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
         int period = PERIOD_SLOW;
         u32 prev;
         int len;
-        int tmp[sizeof(struct frame_can)];
+        u8 tmp[sizeof(struct frame_can)];
         struct main cmd;
         struct main state;
         struct main state_old;
@@ -57,7 +57,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
         FRAME_TX tx[4];
         int verify = CMD_IDLE;
         int has_received[4] = {0};
-        int n = 2;
+        int n = 4;
         int i;
         int j;
         int max_form = 3;
@@ -115,7 +115,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                 len = msgQReceive(msg_swv, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
-                        cmd = *(struct main *)&tmp;
+                        cmd = *(struct main *)tmp;
                         switch (verify) {
                         case CMD_IDLE:
                         case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_STOP:
@@ -184,7 +184,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                         period -= tickGet() - prev;
                         break;
                 case sizeof(struct frame_can):
-                        can = *(struct frame_can *)&tmp;
+                        can = *(struct frame_can *)tmp;
                         switch (can.src) {
                         case J1939_ADDR_SWV0:
                                 i = 0;

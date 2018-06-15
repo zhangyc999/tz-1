@@ -47,7 +47,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         int period = PERIOD_SLOW;
         u32 prev;
         int len;
-        int tmp[sizeof(struct frame_can)];
+        u8 tmp[sizeof(struct frame_can)];
         struct main cmd;
         struct main state;
         struct main state_old;
@@ -57,7 +57,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         FRAME_TX tx[4];
         int verify = CMD_IDLE;
         int has_received[4] = {0};
-        int n = 2;
+        int n = 4;
         int i;
         int j;
         int max_form = 3;
@@ -125,7 +125,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                 len = msgQReceive(msg_swh, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
-                        cmd = *(struct main *)&tmp;
+                        cmd = *(struct main *)tmp;
                         switch (verify) {
                         case CMD_IDLE:
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
@@ -194,7 +194,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         period -= tickGet() - prev;
                         break;
                 case sizeof(struct frame_can):
-                        can = *(struct frame_can *)&tmp;
+                        can = *(struct frame_can *)tmp;
                         switch (can.src) {
                         case J1939_ADDR_SWH0:
                                 i = 0;
@@ -431,6 +431,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+#if 0
                                 if (len_remain > PLAN_LEN_AMPR) {
                                         for (i = 0; i < n; i++) {
                                                 tx[i].dest = addr[i];
@@ -444,6 +445,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
                                         }
                                 } else {
+#endif
                                         for (i = 0; i < n; i++) {
                                                 tx[i].dest = addr[i];
                                                 tx[i].form = J1939_FORM_SERVO_AMPR;
@@ -455,7 +457,9 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
                                                 msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
                                         }
+#if 0
                                 }
+#endif
                                 period = PERIOD_FAST;
                                 break;
                         default:

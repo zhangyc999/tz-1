@@ -5,7 +5,7 @@
 #include "vx.h"
 
 #define PERIOD_SLOW 200
-#define PERIOD_FAST 8
+#define PERIOD_FAST 20
 
 #define MAX_LEN_CLLST 16
 
@@ -47,7 +47,7 @@ void t_rse(void) /* Task: RaiSE arm */
         int period = PERIOD_SLOW;
         u32 prev;
         int len;
-        int tmp[sizeof(struct frame_can)];
+        u8 tmp[sizeof(struct frame_can)];
         struct main cmd;
         struct main state;
         struct main state_old;
@@ -115,7 +115,7 @@ void t_rse(void) /* Task: RaiSE arm */
                 len = msgQReceive(msg_rse, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
-                        cmd = *(struct main *)&tmp;
+                        cmd = *(struct main *)tmp;
                         switch (verify) {
                         case CMD_IDLE:
                         case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_STOP:
@@ -184,7 +184,7 @@ void t_rse(void) /* Task: RaiSE arm */
                         period -= tickGet() - prev;
                         break;
                 case sizeof(struct frame_can):
-                        can = *(struct frame_can *)&tmp;
+                        can = *(struct frame_can *)tmp;
                         switch (can.src) {
                         case J1939_ADDR_RSE0:
                                 i = 0;

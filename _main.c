@@ -83,6 +83,7 @@ void t_main(void)
                         case CMD_ACT_PSU_24:
                                 verify = rx.type;
                                 tx.type = rx.type;
+                                tx.data = rx.data;
                                 msgQSend(msg_psu, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         case CMD_ACT_SWH:

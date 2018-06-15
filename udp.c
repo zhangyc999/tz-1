@@ -22,13 +22,13 @@ void udp_server(void)
         int size = sizeof(struct sockaddr_in);
         int fd = socket(AF_INET, SOCK_DGRAM, 0);
         int offset = 0;
-        u_long mode = 1;
+        /*        u_long mode = 1;*/
         bzero((char *)&server, size);
         server.sin_len = (u_char)size;
         server.sin_family = AF_INET;
         server.sin_port = htons(SERVER_PORT);
         server.sin_addr.s_addr = htonl(INADDR_ANY);
-        ioctl(fd, FIONBIO, (int)&mode);
+        /*        ioctl(fd, FIONBIO, (int)&mode);*/
         bind(fd, (struct sockaddr *)&server, size);
         group.imr_multiaddr.s_addr = inet_addr(GROUP_ADDRESS);
         group.imr_interface.s_addr = inet_addr(SERVER_ADDRESS);
