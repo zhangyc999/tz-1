@@ -1,120 +1,110 @@
+#include "define.h"
 #include "struct.h"
 #include "vx.h"
-
-struct udp_cmd {
-        u16 head;
-        u8 res0;
-        u8 res1;
-        struct main cmd;
-        u8 res2;
-        u8 res3;
-        u8 res4;
-        u8 check;
-};
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_swh;
 
 void psu(int data)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC001002;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_PSU_24;
         udp.cmd.data = data;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void swh(void)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC0A2001;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_SWH | CMD_DIR_STOP;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void swhp(void)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC002001;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_SWH | CMD_DIR_POSI;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void swhn(void)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC0C2001;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_SWH | CMD_DIR_NEGA;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void rse(void)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC0A2002;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_RSE | CMD_DIR_STOP;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void rsep(void)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC002002;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_RSE | CMD_DIR_POSI;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void rsen(void)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC0C2002;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_RSE | CMD_DIR_NEGA;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void swv(void)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC0A2003;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_SWV | CMD_DIR_STOP;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void swvp(void)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC002003;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_SWV | CMD_DIR_POSI;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void swvn(void)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC0C2003;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_SWV | CMD_DIR_NEGA;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void prp(void)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC0A2004;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_PRP | CMD_DIR_STOP;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void prpp(void)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC002004;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_PRP | CMD_DIR_POSI;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void prpn(void)
 {
-        struct udp_cmd udp;
-        udp.cmd.type = 0xEC0C2004;
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_PRP | CMD_DIR_NEGA;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
