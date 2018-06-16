@@ -26,8 +26,8 @@
 
 #define PLAN_VEL_LOW  100  /* 1mm/s */
 #define PLAN_VEL_HIGH 1500 /* 15mm/s */
-#define PLAN_LEN_LOW  500  /* 5mm */
-#define PLAN_LEN_AMPR 200  /* 2mm */
+#define PLAN_LEN_LOW  1000 /* 10mm */
+#define PLAN_LEN_AMPR 500  /* 5mm */
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
@@ -37,7 +37,7 @@ extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_swh;
 
 int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
-s16 plan_vel(int vel_cur, int len_pass, int len_remain, int period);
+int plan_vel(int vel_cur, int len_pass, int len_remain, int period);
 int max_of_n(int *buf, int n);
 int min_of_n(int *buf, int n);
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
@@ -63,7 +63,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         int max_form = 3;
         int addr[4] = {J1939_ADDR_SWH0, J1939_ADDR_SWH1, J1939_ADDR_SWH2, J1939_ADDR_SWH3};
         int cable[4] = {0, 0, 1, 1};
-        int cur_vel[4] = {0};
+        int pos_cur[4] = {0};
+        int vel_cur[4] = {0};
         int sum_pos[4] = {0};
         int sum_vel[4] = {0};
         int sum_ampr[4] = {0};
@@ -229,7 +230,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 p[i][j]->data.state.ampr = ((FRAME_RX *)&can)->data.state.ampr;
                                 p[i][j]->data.state.fault = ((FRAME_RX *)&can)->data.state.fault;
                                 p[i][j]->data.state.io = ((FRAME_RX *)&can)->data.state.io;
-                                cur_vel[i] = ((FRAME_RX *)&can)->data.state.vel;
+                                pos_cur[i] = ((FRAME_RX *)&can)->data.state.pos;
+                                vel_cur[i] = ((FRAME_RX *)&can)->data.state.vel;
                                 sum_pos[i] += p[i][j]->data.state.pos;
                                 sum_vel[i] += p[i][j]->data.state.vel;
                                 sum_ampr[i] += p[i][j]->data.state.ampr;
@@ -371,28 +373,10 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         state_old = state;
 #endif
                         switch (verify) {
-                        case CMD_IDLE:
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                max_len_posi = MAX_LEN - min_of_n(avg_pos, n) * 20;
-                                max_len_nega = max_of_n(avg_pos, n) * 20;
-                                break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                len_remain = MAX_LEN - min_of_n(avg_pos, n) * 20;
-                                len_pass = max_len_posi - len_remain;
-                                break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                len_remain = max_of_n(avg_pos, n) * 20;
-                                len_pass = max_len_nega - len_remain;
-                                break;
-                        default:
-                                break;
-                        }
-                        switch (verify) {
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                max_len_posi = MAX_LEN - min_of_n(pos_cur, n) * 20;
+                                max_len_nega = max_of_n(pos_cur, n) * 20;
                                 for (i = 0; i < n; i++) {
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
@@ -416,12 +400,17 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                len_remain = MAX_LEN - min_of_n(pos_cur, n) * 20;
+                                len_pass = max_len_posi - len_remain;
                                 for (i = 0; i < n; i++) {
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        tx[i].data.cmd.vel = plan_vel(abs(cur_vel[i]), len_pass, len_remain, PERIOD_FAST);
+                                        tx[i].data.cmd.vel =
+                                                (s16)(min_of_n(pos_cur, n) * 20  * sysClkRateGet() / PERIOD_FAST
+                                                      + plan_vel(abs(vel_cur[i]), len_pass, len_remain, PERIOD_FAST)
+                                                      - pos_cur[i] * 20 * sysClkRateGet() / PERIOD_FAST);
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                         tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
@@ -431,35 +420,36 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-#if 0
+                                len_remain = max_of_n(pos_cur, n) * 20;
+                                len_pass = max_len_nega - len_remain;
                                 if (len_remain > PLAN_LEN_AMPR) {
                                         for (i = 0; i < n; i++) {
                                                 tx[i].dest = addr[i];
                                                 tx[i].form = J1939_FORM_SERVO_VEL;
                                                 tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                                 tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel = -plan_vel(abs(cur_vel[i]), len_pass, len_remain, PERIOD_FAST);
+                                                tx[i].data.cmd.vel =
+                                                        (s16)(max_of_n(pos_cur, n) * 20 * sysClkRateGet() / PERIOD_FAST
+                                                              - plan_vel(abs(vel_cur[i]), len_pass, len_remain, PERIOD_FAST)
+                                                              - pos_cur[i] * 20 * sysClkRateGet() / PERIOD_FAST);
                                                 tx[i].data.cmd.ampr = 1000;
                                                 tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                                 tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
                                                 msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
                                         }
                                 } else {
-#endif
                                         for (i = 0; i < n; i++) {
                                                 tx[i].dest = addr[i];
                                                 tx[i].form = J1939_FORM_SERVO_AMPR;
                                                 tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                                 tx[i].data.cmd.pos = 0x1100;
                                                 tx[i].data.cmd.vel = 0x3322;
-                                                tx[i].data.cmd.ampr = -100;
+                                                tx[i].data.cmd.ampr = -50;
                                                 tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                                 tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
                                                 msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
                                         }
-#if 0
                                 }
-#endif
                                 period = PERIOD_FAST;
                                 break;
                         default:
@@ -504,7 +494,7 @@ int judge_filter(int *ok, int *err, int value, int min, int max, int ctr)
                 return 0;
 }
 
-s16 plan_vel(int vel_cur, int len_pass, int len_remain, int period)
+int plan_vel(int vel_cur, int len_pass, int len_remain, int period)
 {
         int len_stop = 0;
         s16 vel_plan = 0;

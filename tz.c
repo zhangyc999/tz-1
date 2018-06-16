@@ -2,6 +2,8 @@
 #include "type.h"
 #include "vx.h"
 
+#define DEBUG
+
 #define SYS_TICK_PER_SEC 200
 
 extern void t_main(void);
@@ -12,6 +14,12 @@ extern void t_rse(void);
 extern void t_swv(void);
 extern void t_prp(void);
 extern void udp_server(void);
+
+#ifdef DEBUG
+extern void dummy_can0(void);
+extern void dummy_can1(void);
+extern void dbg(void);
+#endif
 
 MSG_Q_ID msg_can[2];
 MSG_Q_ID msg_main;
@@ -39,11 +47,18 @@ void tz(void)
         msg_udp = msgQCreate(128, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_dbg = msgQCreate(128, sizeof(struct frame_can), MSG_Q_FIFO);
         taskSpawn("MAIN", 90, VX_FP_TASK, 20000, (FUNCPTR)t_main, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+#ifndef DEBUG
         taskSpawn("CAN", 90, VX_FP_TASK, 20000, (FUNCPTR)t_can, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+#endif /* DEBUG */
         taskSpawn("PSU", 90, VX_FP_TASK, 20000, (FUNCPTR)t_psu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("SWH", 90, VX_FP_TASK, 20000, (FUNCPTR)t_swh, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("RSE", 90, VX_FP_TASK, 20000, (FUNCPTR)t_rse, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("SWV", 90, VX_FP_TASK, 20000, (FUNCPTR)t_swv, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("PRP", 90, VX_FP_TASK, 20000, (FUNCPTR)t_prp, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+#ifdef DEBUG
+        taskSpawn("DM0", 90, VX_FP_TASK, 20000, (FUNCPTR)dummy_can0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        taskSpawn("DM1", 90, VX_FP_TASK, 20000, (FUNCPTR)dummy_can1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        taskSpawn("DBG", 100, VX_FP_TASK, 20000, (FUNCPTR)dbg, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+#endif /* DEBUG */
         udp_server();
 }
