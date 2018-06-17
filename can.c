@@ -99,18 +99,19 @@ extern MSG_Q_ID msg_can[];
 extern MSG_Q_ID msg_udp;
 extern MSG_Q_ID msg_dbg;
 
+const static int addr_can[4] = {ADDR_CAN0, ADDR_CAN1, ADDR_CAN2, ADDR_CAN3};
+const static int irq_can[4] = {5, 7, 11, 12};
+
+static void init_can(int i);
 static void isr_can_rx0(void);
 static void isr_can_rx1(void);
-static void init_can(int i);
-static const int addr_can[4] = {ADDR_CAN0, ADDR_CAN1, ADDR_CAN2, ADDR_CAN3};
-static const int irq_can[2] = {5, 7};
 static void (*isr_can[2])(void) = {isr_can_rx0, isr_can_rx1};
+static struct frame_can buf;
+static u8 id[4];
+static int i;
 
 void t_can(void)
 {
-        struct frame_can buf;
-        u8 id[4];
-        int i;
         init_can(0);
         init_can(1);
         taskDelay(20);
@@ -148,7 +149,7 @@ WRONG:
 
 static void isr_can_rx0(void)
 {
-        struct frame_can buf;
+        struct frame_can can;
         u8 id[4];
         MSG_Q_ID msg;
         if (read_reg_byte(ADDR_CAN0, PELI_IR) != 0x01)
@@ -162,34 +163,34 @@ static void isr_can_rx0(void)
         id[1] = read_reg_byte(ADDR_CAN0, PELI_RXB3);
         id[0] = read_reg_byte(ADDR_CAN0, PELI_RXB4);
         * (int *)id >>= 3;
-        buf.src = id[0];
-        buf.dest = id[1];
-        if (buf.dest != J1939_ADDR_MAIN)
+        can.src = id[0];
+        can.dest = id[1];
+        if (can.dest != J1939_ADDR_MAIN)
                 goto WRONG;
-        buf.form = id[2];
-        buf.prio = id[3];
-        buf.data[0] = read_reg_byte(ADDR_CAN0, PELI_RXB5);
-        buf.data[1] = read_reg_byte(ADDR_CAN0, PELI_RXB6);
-        buf.data[2] = read_reg_byte(ADDR_CAN0, PELI_RXB7);
-        buf.data[3] = read_reg_byte(ADDR_CAN0, PELI_RXB8);
-        buf.data[4] = read_reg_byte(ADDR_CAN0, PELI_RXB9);
-        buf.data[5] = read_reg_byte(ADDR_CAN0, PELI_RXB10);
-        buf.data[6] = read_reg_byte(ADDR_CAN0, PELI_RXB11);
-        buf.data[7] = read_reg_byte(ADDR_CAN0, PELI_RXB12);
-        buf.tsc = tickGet();
-        msg = remap_addr_msg(buf.src);
+        can.form = id[2];
+        can.prio = id[3];
+        can.data[0] = read_reg_byte(ADDR_CAN0, PELI_RXB5);
+        can.data[1] = read_reg_byte(ADDR_CAN0, PELI_RXB6);
+        can.data[2] = read_reg_byte(ADDR_CAN0, PELI_RXB7);
+        can.data[3] = read_reg_byte(ADDR_CAN0, PELI_RXB8);
+        can.data[4] = read_reg_byte(ADDR_CAN0, PELI_RXB9);
+        can.data[5] = read_reg_byte(ADDR_CAN0, PELI_RXB10);
+        can.data[6] = read_reg_byte(ADDR_CAN0, PELI_RXB11);
+        can.data[7] = read_reg_byte(ADDR_CAN0, PELI_RXB12);
+        can.tsc = tickGet();
+        msg = remap_addr_msg(can.src);
         if (!msg)
                 goto WRONG;
-        msgQSend(msg, (char *)&buf, sizeof(buf), NO_WAIT, MSG_PRI_NORMAL);
-        msgQSend(msg_udp, (char *)&buf, sizeof(buf), NO_WAIT, MSG_PRI_NORMAL);
-        msgQSend(msg_dbg, (char *)&buf, sizeof(buf), NO_WAIT, MSG_PRI_NORMAL);
+        msgQSend(msg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
+        msgQSend(msg_udp, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
+        msgQSend(msg_dbg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
 WRONG:
         write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
 }
 
 static void isr_can_rx1(void)
 {
-        struct frame_can buf;
+        struct frame_can can;
         u8 id[4];
         MSG_Q_ID msg;
         if (read_reg_byte(ADDR_CAN1, PELI_IR) != 0x01)
@@ -203,27 +204,27 @@ static void isr_can_rx1(void)
         id[1] = read_reg_byte(ADDR_CAN1, PELI_RXB3);
         id[0] = read_reg_byte(ADDR_CAN1, PELI_RXB4);
         * (int *)id >>= 3;
-        buf.src = id[0];
-        buf.dest = id[1];
-        if (buf.dest != J1939_ADDR_MAIN)
+        can.src = id[0];
+        can.dest = id[1];
+        if (can.dest != J1939_ADDR_MAIN)
                 goto WRONG;
-        buf.form = id[2];
-        buf.prio = id[3];
-        buf.data[0] = read_reg_byte(ADDR_CAN1, PELI_RXB5);
-        buf.data[1] = read_reg_byte(ADDR_CAN1, PELI_RXB6);
-        buf.data[2] = read_reg_byte(ADDR_CAN1, PELI_RXB7);
-        buf.data[3] = read_reg_byte(ADDR_CAN1, PELI_RXB8);
-        buf.data[4] = read_reg_byte(ADDR_CAN1, PELI_RXB9);
-        buf.data[5] = read_reg_byte(ADDR_CAN1, PELI_RXB10);
-        buf.data[6] = read_reg_byte(ADDR_CAN1, PELI_RXB11);
-        buf.data[7] = read_reg_byte(ADDR_CAN1, PELI_RXB12);
-        buf.tsc = tickGet();
-        msg = remap_addr_msg(buf.src);
+        can.form = id[2];
+        can.prio = id[3];
+        can.data[0] = read_reg_byte(ADDR_CAN1, PELI_RXB5);
+        can.data[1] = read_reg_byte(ADDR_CAN1, PELI_RXB6);
+        can.data[2] = read_reg_byte(ADDR_CAN1, PELI_RXB7);
+        can.data[3] = read_reg_byte(ADDR_CAN1, PELI_RXB8);
+        can.data[4] = read_reg_byte(ADDR_CAN1, PELI_RXB9);
+        can.data[5] = read_reg_byte(ADDR_CAN1, PELI_RXB10);
+        can.data[6] = read_reg_byte(ADDR_CAN1, PELI_RXB11);
+        can.data[7] = read_reg_byte(ADDR_CAN1, PELI_RXB12);
+        can.tsc = tickGet();
+        msg = remap_addr_msg(can.src);
         if (!msg)
                 goto WRONG;
-        msgQSend(msg, (char *)&buf, sizeof(buf), NO_WAIT, MSG_PRI_NORMAL);
-        msgQSend(msg_udp, (char *)&buf, sizeof(buf), NO_WAIT, MSG_PRI_NORMAL);
-        msgQSend(msg_dbg, (char *)&buf, sizeof(buf), NO_WAIT, MSG_PRI_NORMAL);
+        msgQSend(msg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
+        msgQSend(msg_udp, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
+        msgQSend(msg_dbg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
 WRONG:
         write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
 }
