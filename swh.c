@@ -19,7 +19,11 @@
 #define RESULT_FAULT_AMPR     0x00001000
 #define RESULT_FAULT_SYNC     0x00002000
 #define RESULT_FAULT_COMM     0x00004000
+#define RESULT_FAULT_IO       0x00008000
 #define RESULT_RUNNING        0x00FF0000
+
+#define POS_IO_NEGA 5    /* 1mm */
+#define POS_IO_POSI 2000 /* 400mm */
 
 #define MAX_LEN 20000 /* 200mm */
 #define MAX_ACC 100   /* 1mm/s^2 */
@@ -28,6 +32,8 @@
 #define PLAN_VEL_HIGH 1500 /* 15mm/s */
 #define PLAN_LEN_LOW  1000 /* 10mm */
 #define PLAN_LEN_AMPR 500  /* 5mm */
+
+#define OVERSHOOT 1 /* 0.2mm */
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
@@ -38,8 +44,8 @@ extern MSG_Q_ID msg_swh;
 
 int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
 int plan_vel(int vel_cur, int len_pass, int len_remain, int period);
-int max_of_n(int *buf, int n);
-int min_of_n(int *buf, int n);
+int max_pos_of_n(int pos_cur[], int n, int overshoot);
+int min_pos_of_n(int pos_cur[], int n, int overshoot);
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 
 void t_swh(void) /* Task: SWing arm of Horizontal */
@@ -115,6 +121,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         int len_pass = 0;
         int max_len_posi = MAX_LEN;
         int max_len_nega = MAX_LEN;
+        int slowest;
         for (i = 0; i < n; i++) {
                 for (j = 0; j < max_form; j++)
                         p[i][j] = (FRAME_RX *)can_cllst_init(rx[i][j], MAX_LEN_CLLST);
@@ -287,6 +294,12 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         result[i] |= RESULT_FAULT_AMPR;
                                 else if (tmp_ampr == 1)
                                         result[i] &= ~RESULT_FAULT_AMPR;
+                                if (avg_pos[i] > POS_IO_POSI && (result[i] & 0x0000000C) == 0x00000008
+                                    || avg_pos[i] < POS_IO_NEGA && (result[i] & 0x0000000C) == 0x00000004
+                                    || avg_pos[i] > POS_IO_NEGA + 10 && avg_pos[i] < POS_IO_POSI - 10 && (result[i] & 0x0000000C) != 0x0000000C)
+                                        result[i] |= RESULT_FAULT_IO;
+                                else
+                                        result[i] &= ~RESULT_FAULT_IO;
                                 if (tmp_running == -1)
                                         result[i] |= RESULT_RUNNING;
                                 else if (tmp_running == 1)
@@ -329,7 +342,6 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         period -= tickGet() - prev;
                         break;
                 default:
-#if 0
                         for (i = 0; i < n; i++) {
                                 if (has_received[i]) {
                                         has_received[i] = 0;
@@ -356,7 +368,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         }
                         if (i != n) {
                                 state.type |= TASK_STATE_FAULT;
-                                verify = verify & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
+                                /* verify = verify & ~UNMASK_CMD_DIR | CMD_DIR_STOP; */
                         } else {
                                 state.type |= TASK_STATE_OK;
                         }
@@ -371,12 +383,11 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         if (state_old.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
                         state_old = state;
-#endif
                         switch (verify) {
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                max_len_posi = MAX_LEN - min_of_n(pos_cur, n) * 20;
-                                max_len_nega = max_of_n(pos_cur, n) * 20;
+                                max_len_posi = MAX_LEN - pos_cur[min_pos_of_n(pos_cur, n, OVERSHOOT)] * 20;
+                                max_len_nega = pos_cur[max_pos_of_n(pos_cur, n, OVERSHOOT)] * 20;
                                 for (i = 0; i < n; i++) {
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
@@ -400,17 +411,21 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                len_remain = MAX_LEN - min_of_n(pos_cur, n) * 20;
+                                slowest = min_pos_of_n(pos_cur, n, OVERSHOOT);
+                                len_remain = MAX_LEN - pos_cur[slowest] * 20;
                                 len_pass = max_len_posi - len_remain;
                                 for (i = 0; i < n; i++) {
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        tx[i].data.cmd.vel =
-                                                (s16)(min_of_n(pos_cur, n) * 20  * sysClkRateGet() / PERIOD_FAST
-                                                      + plan_vel(abs(vel_cur[i]), len_pass, len_remain, PERIOD_FAST)
-                                                      - pos_cur[i] * 20 * sysClkRateGet() / PERIOD_FAST);
+                                        if (pos_cur[i] > pos_cur[slowest])
+                                                tx[i].data.cmd.vel = 0;
+                                        else
+                                                tx[i].data.cmd.vel =
+                                                        (s16)(pos_cur[slowest] * 20  * sysClkRateGet() / PERIOD_FAST
+                                                              + plan_vel(abs(vel_cur[i]), len_pass, len_remain, PERIOD_FAST)
+                                                              - pos_cur[slowest] * 20 * sysClkRateGet() / PERIOD_FAST);
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                         tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
@@ -420,7 +435,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                len_remain = max_of_n(pos_cur, n) * 20;
+                                slowest = max_pos_of_n(pos_cur, n, OVERSHOOT);
+                                len_remain = pos_cur[slowest] * 20;
                                 len_pass = max_len_nega - len_remain;
                                 if (len_remain > PLAN_LEN_AMPR) {
                                         for (i = 0; i < n; i++) {
@@ -428,10 +444,13 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 tx[i].form = J1939_FORM_SERVO_VEL;
                                                 tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                                 tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel =
-                                                        (s16)(max_of_n(pos_cur, n) * 20 * sysClkRateGet() / PERIOD_FAST
-                                                              - plan_vel(abs(vel_cur[i]), len_pass, len_remain, PERIOD_FAST)
-                                                              - pos_cur[i] * 20 * sysClkRateGet() / PERIOD_FAST);
+                                                if (pos_cur[i] < pos_cur[slowest])
+                                                        tx[i].data.cmd.vel = 0;
+                                                else
+                                                        tx[i].data.cmd.vel =
+                                                                (s16)(pos_cur[slowest] * 20 * sysClkRateGet() / PERIOD_FAST
+                                                                      - plan_vel(abs(vel_cur[i]), len_pass, len_remain, PERIOD_FAST)
+                                                                      - pos_cur[slowest] * 20 * sysClkRateGet() / PERIOD_FAST);
                                                 tx[i].data.cmd.ampr = 1000;
                                                 tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                                 tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
@@ -497,7 +516,7 @@ int judge_filter(int *ok, int *err, int value, int min, int max, int ctr)
 int plan_vel(int vel_cur, int len_pass, int len_remain, int period)
 {
         int len_stop = 0;
-        s16 vel_plan = 0;
+        int vel_plan = 0;
         int delta = MAX_ACC * period / sysClkRateGet();
         if (vel_cur >= PLAN_VEL_LOW)
                 len_stop = (int)((vel_cur * vel_cur - PLAN_VEL_LOW * PLAN_VEL_LOW) / 2.0 / MAX_ACC + PLAN_LEN_LOW + 0.5);
@@ -528,18 +547,28 @@ int plan_vel(int vel_cur, int len_pass, int len_remain, int period)
         return vel_plan;
 }
 
-int max_of_n(int *buf, int n)
+int max_pos_of_n(int pos_cur[], int n, int overshoot)
 {
-        if (n > 1)
-                return max(*buf, max_of_n(buf + 1, n - 1));
-        return *buf;
+        int tmp;
+        int i;
+        int j = 0;
+        for (i = 0; i < n; i++) {
+                if (pos_cur[j] < pos_cur[i] - overshoot)
+                        j = i;
+        }
+        return j;
 }
 
-int min_of_n(int *buf, int n)
+int min_pos_of_n(int pos_cur[], int n, int overshoot)
 {
-        if (n > 1)
-                return min(*buf, min_of_n(buf + 1, n - 1));
-        return *buf;
+        int tmp;
+        int i;
+        int j = 0;
+        for (i = 0; i < n; i++) {
+                if (pos_cur[j] > pos_cur[i] + overshoot)
+                        j = i;
+        }
+        return j;
 }
 
 struct frame_can *can_cllst_init(struct frame_can buf[], int len)

@@ -3,10 +3,10 @@
 #include "type.h"
 #include "vx.h"
 
-#define POS_ORIG_SWH0 0
-#define POS_ORIG_SWH1 0
-#define POS_ORIG_SWH2 0
-#define POS_ORIG_SWH3 1
+#define POS_ORIG_SWH0 -1020
+#define POS_ORIG_SWH1 500
+#define POS_ORIG_SWH2 -1000
+#define POS_ORIG_SWH3 -1000
 
 extern MSG_Q_ID remap_addr_msg(u8 addr);
 extern MSG_Q_ID msg_can[];
@@ -23,6 +23,12 @@ void dummy_can0(void)
         MSG_Q_ID msg;
         bzero((char *)&tx[0], sizeof(tx[0]));
         bzero((char *)&tx[1], sizeof(tx[1]));
+        *(s16 *)&tx[0].data[0] = (s16)(pos[0] / 20);
+        *(s16 *)&tx[1].data[0] = (s16)(pos[1] / 20);
+        tx[0].data[6] = 0x00;
+        tx[1].data[6] = 0x00;
+        tx[0].data[7] = 0x0C;
+        tx[1].data[7] = 0x0C;
         for (;;) {
                 msgQReceive(msg_can[0], (char *)&rx, sizeof(rx), WAIT_FOREVER);
                 switch (rx.dest) {
@@ -37,7 +43,7 @@ void dummy_can0(void)
                         case 0xA3:
                                 break;
                         case 0xA5:
-                                vel[0] = *(s16 *)&rx.data[2];
+                                vel[0] = *(s16 *)(rx.data + 2);
                                 pos[0] += vel[0] / 25;
                                 ampr[0] = *(s16 *)&rx.data[4];
                                 *(s16 *)&tx[0].data[0] = (s16)(pos[0] / 20);
@@ -105,6 +111,12 @@ void dummy_can1(void)
         MSG_Q_ID msg;
         bzero((char *)&tx[0], sizeof(tx[0]));
         bzero((char *)&tx[1], sizeof(tx[1]));
+        *(s16 *)&tx[0].data[0] = (s16)(pos[0] / 20);
+        *(s16 *)&tx[1].data[0] = (s16)(pos[1] / 20);
+        tx[0].data[6] = 0x00;
+        tx[1].data[6] = 0x00;
+        tx[0].data[7] = 0x0C;
+        tx[1].data[7] = 0x0C;
         for (;;) {
                 msgQReceive(msg_can[1], (char *)&rx, sizeof(rx), WAIT_FOREVER);
                 switch (rx.dest) {
