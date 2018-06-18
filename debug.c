@@ -5,7 +5,7 @@
 
 extern MSG_Q_ID msg_dbg;
 
-void dbg(void)
+void t_dbg(void)
 {
         struct frame_can can;
         u16 total[48];
