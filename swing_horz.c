@@ -29,7 +29,7 @@ extern MSG_Q_ID msg_can[];
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_swh;
 
-void plan(int *vel, int *len_pass, int period, int len_low, int len_acc, int len_high, int vel_low, int vel_high, int acc_time);
+void plan(int *vel, int *len_pass, int period, int len_low, int len_acc, int len_high, int vel_low, int vel_high);
 int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 
@@ -53,12 +53,11 @@ const static int err_sync_01 = 500;
 const static int err_sync_23 = 500;
 const static int err_sync_0123 = 10000;
 const static int plan_len_low[4] = {1000, 1000, 1000, 1000};
-const static int plan_len_acc[4] = {10000, 10000, 10000, 10000};
-const static int plan_len_high[4] = {1000, 1000, 1000, 1000};
+const static int plan_len_acc[4] = {4000, 4000, 4000, 4000};
+const static int plan_len_high[4] = {10000, 10000, 10000, 10000};
 const static int plan_vel_low[4] = {100, 100, 100, 100};
 const static int plan_vel_high[4] = {1000, 1000, 1000, 1000};
 const static int plan_vel_medium[4] = {500, 500, 500, 500};
-const static int plan_acc_time[4] = {5, 5, 5, 5};
 
 static int period = PERIOD_SLOW;
 static u32 prev;
@@ -284,9 +283,11 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 }
                                 if (ctr_io[i] > 5)
                                         result[i] = result[i] & ~UNMASK_RESULT_IO | p[i][j]->data.state.io;
-                                if (avg_pos[i] > limit_posi[i] && (result[i] & 0x0000000C) == 0x00000008
-                                    || avg_pos[i] < limit_nega[i] && (result[i] & 0x0000000C) == 0x00000004
-                                    || avg_pos[i] > limit_nega[i] + 500 && avg_pos[i] < limit_posi[i] - 500 && (result[i] & 0x0000000C) != 0x0000000C)
+                                if (avg_pos[i] > limit_posi[i] && (result[i] & 0x0000000C) != 0x00000004
+                                    || avg_pos[i] < limit_nega[i] && (result[i] & 0x0000000C) != 0x00000008
+                                    || avg_pos[i] > limit_nega[i] + 500 && avg_pos[i] < limit_posi[i] - 500 && (result[i] & 0x0000000C) != 0x0000000C
+                                    || avg_pos[i] >= limit_posi[i] - 500 && avg_pos[i] <= limit_posi[i] + 500 && result[i] & 0x00000008
+                                    || avg_pos[i] >= limit_nega[i] - 500 && avg_pos[i] <= limit_nega[i] + 500 && result[i] & 0x00000004)
                                         result[i] |= RESULT_FAULT_LIMIT;
                                 else
                                         result[i] &= ~RESULT_FAULT_LIMIT;
@@ -460,8 +461,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         tx[i].data.cmd.pos = 0x1100;
                                         plan(&plan_vel[i], &plan_len_pass[i], PERIOD_FAST,
                                              plan_len_low_posi[i], plan_len_acc_posi[i], plan_len_high_posi[i],
-                                             plan_vel_low[i], plan_vel_high[i],
-                                             plan_acc_time[i]);
+                                             plan_vel_low[i], plan_vel_high[i]);
                                         tx[i].data.cmd.vel = (s16)plan_vel[i];
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
@@ -478,19 +478,22 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         tx[i].data.cmd.pos = 0x1100;
                                         tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                         tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
+#if 0
                                         if (avg_pos[i] < ampr_pos_nega[i] && avg_pos[i] > 0) {
                                                 tx[i].form = J1939_FORM_SERVO_AMPR;
                                                 tx[i].data.cmd.vel = 0x3322;
                                                 tx[i].data.cmd.ampr = (s16)ampr_value_nega[i];
                                         } else {
+#endif
                                                 tx[i].form = J1939_FORM_SERVO_VEL;
                                                 plan(&plan_vel[i], &plan_len_pass[i], PERIOD_FAST,
                                                      plan_len_low_nega[i], plan_len_acc_nega[i], plan_len_high_nega[i],
-                                                     plan_vel_low[i], plan_vel_high[i],
-                                                     plan_acc_time[i]);
+                                                     plan_vel_low[i], plan_vel_high[i]);
                                                 tx[i].data.cmd.vel = -(s16)plan_vel[i];
                                                 tx[i].data.cmd.ampr = 1000;
+#if 0
                                         }
+#endif
                                         msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
                                 }
                                 period = PERIOD_FAST;
@@ -518,9 +521,13 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         }
 }
 
-void plan(int *vel, int *len_pass, int period, int len_low, int len_acc, int len_high, int vel_low, int vel_high, int acc_time)
+void plan(int *vel, int *len_pass, int period, int len_low, int len_acc, int len_high, int vel_low, int vel_high)
 {
-        int acc = len_acc / acc_time * period / sysClkRateGet();
+        int acc;
+        if (len_acc)
+                acc = (vel_high - vel_low) * (vel_high + vel_low) * period / len_acc / 2 / sysClkRateGet();
+        else
+                acc = 0;
         if (*len_pass < len_low) {
                 *vel = vel_low;
         } else if (*len_pass < len_low + len_acc) {

@@ -3,10 +3,10 @@
 #include "type.h"
 #include "vx.h"
 
-#define POS_ORIG_SWH0 -1020
-#define POS_ORIG_SWH1 500
-#define POS_ORIG_SWH2 -1000
-#define POS_ORIG_SWH3 -1000
+#define POS_ORIG_SWH0 -500
+#define POS_ORIG_SWH1 -500
+#define POS_ORIG_SWH2 -500
+#define POS_ORIG_SWH3 -500
 
 extern MSG_Q_ID remap_addr_msg(u8 addr);
 extern MSG_Q_ID msg_can[];
