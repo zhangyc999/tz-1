@@ -27,7 +27,7 @@ typedef struct frame_cyl_tx FRAME_TX;
 
 extern MSG_Q_ID msg_can[];
 extern MSG_Q_ID msg_main;
-extern MSG_Q_ID msg_prp;
+extern MSG_Q_ID msg_swv;
 
 extern void plan(int *vel, int *len_pass, int period, int len_low, int len_acc, int len_high, int vel_low, int vel_high);
 extern int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
@@ -35,13 +35,15 @@ extern struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 
 const static int n = 4;
 const static int max_form = 3;
-const static int addr[4] = {J1939_ADDR_PRP0, J1939_ADDR_PRP1, J1939_ADDR_PRP2, J1939_ADDR_PRP3};
+const static int addr[4] = {J1939_ADDR_SWV0, J1939_ADDR_SWV1, J1939_ADDR_SWV2, J1939_ADDR_SWV3};
 const static int cable[4] = {0, 0, 1, 1};
 const static int zero_pos[4] = {0, 0, 0, 0};
 const static int limit_posi[4] = {40000, 40000, 40000, 40000};
 const static int limit_nega[4] = {500, 500, 500, 500};
+const static int ampr_pos_posi[4] = {40000, 40000, 40000, 40000};
+const static int ampr_value_posi[4] = {50, 50, 50, 50};
 const static int ampr_pos_nega[4] = {500, 500, 500, 500};
-const static int ampr_value_nega[4] = {-50, -50, -50, -50};
+const static int ampr_value_nega[4] = {50, 50, 50, 50};
 const static int min_pos[4] = {0, 0, 0, 0};
 const static int min_vel[4] = {-1500, -1500, -1500, -1500};
 const static int min_ampr[4] = {-2000, -2000, -2000, -2000};
@@ -114,7 +116,7 @@ static int plan_len_high_nega[4];
 static int i;
 static int j;
 
-void t_prp(void) /* Task: PRoP */
+void t_swv(void) /* Task: SWing leg of Vertical */
 {
         for (i = 0; i < n; i++) {
                 for (j = 0; j < max_form; j++)
@@ -124,66 +126,66 @@ void t_prp(void) /* Task: PRoP */
                 prev = tickGet();
                 if (period < 0 || period > PERIOD_SLOW)
                         period = 0;
-                len = msgQReceive(msg_prp, (char *)&tmp, sizeof(tmp), period);
+                len = msgQReceive(msg_swv, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
                         cmd = *(struct main *)tmp;
                         switch (verify) {
                         case CMD_IDLE:
-                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_STOP:
+                        case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                 switch (cmd.type) {
                                 case CMD_IDLE:
-                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd.type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_POSI:
                                 switch (cmd.type) {
-                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd.type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                        case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_NEGA:
                                 switch (cmd.type) {
-                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd.type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                        case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_POSI:
                                 switch (cmd.type) {
-                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd.type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                        case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_NEGA:
                                 switch (cmd.type) {
-                                case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd.type;
                                         break;
                                 default:
@@ -198,16 +200,16 @@ void t_prp(void) /* Task: PRoP */
                 case sizeof(struct frame_can):
                         can = *(struct frame_can *)tmp;
                         switch (can.src) {
-                        case J1939_ADDR_PRP0:
+                        case J1939_ADDR_SWV0:
                                 i = 0;
                                 break;
-                        case J1939_ADDR_PRP1:
+                        case J1939_ADDR_SWV1:
                                 i = 1;
                                 break;
-                        case J1939_ADDR_PRP2:
+                        case J1939_ADDR_SWV2:
                                 i = 2;
                                 break;
-                        case J1939_ADDR_PRP3:
+                        case J1939_ADDR_SWV3:
                                 i = 3;
                                 break;
                         default:
@@ -339,7 +341,7 @@ void t_prp(void) /* Task: PRoP */
                                                 result[i] |= RESULT_FAULT_COMM;
                                 }
                         }
-                        state.type = TASK_NOTIFY_PRP;
+                        state.type = TASK_NOTIFY_SWV;
                         state.data = 0;
                         for (i = 0; i < n; i++) {
                                 if (result[i] & UNMASK_RESULT_FAULT)
@@ -363,8 +365,8 @@ void t_prp(void) /* Task: PRoP */
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
                         state_old = state;
                         switch (verify) {
-                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_STOP:
+                        case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                 for (i = 0; i < n; i++) {
                                         plan_vel[i] = 0;
                                         plan_len_pass[i] = 0;
@@ -424,26 +426,8 @@ void t_prp(void) /* Task: PRoP */
                                 else
                                         period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_POSI:
-                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                for (i = 0; i < n; i++) {
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = J1939_FORM_SERVO_VEL;
-                                        tx[i].prio = J1939_PRIO_SERVO_CTRL;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        plan(&plan_vel[i], &plan_len_pass[i], PERIOD_FAST,
-                                             plan_len_low_posi[i], plan_len_acc_posi[i], plan_len_high_posi[i],
-                                             plan_vel_low[i], plan_vel_high[i]);
-                                        tx[i].data.cmd.vel = (s16)plan_vel[i];
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
-                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
-                                }
-                                period = PERIOD_FAST;
-                                break;
-                        case CMD_ACT_PRP | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                        case CMD_ACT_PRP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                        case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_POSI:
                                 for (i = 0; i < n; i++) {
                                         tx[i].dest = addr[i];
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
@@ -451,10 +435,38 @@ void t_prp(void) /* Task: PRoP */
                                         tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                         tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
 #if 0
-                                        if (avg_pos[i] < ampr_pos_nega[i] && avg_pos[i] > 0) {
+                                        if (avg_pos[i] > ampr_pos_posi[i] && avg_pos[i] < len_low + len_acc + len_high + len_acc + len_low) {
                                                 tx[i].form = J1939_FORM_SERVO_AMPR;
                                                 tx[i].data.cmd.vel = 0x3322;
-                                                tx[i].data.cmd.ampr = (s16)ampr_value_nega[i];
+                                                tx[i].data.cmd.ampr = (s16)ampr_value_posi[i];
+                                        } else {
+#endif
+                                                tx[i].form = J1939_FORM_SERVO_VEL;
+                                                plan(&plan_vel[i], &plan_len_pass[i], PERIOD_FAST,
+                                                     plan_len_low_posi[i], plan_len_acc_posi[i], plan_len_high_posi[i],
+                                                     plan_vel_low[i], plan_vel_high[i]);
+                                                tx[i].data.cmd.vel = (s16)plan_vel[i];
+                                                tx[i].data.cmd.ampr = 1000;
+#if 0
+                                        }
+#endif
+                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
+                                }
+                                period = PERIOD_FAST;
+                                break;
+                        case CMD_ACT_SWV | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                        case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                for (i = 0; i < n; i++) {
+                                        tx[i].dest = addr[i];
+                                        tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                        tx[i].data.cmd.pos = 0x1100;
+                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
+                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
+#if 0
+                                        if (avg_pos[i] < ampr_pos_nega[i] && avg_pos[i] > zero_pos[i]) {
+                                                tx[i].form = J1939_FORM_SERVO_AMPR;
+                                                tx[i].data.cmd.vel = 0x3322;
+                                                tx[i].data.cmd.ampr = -(s16)ampr_value_nega[i];
                                         } else {
 #endif
                                                 tx[i].form = J1939_FORM_SERVO_VEL;

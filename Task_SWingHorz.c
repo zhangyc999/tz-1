@@ -41,7 +41,7 @@ const static int zero_pos[4] = {0, 0, 0, 0};
 const static int limit_posi[4] = {40000, 40000, 40000, 40000};
 const static int limit_nega[4] = {500, 500, 500, 500};
 const static int ampr_pos_nega[4] = {500, 500, 500, 500};
-const static int ampr_value_nega[4] = {-50, -50, -50, -50};
+const static int ampr_value_nega[4] = {50, 50, 50, 50};
 const static int min_pos[4] = {0, 0, 0, 0};
 const static int min_vel[4] = {-1500, -1500, -1500, -1500};
 const static int min_ampr[4] = {-2000, -2000, -2000, -2000};
@@ -479,10 +479,10 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                         tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
 #if 0
-                                        if (avg_pos[i] < ampr_pos_nega[i] && avg_pos[i] > 0) {
+                                        if (avg_pos[i] < ampr_pos_nega[i] && avg_pos[i] > zero_pos[i]) {
                                                 tx[i].form = J1939_FORM_SERVO_AMPR;
                                                 tx[i].data.cmd.vel = 0x3322;
-                                                tx[i].data.cmd.ampr = (s16)ampr_value_nega[i];
+                                                tx[i].data.cmd.ampr = -(s16)ampr_value_nega[i];
                                         } else {
 #endif
                                                 tx[i].form = J1939_FORM_SERVO_VEL;
