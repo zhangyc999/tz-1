@@ -2,19 +2,15 @@
 #include "type.h"
 #include "vx.h"
 
-/*#define DEBUG*/
+#define DEBUG
 
 #define SYS_TICK_PER_SEC 200
 
 extern void t_main(void);
 extern void t_can(void);
-#if 0
 extern void t_psu(void);
-#endif
 extern void t_swh(void);
-#if 0
 extern void t_rse(void);
-#endif
 extern void t_swv(void);
 extern void t_prp(void);
 extern void udp_server(void);
@@ -54,13 +50,9 @@ void tz(void)
 #ifndef DEBUG
         taskSpawn("CAN", 90, VX_FP_TASK, 20000, (FUNCPTR)t_can, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #endif /* DEBUG */
-#if 0
         taskSpawn("PSU", 90, VX_FP_TASK, 20000, (FUNCPTR)t_psu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-#endif
         taskSpawn("SWH", 90, VX_FP_TASK, 20000, (FUNCPTR)t_swh, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-#if 0
         taskSpawn("RSE", 90, VX_FP_TASK, 20000, (FUNCPTR)t_rse, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-#endif
         taskSpawn("SWV", 90, VX_FP_TASK, 20000, (FUNCPTR)t_swv, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("PRP", 90, VX_FP_TASK, 20000, (FUNCPTR)t_prp, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #ifdef DEBUG

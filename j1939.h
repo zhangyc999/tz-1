@@ -65,4 +65,9 @@
 #define J1939_SERVO_DISABLE   0x3C
 #define J1939_SERVO_ENABLE    0xC3
 
+#define J1939_FAULT_NORMAL    0x00
+#define J1939_FAULT_WARN      0x03
+#define J1939_FAULT_GENERAL   0x0C
+#define J1939_FAULT_SERIOUS   0xF0
+
 #endif /* J1939_H_ */

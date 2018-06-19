@@ -63,7 +63,7 @@ static int len;
 static u8 tmp[sizeof(struct frame_can)];
 static struct main cmd;
 static struct main state;
-static struct main state_old;
+static struct main old_state;
 static struct frame_can can;
 static struct frame_can rx[4][3][MAX_LEN_CLLST];
 static FRAME_RX *p[4][3];
@@ -247,19 +247,19 @@ void t_rse(void) /* Task: RaiSE arm */
                                         ctr_fault[i] = 0;
                                 }
                                 switch (p[i][j]->data.state.fault) {
-                                case 0x00:
-                                case 0x03:
+                                case J1939_FAULT_NORMAL:
+                                case J1939_FAULT_WARN:
                                         if (ctr_fault[i] < 5)
                                                 break;
                                         result[i] &= ~RESULT_FAULT_GENERAL;
                                         result[i] &= ~RESULT_FAULT_SERIOUS;
                                         break;
-                                case 0x0C:
+                                case J1939_FAULT_GENERAL:
                                         if (ctr_fault[i] < 3)
                                                 break;
                                         result[i] |= RESULT_FAULT_GENERAL;
                                         break;
-                                case 0xF0:
+                                case J1939_FAULT_SERIOUS:
                                         result[i] |= RESULT_FAULT_SERIOUS;
                                         break;
                                 default:
@@ -273,8 +273,8 @@ void t_rse(void) /* Task: RaiSE arm */
                                 }
                                 if (ctr_io[i] > 5)
                                         result[i] = result[i] & ~UNMASK_RESULT_IO | p[i][j]->data.state.io;
-                                if (avg_pos[i] > limit_posi[i] && (result[i] & 0x0000000C) != 0x00000004
-                                    || avg_pos[i] < limit_nega[i] && (result[i] & 0x0000000C) != 0x00000008
+                                if (avg_pos[i] > limit_posi[i] + 500 && (result[i] & 0x0000000C) != 0x00000004
+                                    || avg_pos[i] < limit_nega[i] - 500 && (result[i] & 0x0000000C) != 0x00000008
                                     || avg_pos[i] > limit_nega[i] + 500 && avg_pos[i] < limit_posi[i] - 500 && (result[i] & 0x0000000C) != 0x0000000C
                                     || avg_pos[i] >= limit_posi[i] - 500 && avg_pos[i] <= limit_posi[i] + 500 && result[i] & 0x00000008
                                     || avg_pos[i] >= limit_nega[i] - 500 && avg_pos[i] <= limit_nega[i] + 500 && result[i] & 0x00000004)
@@ -359,9 +359,9 @@ void t_rse(void) /* Task: RaiSE arm */
                                 state.type |= TASK_STATE_DANGER;
                         else
                                 state.type |= TASK_STATE_SAFE;
-                        if (state_old.type != state.type)
+                        if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
-                        state_old = state;
+                        old_state = state;
                         switch (verify) {
                         case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_STOP:
                         case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_STOP:
@@ -454,7 +454,8 @@ void t_rse(void) /* Task: RaiSE arm */
                                         if (avg_pos[i] < ampr_pos_nega[i] && avg_pos[i] > zero_pos[i]) {
                                                 tx[i].form = J1939_FORM_SERVO_AMPR;
                                                 tx[i].data.cmd.vel = 0x3322;
-                                                tx[i].data.cmd.ampr = -(s16)ampr_value_nega[i];
+                                                if (avg_ampr[i] > ampr_value_nega[i] + 5)
+                                                        tx[i].data.cmd.ampr = (s16)(avg_ampr[i] - 5);
                                         } else {
 #endif
                                                 tx[i].form = J1939_FORM_SERVO_VEL;

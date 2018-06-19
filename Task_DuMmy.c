@@ -55,8 +55,8 @@ void t_dm0(void)
                         case 0xA3:
                                 break;
                         case 0xA5:
-                                vel[0] = *(s16 *)(rx.data + 2);
-                                pos[0] += vel[0] / 25;
+                                vel[0] = *(s16 *)&rx.data[2];
+                                pos[0] += vel[0] / 500;
                                 ampr[0] = *(s16 *)&rx.data[4];
                                 *(s16 *)&tx[0].data[0] = (s16)(pos[0] / 20);
                                 *(s16 *)&tx[0].data[2] = (s16)vel[0];
@@ -86,8 +86,8 @@ void t_dm0(void)
                         case 0xA3:
                                 break;
                         case 0xA5:
-                                vel[1] = *(s16 *)(rx.data + 2);
-                                pos[1] += vel[1] / 25;
+                                vel[1] = *(s16 *)&rx.data[2];
+                                pos[1] += vel[1] / 500;
                                 ampr[1] = *(s16 *)&rx.data[4];
                                 *(s16 *)&tx[1].data[0] = (s16)(pos[1] / 20);
                                 *(s16 *)&tx[1].data[2] = (s16)vel[1];
@@ -117,8 +117,8 @@ void t_dm0(void)
                         case 0xA3:
                                 break;
                         case 0xA5:
-                                vel[2] = *(s16 *)(rx.data + 2);
-                                pos[2] += vel[2] / 10;
+                                vel[2] = *(s16 *)&rx.data[2];
+                                pos[2] += vel[2] / 200;
                                 ampr[2] = *(s16 *)&rx.data[4];
                                 *(s16 *)&tx[2].data[0] = (s16)(pos[2] / 20);
                                 *(s16 *)&tx[2].data[2] = (s16)vel[2];
@@ -148,8 +148,8 @@ void t_dm0(void)
                         case 0xA3:
                                 break;
                         case 0xA5:
-                                vel[3] = *(s16 *)(rx.data + 2);
-                                pos[3] += vel[3] / 10;
+                                vel[3] = *(s16 *)&rx.data[2];
+                                pos[3] += vel[3] / 200;
                                 ampr[3] = *(s16 *)&rx.data[4];
                                 *(s16 *)&tx[3].data[0] = (s16)(pos[3] / 20);
                                 *(s16 *)&tx[3].data[2] = (s16)vel[3];
@@ -213,8 +213,8 @@ void t_dm1(void)
                         case 0xA3:
                                 break;
                         case 0xA5:
-                                vel[0] = *(s16 *)(rx.data + 2);
-                                pos[0] += vel[0] / 25;
+                                vel[0] = *(s16 *)&rx.data[2];
+                                pos[0] += vel[0] / 500;
                                 ampr[0] = *(s16 *)&rx.data[4];
                                 *(s16 *)&tx[0].data[0] = (s16)(pos[0] / 20);
                                 *(s16 *)&tx[0].data[2] = (s16)vel[0];
@@ -244,8 +244,8 @@ void t_dm1(void)
                         case 0xA3:
                                 break;
                         case 0xA5:
-                                vel[1] = *(s16 *)(rx.data + 2);
-                                pos[1] += vel[1] / 25;
+                                vel[1] = *(s16 *)&rx.data[2];
+                                pos[1] += vel[1] / 500;
                                 ampr[1] = *(s16 *)&rx.data[4];
                                 *(s16 *)&tx[1].data[0] = (s16)(pos[1] / 20);
                                 *(s16 *)&tx[1].data[2] = (s16)vel[1];
@@ -275,8 +275,8 @@ void t_dm1(void)
                         case 0xA3:
                                 break;
                         case 0xA5:
-                                vel[2] = *(s16 *)(rx.data + 2);
-                                pos[2] += vel[2] / 10;
+                                vel[2] = *(s16 *)&rx.data[2];
+                                pos[2] += vel[2] / 200;
                                 ampr[2] = *(s16 *)&rx.data[4];
                                 *(s16 *)&tx[2].data[0] = (s16)(pos[2] / 20);
                                 *(s16 *)&tx[2].data[2] = (s16)vel[2];
@@ -306,8 +306,8 @@ void t_dm1(void)
                         case 0xA3:
                                 break;
                         case 0xA5:
-                                vel[3] = *(s16 *)(rx.data + 2);
-                                pos[3] += vel[3] / 10;
+                                vel[3] = *(s16 *)&rx.data[2];
+                                pos[3] += vel[3] / 200;
                                 ampr[3] = *(s16 *)&rx.data[4];
                                 *(s16 *)&tx[3].data[0] = (s16)(pos[3] / 20);
                                 *(s16 *)&tx[3].data[2] = (s16)vel[3];

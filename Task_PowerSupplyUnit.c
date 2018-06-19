@@ -5,7 +5,6 @@
 #include "vx.h"
 
 #define PERIOD_SLOW 200
-#define PERIOD_FAST 20
 
 #define MAX_LEN_CLLST 16
 
@@ -16,7 +15,7 @@
 #define RESULT_FAULT_AMPR_24  0x00000800
 #define RESULT_FAULT_VOLT_500 0x00001000
 #define RESULT_FAULT_AMPR_500 0x00002000
-#define RESULT_FAULT_COMM     0x00004000
+#define RESULT_FAULT_COMM     0x00008000
 
 typedef struct frame_psu_rx FRAME_RX;
 typedef struct frame_psu_tx FRAME_TX;
@@ -26,58 +25,66 @@ extern MSG_Q_ID msg_can[];
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_psu;
 
+extern int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+
 int psu_delay(int cur, int old);
 
-void t_psu(void)
+const static int max_form = 3;
+const static int min_volt_24 = 2000;
+const static int max_volt_24 = 2800;
+const static int min_ampr_24 = 0;
+const static int max_ampr_24 = 2000;
+const static int min_volt_500 = 0;
+const static int max_volt_500 = 4800;
+const static int min_ampr_500 = 5400;
+const static int max_ampr_500 = 1000;
+
+static int period = PERIOD_SLOW;
+static u32 prev;
+static int len;
+static u8 tmp[sizeof(struct frame_can)];
+static struct main cmd;
+static struct main state;
+static struct main old_state;
+static struct frame_can can;
+static struct frame_can rx[3][MAX_LEN_CLLST];
+static FRAME_RX *p[3];
+static FRAME_TX tx;
+static int verify = CMD_IDLE;
+static int has_received;
+static int cur_volt_24;
+static int cur_ampr_24;
+static int cur_volt_500;
+static int cur_ampr_500;
+static int sum_volt_24;
+static int sum_ampr_24;
+static int sum_volt_500;
+static int sum_ampr_500;
+static int avg_volt_24;
+static int avg_ampr_24;
+static int avg_volt_500;
+static int avg_ampr_500;
+static int old_fault;
+static int old_cmd;
+static int ctr_ok_volt_24;
+static int ctr_ok_ampr_24;
+static int ctr_ok_volt_500;
+static int ctr_ok_ampr_500;
+static int ctr_err_volt_24;
+static int ctr_err_ampr_24;
+static int ctr_err_volt_500;
+static int ctr_err_ampr_500;
+static int ctr_fault;
+static int ctr_comm;
+static int result;
+static int tmp_volt_24;
+static int tmp_ampr_24;
+static int tmp_volt_500;
+static int tmp_ampr_500;
+static int i;
+
+void t_psu(void) /* Task: Power Supply Unit */
 {
-        int period = PERIOD_SLOW;
-        u32 prev;
-        int len;
-        u8 tmp[sizeof(struct frame_can)];
-        struct main cmd;
-        struct main state;
-        struct main state_old;
-        struct frame_can can;
-        struct frame_can rx[3][MAX_LEN_CLLST];
-        FRAME_RX *p[3];
-        FRAME_TX tx;
-        int verify = CMD_IDLE;
-        int has_received = 0;
-        int i;
-        int max_form = 3;
-        u32 sum_volt_24  = 0;
-        u32 sum_volt_500 = 0;
-        u32 sum_ampr_24  = 0;
-        u32 sum_ampr_500 = 0;
-        u32 avg_volt_24  = 0;
-        u32 avg_volt_500 = 0;
-        u32 avg_ampr_24  = 0;
-        u32 avg_ampr_500 = 0;
-        int fault_old = 0;
-        u32 min_volt_24  = 20;
-        u32 min_ampr_24  = 0;
-        u32 min_volt_500 = 460;
-        u32 min_ampr_500 = 0;
-        u32 max_volt_24  = 28;
-        u32 max_ampr_24  = 10;
-        u32 max_volt_500 = 540;
-        u32 max_ampr_500 = 1;
-        int ctr_ok_volt_24  = 0;
-        int ctr_ok_ampr_24  = 0;
-        int ctr_ok_volt_500 = 0;
-        int ctr_ok_ampr_500 = 0;
-        int ctr_err_volt_24  = 0;
-        int ctr_err_ampr_24  = 0;
-        int ctr_err_volt_500 = 0;
-        int ctr_err_ampr_500 = 0;
-        int ctr_fault = 0;
-        int ctr_comm = 0;
-        int result = 0;
-        int tmp_volt_24;
-        int tmp_ampr_24;
-        int tmp_volt_500;
-        int tmp_ampr_500;
-        int cmd_old = 0;
         for (i = 0; i < max_form; i++)
                 p[i] = (FRAME_RX *)can_cllst_init(rx[i], MAX_LEN_CLLST);
         for (;;) {
@@ -101,14 +108,30 @@ void t_psu(void)
                         break;
                 case sizeof(struct frame_can):
                         can = *(struct frame_can *)tmp;
+                        switch (can.src) {
+                        case J1939_ADDR_PRP0:
+                                i = 0;
+                                break;
+                        case J1939_ADDR_PRP1:
+                                i = 1;
+                                break;
+                        case J1939_ADDR_PRP2:
+                                i = 2;
+                                break;
+                        case J1939_ADDR_PRP3:
+                                i = 3;
+                                break;
+                        default:
+                                break;
+                        }
                         has_received = 1;
                         i = remap_form_index(can.form);
                         switch (i) {
                         case 0:
                                 p[i] = p[i]->next;
-                                fault_old = p[i]->data.io.fault;
+                                old_fault = p[i]->data.io.fault;
                                 p[i]->data.io.fault = ((FRAME_RX *)&can)->data.io.fault;
-                                if (fault_old == p[i]->data.io.fault) {
+                                if (old_fault == p[i]->data.io.fault) {
                                         if (ctr_fault < 10)
                                                 ctr_fault++;
                                 } else {
@@ -144,6 +167,10 @@ void t_psu(void)
                                 p[i]->data.state.ampr_24 = ((FRAME_RX *)&can)->data.state.ampr_24;
                                 p[i]->data.state.volt_500 = ((FRAME_RX *)&can)->data.state.volt_500;
                                 p[i]->data.state.ampr_500 = ((FRAME_RX *)&can)->data.state.ampr_500;
+                                cur_volt_24 = p[i]->data.state.volt_24;
+                                cur_ampr_24 = p[i]->data.state.ampr_24;
+                                cur_volt_500 = p[i]->data.state.volt_500;
+                                cur_ampr_500 = p[i]->data.state.ampr_500;
                                 sum_volt_24 += p[i]->data.state.volt_24;
                                 sum_ampr_24 += p[i]->data.state.ampr_24;
                                 sum_volt_500 += p[i]->data.state.volt_500;
@@ -152,10 +179,10 @@ void t_psu(void)
                                 avg_ampr_24 = sum_ampr_24 / MAX_LEN_CLLST;
                                 avg_volt_500 = sum_volt_500 / MAX_LEN_CLLST;
                                 avg_ampr_500 = sum_ampr_500 / MAX_LEN_CLLST;
-                                tmp_volt_24 = judge_filter(&ctr_ok_volt_24, &ctr_err_volt_24, avg_volt_24, min_volt_24, max_volt_24, 10);
-                                tmp_ampr_24 = judge_filter(&ctr_ok_ampr_24, &ctr_err_ampr_24, avg_ampr_24, min_ampr_24, max_ampr_24, 10);
-                                tmp_volt_500 = judge_filter(&ctr_ok_volt_500, &ctr_err_volt_500, avg_volt_500, min_volt_500, max_volt_500, 10);
-                                tmp_ampr_500 = judge_filter(&ctr_ok_ampr_500, &ctr_err_ampr_500, avg_ampr_500, min_ampr_500, max_ampr_500, 10);
+                                tmp_volt_24 = judge_filter(&ctr_ok_volt_24, &ctr_err_volt_24, avg_volt_24, min_volt_24, max_volt_24, MAX_LEN_CLLST);
+                                tmp_ampr_24 = judge_filter(&ctr_ok_ampr_24, &ctr_err_ampr_24, avg_ampr_24, min_ampr_24, max_ampr_24, MAX_LEN_CLLST);
+                                tmp_volt_500 = judge_filter(&ctr_ok_volt_500, &ctr_err_volt_500, avg_volt_500, min_volt_500, max_volt_500, MAX_LEN_CLLST);
+                                tmp_ampr_500 = judge_filter(&ctr_ok_ampr_500, &ctr_err_ampr_500, avg_ampr_500, min_ampr_500, max_ampr_500, MAX_LEN_CLLST);
                                 if (tmp_volt_24 == -1)
                                         result |= RESULT_FAULT_VOLT_24;
                                 else if (tmp_volt_24 == 1)
@@ -185,16 +212,16 @@ void t_psu(void)
                                 has_received = 0;
                                 if (ctr_comm < 0)
                                         ctr_comm = 0;
-                                if (ctr_comm < 10)
+                                if (ctr_comm < MAX_LEN_CLLST)
                                         ctr_comm++;
-                                if (ctr_comm == 10)
+                                if (ctr_comm == MAX_LEN_CLLST)
                                         result &= ~RESULT_FAULT_COMM;
                         } else {
                                 if (ctr_comm > 0)
                                         ctr_comm = 0;
-                                if (ctr_comm > -10)
+                                if (ctr_comm > -MAX_LEN_CLLST)
                                         ctr_comm--;
-                                if (ctr_comm == -10)
+                                if (ctr_comm == -MAX_LEN_CLLST)
                                         result |= RESULT_FAULT_COMM;
                         }
                         state.type = TASK_NOTIFY_PSU;
@@ -203,21 +230,21 @@ void t_psu(void)
                                 state.type |= TASK_STATE_FAULT;
                         else
                                 state.type |= TASK_STATE_OK;
-                        if (state_old.type != state.type)
+                        if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
-                        state_old = state;
+                        old_state = state;
                         switch (verify) {
                         case CMD_ACT_PSU_24 | CMD_DIR_POSI:
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
                                 tx.prio = J1939_PRIO_PSU_CTRL;
-                                tx.data.io.v24 = psu_delay(cmd.data, cmd_old);
-                                cmd_old = tx.data.io.v24;
+                                tx.data.io.v24 = psu_delay(cmd.data, old_cmd);
+                                old_cmd = tx.data.io.v24;
                                 tx.data.io.v500 = tx.data.io.v24 >> 16;
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
                                 msgQSend(msg_can[0], (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_URGENT);
-                                period = PERIOD_FAST;
+                                period = PERIOD_SLOW;
                                 break;
                         case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
                                 tx.dest = J1939_ADDR_PSU;
@@ -228,7 +255,7 @@ void t_psu(void)
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
                                 msgQSend(msg_can[0], (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_URGENT);
-                                period = PERIOD_FAST;
+                                period = PERIOD_SLOW;
                                 break;
                         default:
                                 tx.dest = J1939_ADDR_PSU;
@@ -250,7 +277,6 @@ void t_psu(void)
                 }
         }
 }
-
 int psu_delay(int cur, int old)
 {
         int tmp;
