@@ -5,7 +5,7 @@
 #include "vx.h"
 
 #define PERIOD_SLOW 200
-#define PERIOD_FAST 8
+#define PERIOD_FAST 20
 
 #define MAX_LEN_CLLST 16
 
@@ -27,37 +27,33 @@ typedef struct frame_cyl_tx FRAME_TX;
 
 extern MSG_Q_ID msg_can[];
 extern MSG_Q_ID msg_main;
-extern MSG_Q_ID msg_swh;
+extern MSG_Q_ID msg_x;
 
-void plan(int *vel, int *len_pass, int period, int len_low, int len_acc, int len_high, int vel_low, int vel_high);
-int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
-struct frame_can *can_cllst_init(struct frame_can buf[], int len);
+extern void plan(int *vel, int *len_pass, int period, int len_low, int len_acc, int len_high, int vel_low, int vel_high);
+extern int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+extern struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 
-const static int n = 4;
+const static int n = 2;
 const static int max_form = 3;
-const static int addr[4] = {J1939_ADDR_SWH0, J1939_ADDR_SWH1, J1939_ADDR_SWH2, J1939_ADDR_SWH3};
-const static int cable[4] = {0, 0, 1, 1};
-const static int zero_pos[4] = {0, 0, 0, 0};
-const static int limit_posi[4] = {20000, 20000, 20000, 20000};
-const static int limit_nega[4] = {500, 500, 500, 500};
-const static int ampr_pos_nega[4] = {500, 500, 500, 500};
-const static int ampr_value_nega[4] = {50, 50, 50, 50};
-const static int min_pos[4] = {-1000, -1000, -1000, -1000};
-const static int max_pos[4] = {36000, 36000, 36000, 36000};
-const static int min_vel[4] = {-1500, -1500, -1500, -1500};
-const static int max_vel[4] = {1500, 1500, 1500, 1500};
-const static int min_ampr[4] = {-2000, -2000, -2000, -2000};
-const static int max_ampr[4] = {2000, 2000, 2000, 2000};
-const static int safe_pos[4] = {10000, 10000, 10000, 10000};
-const static int err_sync_01 = 500;
-const static int err_sync_23 = 500;
-const static int err_sync_0123 = 10000;
-const static int plan_len_low[4] = {1000, 1000, 1000, 1000};
-const static int plan_len_acc[4] = {4000, 4000, 4000, 4000};
-const static int plan_len_high[4] = {10000, 10000, 10000, 10000};
-const static int plan_vel_low[4] = {100, 100, 100, 100};
-const static int plan_vel_high[4] = {1000, 1000, 1000, 1000};
-const static int plan_vel_medium[4] = {500, 500, 500, 500};
+const static int addr[2] = {J1939_ADDR_FX, J1939_ADDR_BX};
+const static int cable[2] = {0, 1};
+const static int zero_pos[2] = {0, 40000};
+const static int limit_posi[2] = {40000, 40000};
+const static int limit_nega[2] = {500, 500};
+const static int min_pos[2] = {0, 0};
+const static int max_pos[2] = {20000, 20000};
+const static int min_vel[2] = {-1500, -1500};
+const static int max_vel[2] = {1500, 1500};
+const static int min_ampr[2] = {-2000, -2000};
+const static int max_ampr[2] = {2000, 2000};
+const static int safe_pos[2] = {10000, 10000};
+const static int err_sync = 10000;
+const static int plan_len_low[2] = {1000, 1000};
+const static int plan_len_acc[2] = {4000, 4000};
+const static int plan_len_high[2] = {10000, 10000};
+const static int plan_vel_low[2] = {100, 100};
+const static int plan_vel_high[2] = {1000, 1000};
+const static int plan_vel_medium[2] = {500, 500};
 
 static int period = PERIOD_SLOW;
 static u32 prev;
@@ -67,64 +63,56 @@ static struct main cmd;
 static struct main state;
 static struct main old_state;
 static struct frame_can can;
-static struct frame_can rx[4][3][MAX_LEN_CLLST];
-static FRAME_RX *p[4][3];
-static FRAME_TX tx[4];
+static struct frame_can rx[2][3][MAX_LEN_CLLST];
+static FRAME_RX *p[2][3];
+static FRAME_TX tx[2];
 static int verify = CMD_IDLE;
-static int has_received[4];
-static int cur_pos[4];
-static int cur_vel[4];
-static int cur_ampr[4];
-static int sum_pos[4];
-static int sum_vel[4];
-static int sum_ampr[4];
-static int avg_pos[4];
-static int avg_vel[4];
-static int avg_ampr[4];
-static int old_fault[4];
-static int old_io[4];
-static int ctr_ok_pos[4];
-static int ctr_ok_vel[4];
-static int ctr_ok_ampr[4];
-static int ctr_ok_sync_01;
-static int ctr_ok_sync_23;
-static int ctr_ok_sync_0123;
-static int ctr_ok_stop[4];
-static int ctr_err_pos[4];
-static int ctr_err_vel[4];
-static int ctr_err_ampr[4];
-static int ctr_err_sync_01;
-static int ctr_err_sync_23;
-static int ctr_err_sync_0123;
-static int ctr_err_stop[4];
-static int ctr_fault[4];
-static int ctr_io[4];
-static int ctr_comm[4];
-static int result[4];
+static int has_received[2];
+static int cur_pos[2];
+static int cur_vel[2];
+static int cur_ampr[2];
+static int sum_pos[2];
+static int sum_vel[2];
+static int sum_ampr[2];
+static int avg_pos[2];
+static int avg_vel[2];
+static int avg_ampr[2];
+static int old_fault[2];
+static int old_io[2];
+static int ctr_ok_pos[2];
+static int ctr_ok_vel[2];
+static int ctr_ok_ampr[2];
+static int ctr_ok_sync;
+static int ctr_ok_stop[2];
+static int ctr_err_pos[2];
+static int ctr_err_vel[2];
+static int ctr_err_ampr[2];
+static int ctr_err_sync;
+static int ctr_err_stop[2];
+static int ctr_fault[2];
+static int ctr_io[2];
+static int ctr_comm[2];
+static int result[2];
 static int tmp_pos;
 static int tmp_vel;
 static int tmp_ampr;
 static int tmp_running;
-static int tmp_sync_01;
-static int tmp_sync_23;
-static int tmp_sync_0123;
-static int sub_01;
-static int sub_23;
-static int sub_0123;
-static int plan_vel[4];
-static int plan_len_pass[4];
-static int plan_len_posi[4];
-static int plan_len_nega[4];
-static int plan_len_low_posi[4];
-static int plan_len_low_nega[4];
-static int plan_len_acc_posi[4];
-static int plan_len_acc_nega[4];
-static int plan_len_high_posi[4];
-static int plan_len_high_nega[4];
+static int tmp_sync;
+static int sub;
+static int plan_vel[2];
+static int plan_len_pass[2];
+static int plan_len_posi[2];
+static int plan_len_nega[2];
+static int plan_len_low_posi[2];
+static int plan_len_low_nega[2];
+static int plan_len_acc_posi[2];
+static int plan_len_acc_nega[2];
+static int plan_len_high_posi[2];
+static int plan_len_high_nega[2];
 static int i;
 static int j;
 
-void t_swh(void) /* Task: SWing arm of Horizontal */
+void t_x(void) /* crane for X-axis */
 {
         for (i = 0; i < n; i++) {
                 for (j = 0; j < max_form; j++)
@@ -134,66 +122,66 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                 prev = tickGet();
                 if (period < 0 || period > PERIOD_SLOW)
                         period = 0;
-                len = msgQReceive(msg_swh, (char *)&tmp, sizeof(tmp), period);
+                len = msgQReceive(msg_x, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
                         cmd = *(struct main *)tmp;
                         switch (verify) {
                         case CMD_IDLE:
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_STOP:
+                        case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                 switch (cmd.type) {
                                 case CMD_IDLE:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd.type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_POSI:
                                 switch (cmd.type) {
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd.type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                        case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_NEGA:
                                 switch (cmd.type) {
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd.type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                        case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_POSI:
                                 switch (cmd.type) {
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd.type;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                        case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_NEGA:
                                 switch (cmd.type) {
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd.type;
                                         break;
                                 default:
@@ -208,17 +196,11 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                 case sizeof(struct frame_can):
                         can = *(struct frame_can *)tmp;
                         switch (can.src) {
-                        case J1939_ADDR_SWH0:
+                        case J1939_ADDR_FX:
                                 i = 0;
                                 break;
-                        case J1939_ADDR_SWH1:
+                        case J1939_ADDR_BX:
                                 i = 1;
-                                break;
-                        case J1939_ADDR_SWH2:
-                                i = 2;
-                                break;
-                        case J1939_ADDR_SWH3:
-                                i = 3;
                                 break;
                         default:
                                 break;
@@ -315,32 +297,14 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         default:
                                 break;
                         }
-                        sub_01 = avg_pos[0] - avg_pos[1];
-                        sub_23 = avg_pos[2] - avg_pos[3];
-                        sub_0123 = (avg_pos[0] - avg_pos[3] + avg_pos[1] - avg_pos[2]) / 2;
-                        tmp_sync_01 = judge_filter(&ctr_ok_sync_01, &ctr_err_sync_01, sub_01, -err_sync_01, err_sync_01, MAX_LEN_CLLST);
-                        tmp_sync_23 = judge_filter(&ctr_ok_sync_23, &ctr_err_sync_23, sub_23, -err_sync_23, err_sync_23, MAX_LEN_CLLST);
-                        tmp_sync_0123 = judge_filter(&ctr_ok_sync_0123, &ctr_err_sync_0123, sub_0123, -err_sync_0123, err_sync_0123, MAX_LEN_CLLST);
-                        if (tmp_sync_01 == -1) {
-                                result[0] |= RESULT_FAULT_SYNC;
-                                result[1] |= RESULT_FAULT_SYNC;
-                        } else if (tmp_sync_01 == 1) {
-                                result[0] &= ~RESULT_FAULT_SYNC;
-                                result[1] &= ~RESULT_FAULT_SYNC;
-                        }
-                        if (tmp_sync_23 == -1) {
-                                result[2] |= RESULT_FAULT_SYNC;
-                                result[3] |= RESULT_FAULT_SYNC;
-                        } else if (tmp_sync_23 == 1) {
-                                result[2] &= ~RESULT_FAULT_SYNC;
-                                result[3] &= ~RESULT_FAULT_SYNC;
-                        }
-                        if (tmp_sync_0123 == -1) {
+                        sub = avg_pos[max_pos_of_n(avg_pos, n)] - avg_pos[min_pos_of_n(avg_pos, n)];
+                        tmp_sync = judge_filter(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, 10);
+                        if (tmp_sync == -1) {
                                 result[0] |= RESULT_FAULT_SYNC;
                                 result[1] |= RESULT_FAULT_SYNC;
                                 result[2] |= RESULT_FAULT_SYNC;
                                 result[3] |= RESULT_FAULT_SYNC;
-                        } else if (tmp_sync_0123 == 1) {
+                        } else if (tmp_sync == 1) {
                                 result[0] &= ~RESULT_FAULT_SYNC;
                                 result[1] &= ~RESULT_FAULT_SYNC;
                                 result[2] &= ~RESULT_FAULT_SYNC;
@@ -367,7 +331,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 result[i] |= RESULT_FAULT_COMM;
                                 }
                         }
-                        state.type = TASK_NOTIFY_SWH;
+                        state.type = TASK_NOTIFY_X;
                         state.data = 0;
                         for (i = 0; i < n; i++) {
                                 if (result[i] & UNMASK_RESULT_FAULT)
@@ -391,8 +355,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
                         old_state = state;
                         switch (verify) {
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_STOP:
+                        case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                 for (i = 0; i < n; i++) {
                                         plan_vel[i] = 0;
                                         plan_len_pass[i] = 0;
@@ -452,58 +416,61 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 else
                                         period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                for (i = 0; i < n; i++) {
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = J1939_FORM_SERVO_VEL;
-                                        tx[i].prio = J1939_PRIO_SERVO_CTRL;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        if (plan_len_pass[i] >= plan_len_low_posi[i] * 2 + plan_len_acc_posi[i] * 2 + plan_len_high_posi[i]) {
-                                                tx[i].data.cmd.vel = 0;
-                                                plan_vel[i] = 0;
-                                                plan_len_pass[i] = 0;
-                                                plan_len_low_posi[i] = 0;
-                                                plan_len_acc_posi[i] = 0;
-                                                plan_len_high_posi[i] = 0;
-                                        } else {
-                                                plan(&plan_vel[i], &plan_len_pass[i], PERIOD_FAST,
-                                                     plan_len_low_posi[i], plan_len_acc_posi[i], plan_len_high_posi[i],
-                                                     plan_vel_low[i], plan_vel_high[i]);
-                                                tx[i].data.cmd.vel = (s16)plan_vel[i];
-                                        }
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
-                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
-                                }
+                        case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                break;
+                        case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                tx[0].dest = addr[0];
+                                tx[0].form = J1939_FORM_SERVO_VEL;
+                                tx[0].prio = J1939_PRIO_SERVO_CTRL;
+                                tx[0].data.cmd.pos = 0x1100;
+                                plan(&plan_vel[0], &plan_len_pass[0], PERIOD_FAST,
+                                     plan_len_low_posi[0], plan_len_acc_posi[0], plan_len_high_posi[0],
+                                     plan_vel_low[0], plan_vel_high[0]);
+                                tx[0].data.cmd.vel = (s16)(plan_vel[0]);
+                                tx[0].data.cmd.ampr = 1000;
+                                tx[0].data.cmd.exec = J1939_SERVO_ASYNC;
+                                tx[0].data.cmd.enable = J1939_SERVO_ENABLE;
+                                msgQSend(msg_can[cable[0]], (char *)&tx[0], sizeof(tx[0]), NO_WAIT, MSG_PRI_URGENT);
+                                tx[1].dest = addr[1];
+                                tx[1].form = J1939_FORM_SERVO_VEL;
+                                tx[1].prio = J1939_PRIO_SERVO_CTRL;
+                                tx[1].data.cmd.pos = 0x1100;
+                                plan(&plan_vel[1], &plan_len_pass[1], PERIOD_FAST,
+                                     plan_len_low_nega[1], plan_len_acc_nega[1], plan_len_high_nega[1],
+                                     plan_vel_low[1], plan_vel_high[1]);
+                                tx[1].data.cmd.vel = -(s16)(plan_vel[1]);
+                                tx[1].data.cmd.ampr = 1000;
+                                tx[1].data.cmd.exec = J1939_SERVO_ASYNC;
+                                tx[1].data.cmd.enable = J1939_SERVO_ENABLE;
+                                msgQSend(msg_can[cable[1]], (char *)&tx[1], sizeof(tx[1]), NO_WAIT, MSG_PRI_URGENT);
                                 period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                for (i = 0; i < n; i++) {
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = J1939_FORM_SERVO_VEL;
-                                        tx[i].prio = J1939_PRIO_SERVO_CTRL;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        if (avg_ampr[i] < -100) {/* && avg_pos[i] < zero_pos[i]*/
-                                                tx[i].data.cmd.vel = 0;
-                                                plan_vel[i] = 0;
-                                                plan_len_pass[i] = 0;
-                                                plan_len_low_nega[i] = 0;
-                                                plan_len_acc_nega[i] = 0;
-                                                plan_len_high_nega[i] = 0;
-                                        } else {
-                                                plan(&plan_vel[i], &plan_len_pass[i], PERIOD_FAST,
-                                                     plan_len_low_nega[i], plan_len_acc_nega[i], plan_len_high_nega[i],
-                                                     plan_vel_low[i], plan_vel_high[i]);
-                                                tx[i].data.cmd.vel = -(s16)plan_vel[i];
-                                        }
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
-                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
-                                }
+                        case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                tx[0].dest = addr[0];
+                                tx[0].form = J1939_FORM_SERVO_VEL;
+                                tx[0].prio = J1939_PRIO_SERVO_CTRL;
+                                tx[0].data.cmd.pos = 0x1100;
+                                plan(&plan_vel[0], &plan_len_pass[0], PERIOD_FAST,
+                                     plan_len_low_nega[0], plan_len_acc_nega[0], plan_len_high_nega[0],
+                                     plan_vel_low[0], plan_vel_high[0]);
+                                tx[0].data.cmd.vel = -(s16)(plan_vel[0]);
+                                tx[0].data.cmd.ampr = 1000;
+                                tx[0].data.cmd.exec = J1939_SERVO_ASYNC;
+                                tx[0].data.cmd.enable = J1939_SERVO_ENABLE;
+                                msgQSend(msg_can[cable[0]], (char *)&tx[0], sizeof(tx[0]), NO_WAIT, MSG_PRI_URGENT);
+                                tx[1].dest = addr[1];
+                                tx[1].form = J1939_FORM_SERVO_VEL;
+                                tx[1].prio = J1939_PRIO_SERVO_CTRL;
+                                tx[1].data.cmd.pos = 0x1100;
+                                plan(&plan_vel[1], &plan_len_pass[1], PERIOD_FAST,
+                                     plan_len_low_posi[1], plan_len_acc_posi[1], plan_len_high_posi[1],
+                                     plan_vel_low[1], plan_vel_high[1]);
+                                tx[1].data.cmd.vel = (s16)(plan_vel[1]);
+                                tx[1].data.cmd.ampr = 1000;
+                                tx[1].data.cmd.exec = J1939_SERVO_ASYNC;
+                                tx[1].data.cmd.enable = J1939_SERVO_ENABLE;
+                                msgQSend(msg_can[cable[1]], (char *)&tx[1], sizeof(tx[1]), NO_WAIT, MSG_PRI_URGENT);
                                 period = PERIOD_FAST;
                                 break;
                         default:
@@ -527,82 +494,4 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         break;
                 }
         }
-}
-
-void plan(int *vel, int *len_pass, int period, int len_low, int len_acc, int len_high, int vel_low, int vel_high)
-{
-        int acc;
-        if (len_acc)
-                acc = (vel_high - vel_low) * (vel_high + vel_low) * period / len_acc / 2 / sysClkRateGet();
-        else
-                acc = 0;
-        if (*len_pass < len_low) {
-                *vel = vel_low;
-        } else if (*len_pass < len_low + len_acc) {
-                if (*vel < vel_high - acc)
-                        *vel += acc;
-        } else if (*len_pass < len_low + len_acc + len_high) {
-                *vel = vel_high;
-        } else if (*len_pass < len_low + len_acc + len_high + len_acc) {
-                if (*vel > vel_low + acc)
-                        *vel -= acc;
-        } else if (*len_pass < len_low + len_acc + len_high + len_acc + len_low) {
-                *vel = vel_low;
-        }
-        *len_pass += *vel * period / sysClkRateGet();
-}
-
-int judge_filter(int *ok, int *err, int value, int min, int max, int ctr)
-{
-        if (value >= min && value < max) {
-                *err = 0;
-                if (*ok < ctr)
-                        (*ok)++;
-        } else {
-                *ok = 0;
-                if (*err < ctr)
-                        (*err)++;
-        }
-        if (*ok == ctr)
-                return 1;
-        else if (*err == ctr)
-                return -1;
-        else
-                return 0;
-}
-
-struct frame_can *can_cllst_init(struct frame_can buf[], int len)
-{
-        int i;
-        for (i = 0; i < len - 1; i++) {
-                bzero((char *)&buf[i], sizeof(buf[i]));
-                buf[i].next = &buf[i + 1];
-        }
-        bzero((char *)&buf[i], sizeof(buf[i]));
-        buf[i].next = &buf[0];
-        return buf;
-}
-
-int max_pos_of_n(int cur_pos[], int n)
-{
-        int tmp;
-        int i;
-        int j = 0;
-        for (i = 0; i < n; i++) {
-                if (cur_pos[j] < cur_pos[i])
-                        j = i;
-        }
-        return j;
-}
-
-int min_pos_of_n(int cur_pos[], int n)
-{
-        int tmp;
-        int i;
-        int j = 0;
-        for (i = 0; i < n; i++) {
-                if (cur_pos[j] > cur_pos[i])
-                        j = i;
-        }
-        return j;
 }

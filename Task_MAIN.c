@@ -17,6 +17,7 @@ extern MSG_Q_ID msg_swh;
 extern MSG_Q_ID msg_rse;
 extern MSG_Q_ID msg_swv;
 extern MSG_Q_ID msg_prp;
+extern MSG_Q_ID msg_x;
 
 void t_main(void)
 {
@@ -70,6 +71,7 @@ void t_main(void)
                 case CMD_ACT_RSE:
                 case CMD_ACT_SWV:
                 case CMD_ACT_PRP:
+                case CMD_ACT_X:
                         switch (rx.type & UNMASK_CMD_ACT) {
                         case CMD_IDLE:
                                 verify = rx.type;
@@ -78,6 +80,7 @@ void t_main(void)
                         case CMD_ACT_GENS:
                                 verify = rx.type;
                                 tx.type = rx.type;
+                                tx.data = rx.data;
                                 msgQSend(msg_gen, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         case CMD_ACT_PSU_24:
@@ -94,17 +97,26 @@ void t_main(void)
                         case CMD_ACT_RSE:
                                 verify = rx.type;
                                 tx.type = rx.type;
+                                tx.data = rx.data;
                                 msgQSend(msg_rse, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         case CMD_ACT_SWV:
                                 verify = rx.type;
                                 tx.type = rx.type;
+                                tx.data = rx.data;
                                 msgQSend(msg_swv, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         case CMD_ACT_PRP:
                                 verify = rx.type;
                                 tx.type = rx.type;
+                                tx.data = rx.data;
                                 msgQSend(msg_prp, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
+                                break;
+                        case CMD_ACT_X:
+                                verify = rx.type;
+                                tx.type = rx.type;
+                                tx.data = rx.data;
+                                msgQSend(msg_x, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         default:
                                 break;

@@ -108,3 +108,27 @@ void prpn(void)
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
+
+void x(void)
+{
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_X | CMD_DIR_STOP;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void xp(void)
+{
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_POSI;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void xn(void)
+{
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_NEGA;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}

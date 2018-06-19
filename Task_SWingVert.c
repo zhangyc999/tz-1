@@ -38,23 +38,23 @@ const static int max_form = 3;
 const static int addr[4] = {J1939_ADDR_SWV0, J1939_ADDR_SWV1, J1939_ADDR_SWV2, J1939_ADDR_SWV3};
 const static int cable[4] = {0, 0, 1, 1};
 const static int zero_pos[4] = {0, 0, 0, 0};
-const static int limit_posi[4] = {40000, 40000, 40000, 40000};
+const static int limit_posi[4] = {20000, 20000, 20000, 20000};
 const static int limit_nega[4] = {500, 500, 500, 500};
-const static int ampr_pos_posi[4] = {40000, 40000, 40000, 40000};
+const static int ampr_pos_posi[4] = {20000, 20000, 20000, 20000};
 const static int ampr_value_posi[4] = {50, 50, 50, 50};
 const static int ampr_pos_nega[4] = {500, 500, 500, 500};
 const static int ampr_value_nega[4] = {50, 50, 50, 50};
-const static int min_pos[4] = {0, 0, 0, 0};
+const static int min_pos[4] = {-1000, -1000, -1000, -1000};
+const static int max_pos[4] = {36000, 36000, 36000, 36000};
 const static int min_vel[4] = {-1500, -1500, -1500, -1500};
-const static int min_ampr[4] = {-2000, -2000, -2000, -2000};
-const static int max_pos[4] = {1000, 1000, 1000, 1000};
 const static int max_vel[4] = {1500, 1500, 1500, 1500};
+const static int min_ampr[4] = {-2000, -2000, -2000, -2000};
 const static int max_ampr[4] = {2000, 2000, 2000, 2000};
-const static int safe_pos[4] = {20000, 20000, 20000, 20000};
+const static int safe_pos[4] = {40000, 40000, 40000, 40000};
 const static int err_sync = 10000;
 const static int plan_len_low[4] = {1000, 1000, 1000, 1000};
 const static int plan_len_acc[4] = {4000, 4000, 4000, 4000};
-const static int plan_len_high[4] = {10000, 10000, 10000, 10000};
+const static int plan_len_high[4] = {42200, 42200, 42200, 42200};
 const static int plan_vel_low[4] = {100, 100, 100, 100};
 const static int plan_vel_high[4] = {1000, 1000, 1000, 1000};
 const static int plan_vel_medium[4] = {500, 500, 500, 500};
@@ -223,20 +223,20 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 break;
                         case 2:
                                 p[i][j] = p[i][j]->next;
-                                sum_pos[i] -= p[i][j]->data.state.pos;
+                                sum_pos[i] -= (int)(p[i][j]->data.state.pos) * 20;
                                 sum_vel[i] -= p[i][j]->data.state.vel;
                                 sum_ampr[i] -= p[i][j]->data.state.ampr;
                                 old_fault[i] = p[i][j]->data.state.fault;
                                 old_io[i] = p[i][j]->data.state.io;
-                                p[i][j]->data.state.pos = ((FRAME_RX *)&can)->data.state.pos * 20;
+                                p[i][j]->data.state.pos = ((FRAME_RX *)&can)->data.state.pos;
                                 p[i][j]->data.state.vel = ((FRAME_RX *)&can)->data.state.vel;
                                 p[i][j]->data.state.ampr = ((FRAME_RX *)&can)->data.state.ampr;
                                 p[i][j]->data.state.fault = ((FRAME_RX *)&can)->data.state.fault;
                                 p[i][j]->data.state.io = ((FRAME_RX *)&can)->data.state.io;
-                                cur_pos[i] = p[i][j]->data.state.pos;
+                                cur_pos[i] = (int)(p[i][j]->data.state.pos) * 20;
                                 cur_vel[i] = p[i][j]->data.state.vel;
                                 cur_ampr[i] = p[i][j]->data.state.ampr;
-                                sum_pos[i] += p[i][j]->data.state.pos;
+                                sum_pos[i] += (int)(p[i][j]->data.state.pos) * 20;
                                 sum_vel[i] += p[i][j]->data.state.vel;
                                 sum_ampr[i] += p[i][j]->data.state.ampr;
                                 avg_pos[i] = sum_pos[i] / MAX_LEN_CLLST;
@@ -421,7 +421,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         if (tx[i].data.cmd.enable != J1939_SERVO_DISABLE)
                                                 break;
                                 }
-                                if (i == 4)
+                                if (i == n)
                                         period = PERIOD_SLOW;
                                 else
                                         period = PERIOD_FAST;
@@ -430,27 +430,25 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                         case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_POSI:
                                 for (i = 0; i < n; i++) {
                                         tx[i].dest = addr[i];
+                                        tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
-#if 0
-                                        if (avg_pos[i] > ampr_pos_posi[i] && avg_pos[i] < len_low + len_acc + len_high + len_acc + len_low) {
-                                                tx[i].form = J1939_FORM_SERVO_AMPR;
-                                                tx[i].data.cmd.vel = 0x3322;
-                                                if (avg_ampr[i] < ampr_value_posi[i] - 5)
-                                                        tx[i].data.cmd.ampr = (s16)(avg_ampr[i] + 5);
+                                        if (avg_ampr[i] > 100 && plan_len_pass[i] >= plan_len_low_posi[i] * 2 + plan_len_acc_posi[i] * 2 + plan_len_high_posi[i]) {
+                                                tx[i].data.cmd.vel = 0;
+                                                plan_vel[i] = 0;
+                                                plan_len_pass[i] = 0;
+                                                plan_len_low_posi[i] = 0;
+                                                plan_len_acc_posi[i] = 0;
+                                                plan_len_high_posi[i] = 0;
                                         } else {
-#endif
-                                                tx[i].form = J1939_FORM_SERVO_VEL;
                                                 plan(&plan_vel[i], &plan_len_pass[i], PERIOD_FAST,
                                                      plan_len_low_posi[i], plan_len_acc_posi[i], plan_len_high_posi[i],
                                                      plan_vel_low[i], plan_vel_high[i]);
                                                 tx[i].data.cmd.vel = (s16)plan_vel[i];
-                                                tx[i].data.cmd.ampr = 1000;
-#if 0
                                         }
-#endif
+                                        tx[i].data.cmd.ampr = 1000;
+                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
+                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
                                         msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
                                 }
                                 period = PERIOD_FAST;
@@ -459,27 +457,25 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                         case CMD_ACT_SWV | CMD_MODE_MANUAL | CMD_DIR_NEGA:
                                 for (i = 0; i < n; i++) {
                                         tx[i].dest = addr[i];
+                                        tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
-#if 0
-                                        if (avg_pos[i] < ampr_pos_nega[i] && avg_pos[i] > zero_pos[i]) {
-                                                tx[i].form = J1939_FORM_SERVO_AMPR;
-                                                tx[i].data.cmd.vel = 0x3322;
-                                                if (avg_ampr[i] > ampr_value_nega[i] + 5)
-                                                        tx[i].data.cmd.ampr = (s16)(avg_ampr[i] - 5);
+                                        if (avg_ampr[i] < -300) {/* && avg_pos[i] < zero_pos[i]*/
+                                                tx[i].data.cmd.vel = 0;
+                                                plan_vel[i] = 0;
+                                                plan_len_pass[i] = 0;
+                                                plan_len_low_nega[i] = 0;
+                                                plan_len_acc_nega[i] = 0;
+                                                plan_len_high_nega[i] = 0;
                                         } else {
-#endif
-                                                tx[i].form = J1939_FORM_SERVO_VEL;
                                                 plan(&plan_vel[i], &plan_len_pass[i], PERIOD_FAST,
                                                      plan_len_low_nega[i], plan_len_acc_nega[i], plan_len_high_nega[i],
                                                      plan_vel_low[i], plan_vel_high[i]);
                                                 tx[i].data.cmd.vel = -(s16)plan_vel[i];
-                                                tx[i].data.cmd.ampr = 1000;
-#if 0
                                         }
-#endif
+                                        tx[i].data.cmd.ampr = 1000;
+                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
+                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
                                         msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
                                 }
                                 period = PERIOD_FAST;
