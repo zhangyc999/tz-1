@@ -348,9 +348,9 @@ void t_x(void) /* crane for X-axis */
                                         break;
                         }
                         if (i != n)
-                                state.type |= TASK_STATE_DANGER;
+                                state.type |= TASK_STATE_LOCK;
                         else
-                                state.type |= TASK_STATE_SAFE;
+                                state.type |= TASK_STATE_UNLOCK;
                         if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
                         old_state = state;

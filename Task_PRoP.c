@@ -48,7 +48,7 @@ const static int min_vel[4] = {-1500, -1500, -1500, -1500};
 const static int max_vel[4] = {1500, 1500, 1500, 1500};
 const static int min_ampr[4] = {-2000, -2000, -2000, -2000};
 const static int max_ampr[4] = {2000, 2000, 2000, 2000};
-const static int safe_pos[4] = {60000, 60000, 60000, 60000};
+const static int safe_ampr[4] = {100, 100, 100, 100};
 const static int err_sync = 10000;
 const static int plan_len_low[4] = {1000, 1000, 1000, 1000};
 const static int plan_len_acc[4] = {4000, 4000, 4000, 4000};
@@ -352,13 +352,15 @@ void t_prp(void) /* Task: PRoP */
                                 state.type |= TASK_STATE_OK;
                         }
                         for (i = 0; i < n; i++) {
-                                if (avg_pos[i] < safe_pos[i])
+                                if (avg_ampr[i] > safe_ampr[i])
                                         break;
                         }
-                        if (i != n)
-                                state.type |= TASK_STATE_DANGER;
-                        else
-                                state.type |= TASK_STATE_SAFE;
+                        if (i != n) {
+                                state.type |= TASK_STATE_LOCK;
+                        } else {
+                                state.type |= TASK_STATE_UNLOCK;
+                                verify = verify & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
+                        }
                         if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
                         old_state = state;
@@ -449,19 +451,10 @@ void t_prp(void) /* Task: PRoP */
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        if (avg_ampr[i] < -300) {/* && avg_pos[i] < zero_pos[i]*/
-                                                tx[i].data.cmd.vel = 0;
-                                                plan_vel[i] = 0;
-                                                plan_len_pass[i] = 0;
-                                                plan_len_low_nega[i] = 0;
-                                                plan_len_acc_nega[i] = 0;
-                                                plan_len_high_nega[i] = 0;
-                                        } else {
-                                                plan(&plan_vel[i], &plan_len_pass[i], PERIOD_FAST,
-                                                     plan_len_low_nega[i], plan_len_acc_nega[i], plan_len_high_nega[i],
-                                                     plan_vel_low[i], plan_vel_high[i]);
-                                                tx[i].data.cmd.vel = -(s16)plan_vel[i];
-                                        }
+                                        plan(&plan_vel[i], &plan_len_pass[i], PERIOD_FAST,
+                                             plan_len_low_nega[i], plan_len_acc_nega[i], plan_len_high_nega[i],
+                                             plan_vel_low[i], plan_vel_high[i]);
+                                        tx[i].data.cmd.vel = -(s16)plan_vel[i];
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                         tx[i].data.cmd.enable = J1939_SERVO_ENABLE;

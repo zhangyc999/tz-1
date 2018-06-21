@@ -51,6 +51,8 @@ const static int max_vel[4] = {1500, 1500, 1500, 1500};
 const static int min_ampr[4] = {-2000, -2000, -2000, -2000};
 const static int max_ampr[4] = {2000, 2000, 2000, 2000};
 const static int safe_pos[4] = {40000, 40000, 40000, 40000};
+const static int stop_ampr_posi[4] = {100, 100, 100, 100};
+const static int stop_ampr_nega[4] = {-300, -300, -300, -300};
 const static int err_sync = 10000;
 const static int plan_len_low[4] = {1000, 1000, 1000, 1000};
 const static int plan_len_acc[4] = {4000, 4000, 4000, 4000};
@@ -358,9 +360,9 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         break;
                         }
                         if (i != n)
-                                state.type |= TASK_STATE_DANGER;
+                                state.type |= TASK_STATE_LOCK;
                         else
-                                state.type |= TASK_STATE_SAFE;
+                                state.type |= TASK_STATE_UNLOCK;
                         if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
                         old_state = state;
@@ -433,7 +435,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        if (avg_ampr[i] > 100 && plan_len_pass[i] >= plan_len_low_posi[i] * 2 + plan_len_acc_posi[i] * 2 + plan_len_high_posi[i]) {
+                                        if (avg_ampr[i] > stop_ampr_posi[i] && plan_len_pass[i] >= plan_len_low_posi[i] * 2 + plan_len_acc_posi[i] * 2 + plan_len_high_posi[i]) {
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_vel[i] = 0;
                                                 plan_len_pass[i] = 0;
@@ -460,7 +462,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        if (avg_ampr[i] < -300) {/* && avg_pos[i] < zero_pos[i]*/
+                                        if (avg_ampr[i] < stop_ampr_nega[i]) {/* && avg_pos[i] < zero_pos[i]*/
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_vel[i] = 0;
                                                 plan_len_pass[i] = 0;

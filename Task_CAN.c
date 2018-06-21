@@ -114,14 +114,17 @@ void t_can(void)
 {
         init_can(0);
         init_can(1);
-        taskDelay(20);
         for (;;) {
                 taskDelay(1);
                 for (i = 0; i < 2; i++) {
                         if (read_reg_byte(addr_can[i], PELI_SR) & 0x80)
-                                goto WRONG;
+                                continue;
                         if (sizeof(buf) != msgQReceive(msg_can[i], (char *)&buf, sizeof(buf), NO_WAIT))
                                 continue;
+                        if (i == 0)
+                                printf("\033[25;1HCAN0:%8d", msgQNumMsgs(msg_can[0]));
+                        if (i == 1)
+                                printf("\033[25;16HCAN1:%8d", msgQNumMsgs(msg_can[1]));
                         buf.tsc = tickGet();
                         id[0] = J1939_ADDR_MAIN;
                         id[1] = buf.dest;
@@ -141,7 +144,6 @@ void t_can(void)
                         write_reg_byte(addr_can[i], PELI_TXB10, buf.data[5]);
                         write_reg_byte(addr_can[i], PELI_TXB11, buf.data[6]);
                         write_reg_byte(addr_can[i], PELI_TXB12, buf.data[7]);
-WRONG:
                         write_reg_byte(addr_can[i], PELI_CMR, 0x01);
                 }
         }
@@ -153,11 +155,11 @@ static void isr_can_rx0(void)
         u8 id[4];
         MSG_Q_ID msg;
         if (read_reg_byte(ADDR_CAN0, PELI_IR) != 0x01)
-                goto WRONG;
+                return;
         if ((read_reg_byte(ADDR_CAN0, PELI_SR) & 0x03) != 0x01)
-                goto WRONG;
+                return;
         if (read_reg_byte(ADDR_CAN0, PELI_RXB0) != 0x88)
-                goto WRONG;
+                return;
         id[3] = read_reg_byte(ADDR_CAN0, PELI_RXB1);
         id[2] = read_reg_byte(ADDR_CAN0, PELI_RXB2);
         id[1] = read_reg_byte(ADDR_CAN0, PELI_RXB3);
@@ -166,7 +168,7 @@ static void isr_can_rx0(void)
         can.src = id[0];
         can.dest = id[1];
         if (can.dest != J1939_ADDR_MAIN)
-                goto WRONG;
+                return;
         can.form = id[2];
         can.prio = id[3];
         can.data[0] = read_reg_byte(ADDR_CAN0, PELI_RXB5);
@@ -177,15 +179,14 @@ static void isr_can_rx0(void)
         can.data[5] = read_reg_byte(ADDR_CAN0, PELI_RXB10);
         can.data[6] = read_reg_byte(ADDR_CAN0, PELI_RXB11);
         can.data[7] = read_reg_byte(ADDR_CAN0, PELI_RXB12);
+        write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
         can.tsc = tickGet();
         msg = remap_addr_msg(can.src);
         if (!msg)
-                goto WRONG;
+                return;
         msgQSend(msg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
         msgQSend(msg_udp, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
         msgQSend(msg_dbg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
-WRONG:
-        write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
 }
 
 static void isr_can_rx1(void)
@@ -194,11 +195,11 @@ static void isr_can_rx1(void)
         u8 id[4];
         MSG_Q_ID msg;
         if (read_reg_byte(ADDR_CAN1, PELI_IR) != 0x01)
-                goto WRONG;
+                return;
         if ((read_reg_byte(ADDR_CAN1, PELI_SR) & 0x03) != 0x01)
-                goto WRONG;
+                return;
         if (read_reg_byte(ADDR_CAN1, PELI_RXB0) != 0x88)
-                goto WRONG;
+                return;
         id[3] = read_reg_byte(ADDR_CAN1, PELI_RXB1);
         id[2] = read_reg_byte(ADDR_CAN1, PELI_RXB2);
         id[1] = read_reg_byte(ADDR_CAN1, PELI_RXB3);
@@ -207,7 +208,7 @@ static void isr_can_rx1(void)
         can.src = id[0];
         can.dest = id[1];
         if (can.dest != J1939_ADDR_MAIN)
-                goto WRONG;
+                return;
         can.form = id[2];
         can.prio = id[3];
         can.data[0] = read_reg_byte(ADDR_CAN1, PELI_RXB5);
@@ -218,15 +219,14 @@ static void isr_can_rx1(void)
         can.data[5] = read_reg_byte(ADDR_CAN1, PELI_RXB10);
         can.data[6] = read_reg_byte(ADDR_CAN1, PELI_RXB11);
         can.data[7] = read_reg_byte(ADDR_CAN1, PELI_RXB12);
+        write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
         can.tsc = tickGet();
         msg = remap_addr_msg(can.src);
         if (!msg)
-                goto WRONG;
+                return;
         msgQSend(msg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
         msgQSend(msg_udp, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
         msgQSend(msg_dbg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
-WRONG:
-        write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
 }
 
 static void init_can(int i)

@@ -22,13 +22,13 @@ void udp_server(void)
         int size = sizeof(struct sockaddr_in);
         int fd = socket(AF_INET, SOCK_DGRAM, 0);
         int offset = 0;
-        /*        u_long mode = 1;*/
+        /* u_long mode = 1; */
         bzero((char *)&server, size);
         server.sin_len = (u_char)size;
         server.sin_family = AF_INET;
         server.sin_port = htons(SERVER_PORT);
         server.sin_addr.s_addr = htonl(INADDR_ANY);
-        /*        ioctl(fd, FIONBIO, (int)&mode);*/
+        /* ioctl(fd, FIONBIO, (int)&mode); */
         bind(fd, (struct sockaddr *)&server, size);
         group.imr_multiaddr.s_addr = inet_addr(GROUP_ADDRESS);
         group.imr_interface.s_addr = inet_addr(SERVER_ADDRESS);
@@ -44,9 +44,9 @@ void t_udp_rx(int fd)
         struct sockaddr_in server;
         int size = sizeof(struct sockaddr_in);
         for (;;) {
-                taskDelay(20);
                 if (ERROR != recvfrom(fd, (char *)&rx, sizeof(rx), 0, (struct sockaddr *)&server, &size))
                         msgQSend(msg_main, (char *)&rx.cmd, sizeof(rx.cmd), NO_WAIT, MSG_PRI_NORMAL);
+                taskDelay(20);
         }
 }
 
@@ -64,7 +64,6 @@ void t_udp_tx(int fd)
         bzero((char *)&tx, sizeof(tx));
         tx.head = 0xC7FEC7FE;
         for (;;) {
-                taskDelay(20);
                 while (msgQNumMsgs(msg_udp) > 0) {
                         msgQReceive(msg_udp, (char *)&can, sizeof(can), NO_WAIT);
                         switch (can.src) {
@@ -219,6 +218,7 @@ void t_udp_tx(int fd)
                                 memcpy((u8 *)&tx + 8 + offset * (sizeof(can) - 4), &can, sizeof(can) - 4);
                 }
                 sendto(fd, (caddr_t)&tx, sizeof(tx), 0, (struct sockaddr *)&client, size);
+                taskDelay(20);
         }
 }
 

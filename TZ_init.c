@@ -15,12 +15,12 @@ extern void t_rse(void);
 extern void t_swv(void);
 extern void t_prp(void);
 extern void t_x(void);
+extern void t_dbg(void);
 extern void udp_server(void);
 
-#ifdef DEBUG
+#ifdef DUMMY
 extern void t_dm0(void);
 extern void t_dm1(void);
-extern void t_dbg(void);
 #endif
 
 MSG_Q_ID msg_can[2];
@@ -53,9 +53,9 @@ void tz(void)
         msg_udp = msgQCreate(128, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_dbg = msgQCreate(128, sizeof(struct frame_can), MSG_Q_FIFO);
         taskSpawn("MAIN", 90, VX_FP_TASK, 20000, (FUNCPTR)t_main, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-#ifndef DEBUG
+#ifndef DUMMY
         taskSpawn("CAN", 90, VX_FP_TASK, 20000, (FUNCPTR)t_can, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-#endif /* DEBUG */
+#endif /* DUMMY */
 #if 0
         taskSpawn("PSU", 90, VX_FP_TASK, 20000, (FUNCPTR)t_psu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("MOM", 90, VX_FP_TASK, 20000, (FUNCPTR)t_mom, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -69,10 +69,10 @@ void tz(void)
         taskSpawn("PRP", 90, VX_FP_TASK, 20000, (FUNCPTR)t_prp, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("X", 90, VX_FP_TASK, 20000, (FUNCPTR)t_x, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #endif
-#ifdef DEBUG
+#ifdef DUMMY
         taskSpawn("DM0", 90, VX_FP_TASK, 20000, (FUNCPTR)t_dm0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("DM1", 90, VX_FP_TASK, 20000, (FUNCPTR)t_dm1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+#endif /* DUMMY */
         taskSpawn("DBG", 100, VX_FP_TASK, 20000, (FUNCPTR)t_dbg, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-#endif /* DEBUG */
         udp_server();
 }
