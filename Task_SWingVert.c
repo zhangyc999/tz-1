@@ -5,7 +5,7 @@
 #include "vx.h"
 
 #define PERIOD_SLOW 200
-#define PERIOD_FAST 20
+#define PERIOD_FAST 8
 
 #define MAX_LEN_CLLST 16
 
@@ -52,12 +52,12 @@ const static int min_ampr[4] = {-2000, -2000, -2000, -2000};
 const static int max_ampr[4] = {2000, 2000, 2000, 2000};
 const static int safe_pos[4] = {40000, 40000, 40000, 40000};
 const static int stop_ampr_posi[4] = {100, 100, 100, 100};
-const static int stop_ampr_nega[4] = {-300, -300, -300, -300};
+const static int stop_ampr_nega[4] = {-200, -200, -200, -200};
 const static int err_sync = 10000;
 const static int plan_len_low[4] = {1000, 1000, 1000, 1000};
 const static int plan_len_acc[4] = {4000, 4000, 4000, 4000};
-const static int plan_len_high[4] = {42200, 42200, 42200, 42200};
-const static int plan_vel_low[4] = {100, 100, 100, 100};
+const static int plan_len_high[4] = {40000, 40000, 40000, 40000}; /* {42200, 42200, 42200, 42200}; */
+const static int plan_vel_low[4] = {50, 50, 50, 50};
 const static int plan_vel_high[4] = {1000, 1000, 1000, 1000};
 const static int plan_vel_medium[4] = {500, 500, 500, 500};
 

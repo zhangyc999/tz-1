@@ -243,7 +243,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.io.v500 = tx.data.io.v24 >> 16;
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
-                                msgQSend(msg_can[0], (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_URGENT);
+                                msgQSend(msg_can[0], (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 period = PERIOD_SLOW;
                                 break;
                         case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
@@ -254,7 +254,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.io.v500 = 0;
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
-                                msgQSend(msg_can[0], (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_URGENT);
+                                msgQSend(msg_can[0], (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 period = PERIOD_SLOW;
                                 break;
                         default:
