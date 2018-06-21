@@ -25,9 +25,9 @@
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
 
-extern MSG_Q_ID msg_can[];
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_x;
+extern RING_ID rng_can[];
 
 extern void plan(int *vel, int *len_pass, int period, int len_low, int len_acc, int len_high, int vel_low, int vel_high);
 extern int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
@@ -405,7 +405,7 @@ void t_x(void) /* crane for X-axis */
                                         tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                         if ((result[i] & UNMASK_RESULT_RUNNING) == 0)
                                                 tx[i].data.cmd.enable = J1939_SERVO_DISABLE;
-                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                 }
                                 for (i = 0; i < n; i++) {
                                         if (tx[i].data.cmd.enable != J1939_SERVO_DISABLE)
@@ -431,7 +431,7 @@ void t_x(void) /* crane for X-axis */
                                 tx[0].data.cmd.ampr = 1000;
                                 tx[0].data.cmd.exec = J1939_SERVO_ASYNC;
                                 tx[0].data.cmd.enable = J1939_SERVO_ENABLE;
-                                msgQSend(msg_can[cable[0]], (char *)&tx[0], sizeof(tx[0]), NO_WAIT, MSG_PRI_URGENT);
+                                rngBufPut(rng_can[cable[0]], (char *)&tx[0], sizeof(tx[0]));
                                 tx[1].dest = addr[1];
                                 tx[1].form = J1939_FORM_SERVO_VEL;
                                 tx[1].prio = J1939_PRIO_SERVO_CTRL;
@@ -443,7 +443,7 @@ void t_x(void) /* crane for X-axis */
                                 tx[1].data.cmd.ampr = 1000;
                                 tx[1].data.cmd.exec = J1939_SERVO_ASYNC;
                                 tx[1].data.cmd.enable = J1939_SERVO_ENABLE;
-                                msgQSend(msg_can[cable[1]], (char *)&tx[1], sizeof(tx[1]), NO_WAIT, MSG_PRI_URGENT);
+                                rngBufPut(rng_can[cable[1]], (char *)&tx[1], sizeof(tx[1]));
                                 period = PERIOD_FAST;
                                 break;
                         case CMD_ACT_X | CMD_MODE_MANUAL | CMD_DIR_NEGA:
@@ -458,7 +458,7 @@ void t_x(void) /* crane for X-axis */
                                 tx[0].data.cmd.ampr = 1000;
                                 tx[0].data.cmd.exec = J1939_SERVO_ASYNC;
                                 tx[0].data.cmd.enable = J1939_SERVO_ENABLE;
-                                msgQSend(msg_can[cable[0]], (char *)&tx[0], sizeof(tx[0]), NO_WAIT, MSG_PRI_URGENT);
+                                rngBufPut(rng_can[cable[0]], (char *)&tx[0], sizeof(tx[0]));
                                 tx[1].dest = addr[1];
                                 tx[1].form = J1939_FORM_SERVO_VEL;
                                 tx[1].prio = J1939_PRIO_SERVO_CTRL;
@@ -470,7 +470,7 @@ void t_x(void) /* crane for X-axis */
                                 tx[1].data.cmd.ampr = 1000;
                                 tx[1].data.cmd.exec = J1939_SERVO_ASYNC;
                                 tx[1].data.cmd.enable = J1939_SERVO_ENABLE;
-                                msgQSend(msg_can[cable[1]], (char *)&tx[1], sizeof(tx[1]), NO_WAIT, MSG_PRI_URGENT);
+                                rngBufPut(rng_can[cable[1]], (char *)&tx[1], sizeof(tx[1]));
                                 period = PERIOD_FAST;
                                 break;
                         default:
@@ -486,7 +486,7 @@ void t_x(void) /* crane for X-axis */
                                         tx[i].data.query[5] = 0x55;
                                         tx[i].data.query[6] = 0x66;
                                         tx[i].data.query[7] = 0x77;
-                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_NORMAL);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                 }
                                 period = PERIOD_SLOW;
                                 break;

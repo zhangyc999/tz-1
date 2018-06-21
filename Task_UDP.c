@@ -8,8 +8,8 @@
 #define CLIENT_PORT 4201
 #define GROUP_ADDRESS "234.1.1.9"
 
-extern MSG_Q_ID msg_udp;
 extern MSG_Q_ID msg_main;
+extern RING_ID rng_udp;
 
 void t_udp_rx(int fd);
 void t_udp_tx(int fd);
@@ -64,8 +64,7 @@ void t_udp_tx(int fd)
         bzero((char *)&tx, sizeof(tx));
         tx.head = 0xC7FEC7FE;
         for (;;) {
-                while (msgQNumMsgs(msg_udp) > 0) {
-                        msgQReceive(msg_udp, (char *)&can, sizeof(can), NO_WAIT);
+                while (sizeof(can) == rngBufGet(rng_udp, (char *)&can, sizeof(can))) {
                         switch (can.src) {
                         case J1939_ADDR_VSLF:
                                 offset = 0;

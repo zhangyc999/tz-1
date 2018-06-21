@@ -25,7 +25,7 @@
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
 
-extern MSG_Q_ID msg_can[];
+extern RING_ID rng_can[];
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_swh;
 
@@ -442,7 +442,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                         if ((result[i] & UNMASK_RESULT_RUNNING) == 0)
                                                 tx[i].data.cmd.enable = J1939_SERVO_DISABLE;
-                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                 }
                                 for (i = 0; i < n; i++) {
                                         if (tx[i].data.cmd.enable != J1939_SERVO_DISABLE)
@@ -476,7 +476,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                         tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
-                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                 }
                                 period = PERIOD_FAST;
                                 break;
@@ -503,7 +503,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                         tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
-                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                 }
                                 period = PERIOD_FAST;
                                 break;
@@ -520,7 +520,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         tx[i].data.query[5] = 0x55;
                                         tx[i].data.query[6] = 0x66;
                                         tx[i].data.query[7] = 0x77;
-                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_NORMAL);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                 }
                                 period = PERIOD_SLOW;
                                 break;

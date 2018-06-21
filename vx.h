@@ -9,6 +9,7 @@
 #include "iv.h"
 #include "logLib.h"
 #include "msgQLib.h"
+#include "rngLib.h"
 #include "routeLib.h"
 #include "sysLib.h"
 #include "sockLib.h"

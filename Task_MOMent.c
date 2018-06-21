@@ -25,7 +25,7 @@
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
 
-extern MSG_Q_ID msg_can[];
+extern RING_ID rng_can[];
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_mom;
 
@@ -255,7 +255,7 @@ void t_mom(void) /* Task: constant MOMent arm */
                                                 tx[i].data.cmd.ampr = (s16)(avg_ampr[i] - 5);
                                         tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
                                         tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
-                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_URGENT);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                 }
                                 period = PERIOD_FAST;
                                 break;
@@ -272,7 +272,7 @@ void t_mom(void) /* Task: constant MOMent arm */
                                         tx[i].data.query[5] = 0x55;
                                         tx[i].data.query[6] = 0x66;
                                         tx[i].data.query[7] = 0x77;
-                                        msgQSend(msg_can[cable[i]], (char *)&tx[i], sizeof(tx[i]), NO_WAIT, MSG_PRI_NORMAL);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                 }
                                 period = PERIOD_SLOW;
                                 break;

@@ -95,9 +95,9 @@ IMPORT u8 sysInumTbl[];
 })
 
 extern MSG_Q_ID remap_addr_msg(u8 addr);
-extern MSG_Q_ID msg_can[];
-extern MSG_Q_ID msg_udp;
-extern MSG_Q_ID msg_dbg;
+extern RING_ID rng_can[];
+extern RING_ID rng_udp;
+extern RING_ID rng_dbg;
 
 const static int addr_can[4] = {ADDR_CAN0, ADDR_CAN1, ADDR_CAN2, ADDR_CAN3};
 const static int irq_can[4] = {5, 7, 11, 12};
@@ -119,12 +119,12 @@ void t_can(void)
                 for (i = 0; i < 2; i++) {
                         if (read_reg_byte(addr_can[i], PELI_SR) & 0x80)
                                 continue;
-                        if (sizeof(buf) != msgQReceive(msg_can[i], (char *)&buf, sizeof(buf), NO_WAIT))
+                        if (sizeof(buf) != rngBufGet(rng_can[i], (char *)&buf, sizeof(buf)))
                                 continue;
                         if (i == 0)
-                                printf("\033[25;1HCAN0:%8d", msgQNumMsgs(msg_can[0]));
+                                printf("\033[25;1HCAN0:%8d", rngNBytes(rng_can[0]));
                         if (i == 1)
-                                printf("\033[25;16HCAN1:%8d", msgQNumMsgs(msg_can[1]));
+                                printf("\033[25;16HCAN1:%8d", rngNBytes(rng_can[1]));
                         buf.tsc = tickGet();
                         id[0] = J1939_ADDR_MAIN;
                         id[1] = buf.dest;
@@ -185,8 +185,8 @@ static void isr_can_rx0(void)
         if (!msg)
                 return;
         msgQSend(msg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
-        msgQSend(msg_udp, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
-        msgQSend(msg_dbg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
+        rngBufPut(rng_udp, (char *)&can, sizeof(can));
+        rngBufPut(rng_dbg, (char *)&can, sizeof(can));
 }
 
 static void isr_can_rx1(void)
@@ -225,8 +225,8 @@ static void isr_can_rx1(void)
         if (!msg)
                 return;
         msgQSend(msg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
-        msgQSend(msg_udp, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
-        msgQSend(msg_dbg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
+        rngBufPut(rng_udp, (char *)&can, sizeof(can));
+        rngBufPut(rng_dbg, (char *)&can, sizeof(can));
 }
 
 static void init_can(int i)

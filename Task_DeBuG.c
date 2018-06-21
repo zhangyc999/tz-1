@@ -3,7 +3,7 @@
 #include "type.h"
 #include "vx.h"
 
-extern MSG_Q_ID msg_dbg;
+extern RING_ID rng_dbg;
 
 void t_dbg(void)
 {
@@ -37,8 +37,7 @@ void t_dbg(void)
 \033[24;1HGEND   |----|--|-- -- -- -- -- -- -- --| GENS   |----|--|-- -- -- -- -- -- -- --");
         for (;;) {
                 taskDelay(sysClkRateGet() / 20);
-                while (msgQNumMsgs(msg_dbg) > 0) {
-                        msgQReceive(msg_dbg, (char *)&can, sizeof(can), NO_WAIT);
+                while (sizeof(can) == rngBufGet(rng_dbg, (char *)&can, sizeof(can))) {
                         switch (can.src) {
                         case J1939_ADDR_VSLF:
                                 printf("\033[1;9H%04X", ++total[0]);

@@ -21,7 +21,7 @@ typedef struct frame_psu_rx FRAME_RX;
 typedef struct frame_psu_tx FRAME_TX;
 
 extern u8 check_xor(u8 *buf, int n);
-extern MSG_Q_ID msg_can[];
+extern RING_ID rng_can[];
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_psu;
 
@@ -243,7 +243,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.io.v500 = tx.data.io.v24 >> 16;
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
-                                msgQSend(msg_can[0], (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
+                                rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
                                 period = PERIOD_SLOW;
                                 break;
                         case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
@@ -254,7 +254,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.io.v500 = 0;
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
-                                msgQSend(msg_can[0], (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
+                                rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
                                 period = PERIOD_SLOW;
                                 break;
                         default:
@@ -269,7 +269,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.query[5] = 0x55;
                                 tx.data.query[6] = 0x66;
                                 tx.data.query[7] = 0x77;
-                                msgQSend(msg_can[0], (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
+                                rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
                                 period = PERIOD_SLOW;
                                 break;
                         }
