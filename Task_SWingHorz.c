@@ -1,3 +1,4 @@
+#include "cylinder.h"
 #include "define.h"
 #include "j1939.h"
 #include "struct.h"
@@ -169,72 +170,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                 len = msgQReceive(msg_swh, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
-                        cmd = *(struct main *)tmp;
-                        switch (verify.type) {
-                        case CMD_IDLE:
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                switch (cmd.type) {
-                                case CMD_IDLE:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                        verify = cmd;
-                                        break;
-                                default:
-                                        break;
-                                }
-                                break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                switch (cmd.type) {
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                        verify = cmd;
-                                        break;
-                                default:
-                                        break;
-                                }
-                                break;
-                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                switch (cmd.type) {
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                        verify = cmd;
-                                        break;
-                                default:
-                                        break;
-                                }
-                                break;
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                switch (cmd.type) {
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                        verify = cmd;
-                                        break;
-                                default:
-                                        break;
-                                }
-                                break;
-                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                switch (cmd.type) {
-                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                        verify = cmd;
-                                        break;
-                                default:
-                                        break;
-                                }
-                                break;
-                        default:
-                                break;
-                        }
+                        cyl_cmd(CMD_ACT_SWH);
                         period -= tickGet() - prev;
                         break;
                 case sizeof(struct frame_can):
