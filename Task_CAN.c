@@ -96,8 +96,8 @@ IMPORT u8 sysInumTbl[];
 
 extern MSG_Q_ID remap_addr_msg(u8 addr);
 extern RING_ID rng_can[];
-extern RING_ID rng_udp;
-extern RING_ID rng_dbg;
+extern RING_ID rng_udp[];
+extern RING_ID rng_dbg[];
 
 const static int addr_can[4] = {ADDR_CAN0, ADDR_CAN1, ADDR_CAN2, ADDR_CAN3};
 const static int irq_can[4] = {5, 7, 11, 12};
@@ -164,7 +164,7 @@ static void isr_can_rx0(void)
         id[2] = read_reg_byte(ADDR_CAN0, PELI_RXB2);
         id[1] = read_reg_byte(ADDR_CAN0, PELI_RXB3);
         id[0] = read_reg_byte(ADDR_CAN0, PELI_RXB4);
-        * (int *)id >>= 3;
+        *(int *)id >>= 3;
         can.src = id[0];
         can.dest = id[1];
         if (can.dest != J1939_ADDR_MAIN)
@@ -185,8 +185,8 @@ static void isr_can_rx0(void)
         if (!msg)
                 return;
         msgQSend(msg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
-        rngBufPut(rng_udp, (char *)&can, sizeof(can));
-        rngBufPut(rng_dbg, (char *)&can, sizeof(can));
+        rngBufPut(rng_udp[0], (char *)&can, sizeof(can));
+        rngBufPut(rng_dbg[0], (char *)&can, sizeof(can));
 }
 
 static void isr_can_rx1(void)
@@ -204,7 +204,7 @@ static void isr_can_rx1(void)
         id[2] = read_reg_byte(ADDR_CAN1, PELI_RXB2);
         id[1] = read_reg_byte(ADDR_CAN1, PELI_RXB3);
         id[0] = read_reg_byte(ADDR_CAN1, PELI_RXB4);
-        * (int *)id >>= 3;
+        *(int *)id >>= 3;
         can.src = id[0];
         can.dest = id[1];
         if (can.dest != J1939_ADDR_MAIN)
@@ -225,8 +225,8 @@ static void isr_can_rx1(void)
         if (!msg)
                 return;
         msgQSend(msg, (char *)&can, sizeof(can), NO_WAIT, MSG_PRI_NORMAL);
-        rngBufPut(rng_udp, (char *)&can, sizeof(can));
-        rngBufPut(rng_dbg, (char *)&can, sizeof(can));
+        rngBufPut(rng_udp[1], (char *)&can, sizeof(can));
+        rngBufPut(rng_dbg[1], (char *)&can, sizeof(can));
 }
 
 static void init_can(int i)

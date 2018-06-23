@@ -19,17 +19,18 @@ extern MSG_Q_ID msg_swv;
 extern MSG_Q_ID msg_prp;
 extern MSG_Q_ID msg_x;
 
+static struct main rx;
+static struct main tx;
+static struct main verify = {CMD_IDLE, 0};
+static int overtime;
+static int tmp;
+static int fault;
+
 void t_main(void)
 {
-        struct main rx;
-        struct main tx;
-        u32 ot = 0;
-        int tmp;
-        int flag = 0;
-        int verify = CMD_IDLE;
         for (;;) {
                 if (sizeof(rx) != msgQReceive(msg_main, (char *)&rx, sizeof(rx), 20)) {
-                        ot++;
+                        overtime++;
                         /* TODO: Deal with child task overtime. */
                         continue;
                 }
@@ -57,12 +58,12 @@ void t_main(void)
                         break;
                 }
                 if (tmp) {
-                        if ((rx.type & UNMASK_TASK_STATE) == TASK_STATE_OK)
-                                flag |=  tmp;
+                        if ((rx.type & UNMASK_TASK_STATE) == TASK_STATE_FAULT)
+                                fault &= ~tmp;
                         else
-                                flag &= ~tmp;
+                                fault |= tmp;
                 }
-                switch (verify & UNMASK_CMD_ACT) {
+                switch (verify.type & UNMASK_CMD_ACT) {
                 case CMD_IDLE:
                 case CMD_ACT_GEND:
                 case CMD_ACT_GENS:
@@ -74,48 +75,42 @@ void t_main(void)
                 case CMD_ACT_X:
                         switch (rx.type & UNMASK_CMD_ACT) {
                         case CMD_IDLE:
-                                verify = rx.type;
+                                verify = rx;
                                 break;
                         case CMD_ACT_GEND:
                         case CMD_ACT_GENS:
-                                verify = rx.type;
-                                tx.type = rx.type;
-                                tx.data = rx.data;
+                                verify = rx;
+                                tx = rx;
                                 msgQSend(msg_gen, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         case CMD_ACT_PSU_24:
-                                verify = rx.type;
-                                tx.type = rx.type;
-                                tx.data = rx.data;
+                                verify = rx;
+                                tx = rx;
                                 msgQSend(msg_psu, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         case CMD_ACT_SWH:
-                                verify = rx.type;
-                                tx.type = rx.type;
+                                verify = rx;
+                                tx = rx;
                                 msgQSend(msg_swh, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         case CMD_ACT_RSE:
-                                verify = rx.type;
-                                tx.type = rx.type;
-                                tx.data = rx.data;
+                                verify = rx;
+                                tx = rx;
                                 msgQSend(msg_rse, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         case CMD_ACT_SWV:
-                                verify = rx.type;
-                                tx.type = rx.type;
-                                tx.data = rx.data;
+                                verify = rx;
+                                tx = rx;
                                 msgQSend(msg_swv, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         case CMD_ACT_PRP:
-                                verify = rx.type;
-                                tx.type = rx.type;
-                                tx.data = rx.data;
+                                verify = rx;
+                                tx = rx;
                                 msgQSend(msg_prp, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         case CMD_ACT_X:
-                                verify = rx.type;
-                                tx.type = rx.type;
-                                tx.data = rx.data;
+                                verify = rx;
+                                tx = rx;
                                 msgQSend(msg_x, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         default:

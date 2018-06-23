@@ -21,11 +21,13 @@ typedef struct frame_psu_rx FRAME_RX;
 typedef struct frame_psu_tx FRAME_TX;
 
 extern u8 check_xor(u8 *buf, int n);
-extern RING_ID rng_can[];
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_psu;
+extern RING_ID rng_can[];
+extern SEM_ID sem_can[];
 
 extern int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+extern struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 
 int psu_delay(int cur, int old);
 
@@ -44,13 +46,13 @@ static u32 prev;
 static int len;
 static u8 tmp[sizeof(struct frame_can)];
 static struct main cmd;
+static struct main verify = {CMD_IDLE, 0};
 static struct main state;
 static struct main old_state;
 static struct frame_can can;
 static struct frame_can rx[3][MAX_LEN_CLLST];
 static FRAME_RX *p[3];
 static FRAME_TX tx;
-static int verify = CMD_IDLE;
 static int has_received;
 static int cur_volt_24;
 static int cur_ampr_24;
@@ -81,6 +83,7 @@ static int tmp_volt_24;
 static int tmp_ampr_24;
 static int tmp_volt_500;
 static int tmp_ampr_500;
+static int any_fault;
 static int i;
 
 void t_psu(void) /* Task: Power Supply Unit */
@@ -95,11 +98,11 @@ void t_psu(void) /* Task: Power Supply Unit */
                 switch (len) {
                 case sizeof(struct main):
                         cmd = *(struct main *)tmp;
-                        switch (verify) {
+                        switch (verify.type) {
                         case CMD_IDLE:
                         case CMD_ACT_PSU_24 | CMD_DIR_POSI:
                         case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
-                                verify = cmd.type;
+                                verify = cmd;
                                 break;
                         default:
                                 break;
@@ -108,22 +111,6 @@ void t_psu(void) /* Task: Power Supply Unit */
                         break;
                 case sizeof(struct frame_can):
                         can = *(struct frame_can *)tmp;
-                        switch (can.src) {
-                        case J1939_ADDR_PRP0:
-                                i = 0;
-                                break;
-                        case J1939_ADDR_PRP1:
-                                i = 1;
-                                break;
-                        case J1939_ADDR_PRP2:
-                                i = 2;
-                                break;
-                        case J1939_ADDR_PRP3:
-                                i = 3;
-                                break;
-                        default:
-                                break;
-                        }
                         has_received = 1;
                         i = remap_form_index(can.form);
                         switch (i) {
@@ -132,25 +119,25 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 old_fault = p[i]->data.io.fault;
                                 p[i]->data.io.fault = ((FRAME_RX *)&can)->data.io.fault;
                                 if (old_fault == p[i]->data.io.fault) {
-                                        if (ctr_fault < 10)
+                                        if (ctr_fault < MAX_LEN_CLLST)
                                                 ctr_fault++;
                                 } else {
                                         ctr_fault = 0;
                                 }
                                 switch (p[i]->data.io.fault) {
-                                case 0x00:
-                                case 0x03:
+                                case J1939_FAULT_NORMAL:
+                                case J1939_FAULT_WARN:
                                         if (ctr_fault < 5)
                                                 break;
                                         result &= ~RESULT_FAULT_GENERAL;
                                         result &= ~RESULT_FAULT_SERIOUS;
                                         break;
-                                case 0x0C:
+                                case J1939_FAULT_GENERAL:
                                         if (ctr_fault < 3)
                                                 break;
                                         result |= RESULT_FAULT_GENERAL;
                                         break;
-                                case 0xF0:
+                                case J1939_FAULT_SERIOUS:
                                         result |= RESULT_FAULT_SERIOUS;
                                         break;
                                 default:
@@ -224,16 +211,17 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 if (ctr_comm == -MAX_LEN_CLLST)
                                         result |= RESULT_FAULT_COMM;
                         }
+                        any_fault = result & UNMASK_RESULT_FAULT;
+                        if (any_fault)
+                                state.type = TASK_STATE_FAULT;
+                        else
+                                state.type = TASK_STATE_RUNNING;
                         state.type = TASK_NOTIFY_PSU;
                         state.data = 0;
-                        if (result & UNMASK_RESULT_FAULT)
-                                state.type |= TASK_STATE_FAULT;
-                        else
-                                state.type |= TASK_STATE_OK;
                         if (old_state.type != state.type)
-                                msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
+                                msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         old_state = state;
-                        switch (verify) {
+                        switch (verify.type) {
                         case CMD_ACT_PSU_24 | CMD_DIR_POSI:
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
@@ -243,7 +231,9 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.io.v500 = tx.data.io.v24 >> 16;
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
+                                semTake(sem_can[0], WAIT_FOREVER);
                                 rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[0]);
                                 period = PERIOD_SLOW;
                                 break;
                         case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
@@ -254,7 +244,9 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.io.v500 = 0;
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
+                                semTake(sem_can[0], WAIT_FOREVER);
                                 rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[0]);
                                 period = PERIOD_SLOW;
                                 break;
                         default:
@@ -269,7 +261,9 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.query[5] = 0x55;
                                 tx.data.query[6] = 0x66;
                                 tx.data.query[7] = 0x77;
+                                semTake(sem_can[0], WAIT_FOREVER);
                                 rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[0]);
                                 period = PERIOD_SLOW;
                                 break;
                         }

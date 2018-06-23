@@ -174,4 +174,10 @@ struct frame_udp_tx {
         int res2;
 };
 
+struct plan {
+        int low;
+        int acc;
+        int high;
+};
+
 #endif /* STRUCT_H_ */

@@ -11,6 +11,7 @@
 #include "msgQLib.h"
 #include "rngLib.h"
 #include "routeLib.h"
+#include "semLib.h"
 #include "sysLib.h"
 #include "sockLib.h"
 #include "stdioLib.h"
