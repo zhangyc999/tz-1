@@ -241,7 +241,7 @@ void t_mom(void) /* Task: constant MOMent arm */
                         else
                                 state.type |= TASK_STATE_UNLOCK;
                         if (old_state.type != state.type)
-                                msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
+                                msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         old_state = state;
                         switch (verify & UNMASK_CMD_ACT) {
                         case CMD_ACT_MOM:

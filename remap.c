@@ -10,6 +10,7 @@ extern MSG_Q_ID msg_rse;
 extern MSG_Q_ID msg_swv;
 extern MSG_Q_ID msg_prp;
 extern MSG_Q_ID msg_x;
+extern MSG_Q_ID msg_lvl;
 
 MSG_Q_ID remap_addr_msg(u8 addr)
 {
@@ -54,7 +55,7 @@ MSG_Q_ID remap_addr_msg(u8 addr)
                 return 0;
         case J1939_ADDR_LVL0:
         case J1939_ADDR_LVL1:
-                return 0;
+                return msg_lvl;
         case J1939_ADDR_MOM0:
         case J1939_ADDR_MOM1:
         case J1939_ADDR_MOM2:

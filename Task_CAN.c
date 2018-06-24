@@ -94,7 +94,8 @@ IMPORT u8 sysInumTbl[];
         *(u8 *)(addr + 0x1000);  \
 })
 
-extern MSG_Q_ID remap_addr_msg(u8 addr);
+MSG_Q_ID remap_addr_msg(u8 addr);
+
 extern RING_ID rng_can[];
 extern RING_ID rng_udp[];
 extern RING_ID rng_dbg[];
