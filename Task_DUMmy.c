@@ -3,7 +3,8 @@
 #include "type.h"
 #include "vx.h"
 
-extern MSG_Q_ID remap_addr_msg(u8 addr);
+MSG_Q_ID remap_addr_msg(u8 addr);
+
 extern RING_ID rng_can[];
 extern RING_ID rng_udp[];
 extern RING_ID rng_dbg[];
@@ -194,7 +195,7 @@ void t_dum(void)
                                 break;
                         case J1939_ADDR_PSU:
                                 j = 41;
-                                period[j] = 20;
+                                period[j] = 200;
                                 break;
                         case J1939_ADDR_VSLF:
                                 j = 42;
@@ -354,6 +355,34 @@ void t_dum(void)
                                 }
                                 break;
                         case J1939_ADDR_PSU:
+                                switch (rx.form) {
+                                case 0x5C:
+                                        tx[j].src = rx.dest;
+                                        tx[j].dest = rx.src;
+                                        tx[j].form = 0xC0;
+                                        tx[j].prio = 0x18;
+                                        *(u32 *)&tx[j].data[0] = *(u32 *)&rx.data[0];
+                                        *(u16 *)&tx[j].data[4] = *(u16 *)&rx.data[4];
+                                        msg = remap_addr_msg(rx.dest);
+                                        msgQSend(msg, (char *)&tx[j], sizeof(tx[j]), NO_WAIT, MSG_PRI_NORMAL);
+                                        rngBufPut(rng_udp[0], (char *)&tx[j], sizeof(tx[j]));
+                                        rngBufPut(rng_dbg[0], (char *)&tx[j], sizeof(tx[j]));
+                                        break;
+                                case 0xA0:
+                                        tx[j].src = rx.dest;
+                                        tx[j].dest = rx.src;
+                                        tx[j].form = 0xC0;
+                                        tx[j].prio = 0x14;
+                                        *(u32 *)&tx[j].data[0] = *(u32 *)&rx.data[0];
+                                        *(u16 *)&tx[j].data[4] = *(u16 *)&rx.data[4];
+                                        msg = remap_addr_msg(rx.dest);
+                                        msgQSend(msg, (char *)&tx[j], sizeof(tx[j]), NO_WAIT, MSG_PRI_NORMAL);
+                                        rngBufPut(rng_udp[0], (char *)&tx[j], sizeof(tx[j]));
+                                        rngBufPut(rng_dbg[0], (char *)&tx[j], sizeof(tx[j]));
+                                        break;
+                                default:
+                                        break;
+                                }
                                 break;
                         case J1939_ADDR_GEND:
                                 break;
@@ -364,8 +393,23 @@ void t_dum(void)
                         case J1939_ADDR_VSLB:
                                 break;
                         case J1939_ADDR_LVL0:
-                                break;
                         case J1939_ADDR_LVL1:
+                                switch (rx.form) {
+                                case 0x5C:
+                                        tx[j].src = rx.dest;
+                                        tx[j].dest = rx.src;
+                                        tx[j].form = 0xC3;
+                                        tx[j].prio = 0x14;
+                                        *(s16 *)&tx[j].data[0] = 3000;
+                                        *(s16 *)&tx[j].data[2] = 3000;
+                                        msg = remap_addr_msg(rx.dest);
+                                        msgQSend(msg, (char *)&tx[j], sizeof(tx[j]), NO_WAIT, MSG_PRI_NORMAL);
+                                        rngBufPut(rng_udp[0], (char *)&tx[j], sizeof(tx[j]));
+                                        rngBufPut(rng_dbg[0], (char *)&tx[j], sizeof(tx[j]));
+                                        break;
+                                default:
+                                        break;
+                                }
                                 break;
                         default:
                                 break;

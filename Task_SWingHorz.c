@@ -1,4 +1,3 @@
-#include "cylinder.h"
 #include "define.h"
 #include "j1939.h"
 #include "struct.h"
@@ -10,35 +9,36 @@
 
 #define MAX_LEN_CLLST 16
 
-#define UNMASK_RESULT_IO      0x000000FF
-#define UNMASK_RESULT_FAULT   0x0000FF00
-#define UNMASK_RESULT_MISC    0xFFFF0000
-#define RESULT_FAULT_GENERAL  0x00000100
-#define RESULT_FAULT_SERIOUS  0x00000200
-#define RESULT_FAULT_IO       0x00000400
-#define RESULT_FAULT_POS      0x00000800
-#define RESULT_FAULT_VEL      0x00001000
-#define RESULT_FAULT_AMPR     0x00002000
-#define RESULT_FAULT_SYNC     0x00004000
-#define RESULT_FAULT_COMM     0x00008000
-#define RESULT_SAFE           0x00010000
-#define RESULT_ZERO           0x00020000
-#define RESULT_MID            0x00040000
-#define RESULT_DEST           0x00080000
-#define RESULT_STOP           0x00100000
-#define RESULT_LOAD           0x00200000
+#define UNMASK_RESULT_IO     0x000000FF
+#define UNMASK_RESULT_FAULT  0x0000FF00
+#define UNMASK_RESULT_MISC   0xFFFF0000
+#define RESULT_FAULT_GENERAL 0x00000100
+#define RESULT_FAULT_SERIOUS 0x00000200
+#define RESULT_FAULT_IO      0x00000400
+#define RESULT_FAULT_POS     0x00000800
+#define RESULT_FAULT_VEL     0x00001000
+#define RESULT_FAULT_AMPR    0x00002000
+#define RESULT_FAULT_SYNC    0x00004000
+#define RESULT_FAULT_COMM    0x00008000
+#define RESULT_SAFE          0x00010000
+#define RESULT_ZERO          0x00020000
+#define RESULT_MID           0x00040000
+#define RESULT_DEST          0x00080000
+#define RESULT_STOP          0x00100000
+#define RESULT_LOAD          0x00200000
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
+
+void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
+int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+struct frame_can *can_cllst_init(struct frame_can buf[], int len);
+int remap_form_index(u8 form);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_swh;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
-
-void plan(int *vel, int *len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
-int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
-struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 
 const static int n = 4;
 const static int max_form = 3;
@@ -54,12 +54,12 @@ const static int max_vel[4] = {1500, 1500, 1500, 1500};
 const static int min_ampr[4] = {0, 0, 0, 0};
 const static int max_ampr[4] = {200, 200, 200, 200};
 const static int safe_pos[4] = {10000, 10000, 10000, 10000};
-const static int stop_pos_zero[4] = {500, 500, 500, 500};
-const static int stop_pos_mid[4] = {10000, 10000, 10000, 10000};
-const static int stop_pos_dest[4] = {20000, 20000, 20000, 20000};
-const static int stop_ampr_zero[4] = {100, 100, 100, 100};
-const static int stop_ampr_mid[4] = {100, 100, 100, 100};
-const static int stop_ampr_dest[4] = {100, 100, 100, 100};
+const static int pos_zero[4] = {500, 500, 500, 500};
+const static int pos_mid[4] = {10000, 10000, 10000, 10000};
+const static int pos_dest[4] = {20000, 20000, 20000, 20000};
+const static int ampr_zero[4] = {100, 100, 100, 100};
+const static int ampr_mid[4] = {100, 100, 100, 100};
+const static int ampr_dest[4] = {100, 100, 100, 100};
 const static int load_ampr[4] = {150, 150, 150, 150};
 const static int err_sync_01 = 500;
 const static int err_sync_23 = 500;
@@ -170,7 +170,72 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                 len = msgQReceive(msg_swh, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
-                        cyl_cmd(CMD_ACT_SWH);
+                        cmd = *(struct main *)tmp;
+                        switch (verify.type) {
+                        case CMD_IDLE:
+                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
+                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                switch (cmd.type) {
+                                case CMD_IDLE:
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                switch (cmd.type) {
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                switch (cmd.type) {
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                switch (cmd.type) {
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                switch (cmd.type) {
+                                case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        default:
+                                break;
+                        }
                         period -= tickGet() - prev;
                         break;
                 case sizeof(struct frame_can):
@@ -265,9 +330,9 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 tmp_vel = judge_filter(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
                                 tmp_ampr = judge_filter(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
                                 tmp_safe = judge_filter(&ctr_ok_safe[i], &ctr_err_safe[i], avg_pos[i], safe_pos[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_zero = judge_filter(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], stop_pos_zero[i], MAX_LEN_CLLST);
-                                tmp_mid = judge_filter(&ctr_ok_mid[i], &ctr_err_mid[i], avg_pos[i], stop_pos_mid[i] - 5000, stop_pos_mid[i] + 5000, MAX_LEN_CLLST);
-                                tmp_dest = judge_filter(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], stop_pos_dest[i], max_pos[i], MAX_LEN_CLLST);
+                                tmp_zero = judge_filter(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
+                                tmp_mid = judge_filter(&ctr_ok_mid[i], &ctr_err_mid[i], avg_pos[i], pos_mid[i] - 5000, pos_mid[i] + 5000, MAX_LEN_CLLST);
+                                tmp_dest = judge_filter(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
                                 tmp_stop = judge_filter(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
                                 tmp_load = judge_filter(&ctr_ok_load[i], &ctr_err_load[i], avg_ampr[i], load_ampr[i], max_ampr[i], MAX_LEN_CLLST);
                                 if (tmp_pos == -1)
@@ -393,7 +458,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 for (i = 0; i < n; i++) {
                                         plan_vel[i] = 0;
                                         plan_len_pass[i] = 0;
-                                        plan_len_posi[i] = stop_pos_dest[i] - cur_pos[i];
+                                        plan_len_posi[i] = pos_dest[i] - cur_pos[i];
                                         plan_len_nega[i] = cur_pos[i];
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
@@ -427,7 +492,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_posi[i] = 0;
                                         } else {
-                                                plan(&plan_vel[i], &plan_len_posi[i], &plan_len_pass[i],
+                                                plan(&plan_vel[i], plan_len_posi[i], &plan_len_pass[i],
                                                      &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                 tx[i].data.cmd.vel = (s16)plan_vel[i];
                                         }
@@ -451,7 +516,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len_posi[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], &plan_len_posi[i], &plan_len_pass[i],
+                                                        plan(&plan_vel[i], plan_len_posi[i], &plan_len_pass[i],
                                                              &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                         tx[i].data.cmd.vel = (s16)plan_vel[i];
                                                 }
@@ -486,11 +551,11 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        if (avg_ampr[i] > stop_ampr_zero[i]) {
+                                        if (avg_ampr[i] > ampr_zero[i]) {
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_nega[i] = 0;
                                         } else {
-                                                plan(&plan_vel[i], &plan_len_nega[i], &plan_len_pass[i],
+                                                plan(&plan_vel[i], plan_len_nega[i], &plan_len_pass[i],
                                                      &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                 tx[i].data.cmd.vel = -(s16)plan_vel[i];
                                         }
@@ -510,11 +575,11 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 tx[i].form = J1939_FORM_SERVO_VEL;
                                                 tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                                 tx[i].data.cmd.pos = 0x1100;
-                                                if (avg_ampr[i] > stop_ampr_zero[i]) {
+                                                if (avg_ampr[i] > ampr_zero[i]) {
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len_nega[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], &plan_len_nega[i], &plan_len_pass[i],
+                                                        plan(&plan_vel[i], plan_len_nega[i], &plan_len_pass[i],
                                                              &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                         tx[i].data.cmd.vel = -(s16)plan_vel[i];
                                                 }
@@ -568,26 +633,26 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         }
 }
 
-void plan(int *vel, int *len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period)
+void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period)
 {
         int acc = 0;
-        if (*len_total <= 0) {
+        if (len_total <= 0) {
                 *vel = 0;
                 return;
         }
         if (*len_pass == 0) {
-                if (*len_total < max_plan_len.low * 2) {
-                        plan_len->low = *len_total / 2;
+                if (len_total < max_plan_len.low * 2) {
+                        plan_len->low = len_total / 2;
                         plan_len->acc = 0;
                         plan_len->high = 0;
-                } else if (*len_total < max_plan_len.low * 2 + max_plan_len.acc * 2) {
+                } else if (len_total < max_plan_len.low * 2 + max_plan_len.acc * 2) {
                         plan_len->low = max_plan_len.low;
-                        plan_len->acc = *len_total / 2 - plan_len->low;
+                        plan_len->acc = len_total / 2 - plan_len->low;
                         plan_len->high = 0;
                 } else {
                         plan_len->low = max_plan_len.low;
                         plan_len->acc = max_plan_len.acc;
-                        plan_len->high = *len_total - max_plan_len.low * 2 - max_plan_len.acc * 2;
+                        plan_len->high = len_total - max_plan_len.low * 2 - max_plan_len.acc * 2;
                 }
         }
         if (max_plan_len.acc)
@@ -639,28 +704,4 @@ struct frame_can *can_cllst_init(struct frame_can buf[], int len)
         bzero((char *)&buf[i], sizeof(buf[i]));
         buf[i].next = &buf[0];
         return buf;
-}
-
-int max_pos_of_n(int cur_pos[], int n)
-{
-        int tmp;
-        int i;
-        int j = 0;
-        for (i = 0; i < n; i++) {
-                if (cur_pos[j] < cur_pos[i])
-                        j = i;
-        }
-        return j;
-}
-
-int min_pos_of_n(int cur_pos[], int n)
-{
-        int tmp;
-        int i;
-        int j = 0;
-        for (i = 0; i < n; i++) {
-                if (cur_pos[j] > cur_pos[i])
-                        j = i;
-        }
-        return j;
 }

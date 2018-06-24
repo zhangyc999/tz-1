@@ -8,12 +8,12 @@
 #define CLIENT_PORT 4201
 #define GROUP_ADDRESS "234.1.1.9"
 
-extern MSG_Q_ID msg_main;
-extern RING_ID rng_udp[];
-
 void t_udp_rx(int fd);
 void t_udp_tx(int fd);
 u8 check_xor(u8 *buf, int n);
+
+extern MSG_Q_ID msg_main;
+extern RING_ID rng_udp[];
 
 void udp_server(void)
 {

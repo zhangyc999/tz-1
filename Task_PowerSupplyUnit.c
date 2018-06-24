@@ -20,16 +20,16 @@
 typedef struct frame_psu_rx FRAME_RX;
 typedef struct frame_psu_tx FRAME_TX;
 
-extern u8 check_xor(u8 *buf, int n);
+int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+struct frame_can *can_cllst_init(struct frame_can buf[], int len);
+int remap_form_index(u8 form);
+int psu_delay(int cur, int old);
+u8 check_xor(u8 *buf, int n);
+
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_psu;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
-
-extern int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
-extern struct frame_can *can_cllst_init(struct frame_can buf[], int len);
-
-int psu_delay(int cur, int old);
 
 const static int max_form = 3;
 const static int min_volt_24 = 2000;
@@ -102,6 +102,8 @@ void t_psu(void) /* Task: Power Supply Unit */
                         case CMD_IDLE:
                         case CMD_ACT_PSU_24 | CMD_DIR_POSI:
                         case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
+                        case CMD_ACT_PSU_500 | CMD_DIR_POSI:
+                        case CMD_ACT_PSU_500 | CMD_DIR_NEGA:
                                 verify = cmd;
                                 break;
                         default:
@@ -226,9 +228,8 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
                                 tx.prio = J1939_PRIO_PSU_CTRL;
-                                tx.data.io.v24 = psu_delay(cmd.data, old_cmd);
+                                tx.data.io.v24 = psu_delay(verify.data, old_cmd);
                                 old_cmd = tx.data.io.v24;
-                                tx.data.io.v500 = tx.data.io.v24 >> 16;
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
                                 semTake(sem_can[0], WAIT_FOREVER);
@@ -241,6 +242,29 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.form = J1939_FORM_PSU_CTRL;
                                 tx.prio = J1939_PRIO_PSU_CTRL;
                                 tx.data.io.v24 = 0;
+                                tx.data.io.res = 0x66;
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
+                                semTake(sem_can[0], WAIT_FOREVER);
+                                rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[0]);
+                                period = PERIOD_SLOW;
+                                break;
+                        case CMD_ACT_PSU_500 | CMD_DIR_POSI:
+                                tx.dest = J1939_ADDR_PSU;
+                                tx.form = J1939_FORM_PSU_CTRL;
+                                tx.prio = J1939_PRIO_PSU_CTRL;
+                                tx.data.io.v500 = verify.data;
+                                tx.data.io.res = 0x66;
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
+                                semTake(sem_can[0], WAIT_FOREVER);
+                                rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[0]);
+                                period = PERIOD_SLOW;
+                                break;
+                        case CMD_ACT_PSU_500 | CMD_DIR_NEGA:
+                                tx.dest = J1939_ADDR_PSU;
+                                tx.form = J1939_FORM_PSU_CTRL;
+                                tx.prio = J1939_PRIO_PSU_CTRL;
                                 tx.data.io.v500 = 0;
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
@@ -271,6 +295,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                 }
         }
 }
+
 int psu_delay(int cur, int old)
 {
         int tmp;

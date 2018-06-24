@@ -3,14 +3,22 @@
 #include "vx.h"
 
 extern MSG_Q_ID msg_main;
-extern MSG_Q_ID msg_swh;
+extern MSG_Q_ID msg_psu;
 
-void psu(int data)
+void psu_24(int data)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_PSU_24;
+        udp.cmd.type = CMD_ACT_PSU_24 | CMD_DIR_POSI;
         udp.cmd.data = data;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void psu_500(int data)
+{
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_PSU_500 | CMD_DIR_POSI;
+        udp.cmd.data = data;
+        msgQSend(msg_psu, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
 void swh(void)

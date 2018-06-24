@@ -11,16 +11,21 @@
 
 #define UNMASK_RESULT_IO      0x000000FF
 #define UNMASK_RESULT_FAULT   0x0000FF00
-#define UNMASK_RESULT_RUNNING 0x00FF0000
+#define UNMASK_RESULT_MISC    0xFFFF0000
 #define RESULT_FAULT_GENERAL  0x00000100
 #define RESULT_FAULT_SERIOUS  0x00000200
-#define RESULT_FAULT_LIMIT    0x00000400
+#define RESULT_FAULT_IO       0x00000400
 #define RESULT_FAULT_POS      0x00000800
 #define RESULT_FAULT_VEL      0x00001000
 #define RESULT_FAULT_AMPR     0x00002000
 #define RESULT_FAULT_SYNC     0x00004000
 #define RESULT_FAULT_COMM     0x00008000
-#define RESULT_RUNNING        0x00FF0000
+#define RESULT_SAFE           0x00010000
+#define RESULT_ZERO           0x00020000
+#define RESULT_MID            0x00040000
+#define RESULT_DEST           0x00080000
+#define RESULT_STOP           0x00100000
+#define RESULT_LOAD           0x00200000
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
@@ -352,7 +357,7 @@ void t_x(void) /* crane for X-axis */
                         else
                                 state.type |= TASK_STATE_UNLOCK;
                         if (old_state.type != state.type)
-                                msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_URGENT);
+                                msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         old_state = state;
                         switch (verify) {
                         case CMD_ACT_X | CMD_MODE_AUTO | CMD_DIR_STOP:

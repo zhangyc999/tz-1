@@ -1,4 +1,3 @@
-#include "cylinder.h"
 #include "define.h"
 #include "j1939.h"
 #include "struct.h"
@@ -10,35 +9,36 @@
 
 #define MAX_LEN_CLLST 16
 
-#define UNMASK_RESULT_IO      0x000000FF
-#define UNMASK_RESULT_FAULT   0x0000FF00
-#define UNMASK_RESULT_MISC    0xFFFF0000
-#define RESULT_FAULT_GENERAL  0x00000100
-#define RESULT_FAULT_SERIOUS  0x00000200
-#define RESULT_FAULT_IO       0x00000400
-#define RESULT_FAULT_POS      0x00000800
-#define RESULT_FAULT_VEL      0x00001000
-#define RESULT_FAULT_AMPR     0x00002000
-#define RESULT_FAULT_SYNC     0x00004000
-#define RESULT_FAULT_COMM     0x00008000
-#define RESULT_SAFE           0x00010000
-#define RESULT_ZERO           0x00020000
-#define RESULT_MID            0x00040000
-#define RESULT_DEST           0x00080000
-#define RESULT_STOP           0x00100000
-#define RESULT_LOAD           0x00200000
+#define UNMASK_RESULT_IO     0x000000FF
+#define UNMASK_RESULT_FAULT  0x0000FF00
+#define UNMASK_RESULT_MISC   0xFFFF0000
+#define RESULT_FAULT_GENERAL 0x00000100
+#define RESULT_FAULT_SERIOUS 0x00000200
+#define RESULT_FAULT_IO      0x00000400
+#define RESULT_FAULT_POS     0x00000800
+#define RESULT_FAULT_VEL     0x00001000
+#define RESULT_FAULT_AMPR    0x00002000
+#define RESULT_FAULT_SYNC    0x00004000
+#define RESULT_FAULT_COMM    0x00008000
+#define RESULT_SAFE          0x00010000
+#define RESULT_ZERO          0x00020000
+#define RESULT_MID           0x00040000
+#define RESULT_DEST          0x00080000
+#define RESULT_STOP          0x00100000
+#define RESULT_LOAD          0x00200000
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
+
+void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
+int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+struct frame_can *can_cllst_init(struct frame_can buf[], int len);
+int remap_form_index(u8 form);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_rse;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
-
-extern void plan(int *vel, int *len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
-extern int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
-extern struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 
 const static int n = 4;
 const static int max_form = 3;
@@ -54,12 +54,12 @@ const static int max_vel[4] = {1500, 1500, 1500, 1500};
 const static int min_ampr[4] = {0, 0, 0, 0};
 const static int max_ampr[4] = {200, 200, 200, 200};
 const static int safe_pos[4] = {10000, 10000, 10000, 10000};
-const static int stop_pos_zero[4] = {500, 500, 500, 500};
-const static int stop_pos_mid[4] = {10000, 10000, 10000, 10000};
-const static int stop_pos_dest[4] = {20000, 20000, 20000, 20000};
-const static int stop_ampr_zero[4] = {100, 100, 100, 100};
-const static int stop_ampr_mid[4] = {100, 100, 100, 100};
-const static int stop_ampr_dest[4] = {100, 100, 100, 100};
+const static int pos_zero[4] = {500, 500, 500, 500};
+const static int pos_mid[4] = {10000, 10000, 10000, 10000};
+const static int pos_dest[4] = {20000, 20000, 20000, 20000};
+const static int ampr_zero[4] = {100, 100, 100, 100};
+const static int ampr_mid[4] = {100, 100, 100, 100};
+const static int ampr_dest[4] = {100, 100, 100, 100};
 const static int load_ampr[4] = {150, 150, 150, 150};
 const static int err_sync_01 = 500;
 const static int err_sync_23 = 500;
@@ -142,8 +142,7 @@ static int all_safe;
 static int all_zero;
 static int all_mid;
 static int all_dest;
-static int all_load;
-static int all_unload;
+static int num_load;
 static int any_fault;
 static int sub_01;
 static int sub_23;
@@ -153,7 +152,10 @@ static int plan_len_pass[4];
 static int plan_len_posi[4];
 static int plan_len_nega[4];
 static struct plan plan_len[4];
+static struct plan ext_plan_len[4];
 static int segement;
+static int delta_posi[4];
+static int delta_nega[4];
 static int i;
 static int j;
 
@@ -170,7 +172,105 @@ void t_rse(void) /* Task: RaiSE arm */
                 len = msgQReceive(msg_rse, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
-                        cyl_cmd(CMD_ACT_RSE);
+                        cmd = *(struct main *)tmp;
+                        if ((cmd.type & UNMASK_TASK_NOTIFY) == TASK_NOTIFY_LVL) {
+                                if ((cmd.type & UNMASK_TASK_STATE) == TASK_STATE_RUNNING) {
+                                        if (num_load > 2) {
+                                                delta_posi[0] = 10000; /* WQ: LF+ */
+                                                delta_posi[1] = 10000; /* WQ: LB+ */
+                                                delta_posi[2] = 10000; /* WQ: RB+ */
+                                                delta_posi[3] = 10000; /* WQ: RF+ */
+                                                delta_nega[0] = 10000; /* WQ: LF- */
+                                                delta_nega[1] = 10000; /* WQ: LB- */
+                                                delta_nega[2] = 10000; /* WQ: RB- */
+                                                delta_nega[3] = 10000; /* WQ: RF- */
+                                        } else {
+                                                delta_posi[0] = 0;
+                                                delta_posi[1] = 0;
+                                                delta_posi[2] = 0;
+                                                delta_posi[3] = 0;
+                                                delta_nega[0] = 0;
+                                                delta_nega[1] = 0;
+                                                delta_nega[2] = 0;
+                                                delta_nega[3] = 0;
+                                        }
+                                } else {
+                                        delta_posi[0] = 0;
+                                        delta_posi[1] = 0;
+                                        delta_posi[2] = 0;
+                                        delta_posi[3] = 0;
+                                        delta_nega[0] = 0;
+                                        delta_nega[1] = 0;
+                                        delta_nega[2] = 0;
+                                        delta_nega[3] = 0;
+                                }
+                        } else {
+                                switch (verify.type) {
+                                case CMD_IDLE:
+                                case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                        switch (cmd.type) {
+                                        case CMD_IDLE:
+                                        case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                        case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                        case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                        case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                        case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                        case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                                verify = cmd;
+                                                break;
+                                        default:
+                                                break;
+                                        }
+                                        break;
+                                case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                        switch (cmd.type) {
+                                        case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                        case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                        case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                                verify = cmd;
+                                                break;
+                                        default:
+                                                break;
+                                        }
+                                        break;
+                                case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                        switch (cmd.type) {
+                                        case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                        case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                        case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                                verify = cmd;
+                                                break;
+                                        default:
+                                                break;
+                                        }
+                                        break;
+                                case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                        switch (cmd.type) {
+                                        case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                        case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                        case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                                verify = cmd;
+                                                break;
+                                        default:
+                                                break;
+                                        }
+                                        break;
+                                case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                        switch (cmd.type) {
+                                        case CMD_ACT_RSE | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                        case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                        case CMD_ACT_RSE | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                                verify = cmd;
+                                                break;
+                                        default:
+                                                break;
+                                        }
+                                        break;
+                                default:
+                                        break;
+                                }
+                        }
                         period -= tickGet() - prev;
                         break;
                 case sizeof(struct frame_can):
@@ -265,9 +365,9 @@ void t_rse(void) /* Task: RaiSE arm */
                                 tmp_vel = judge_filter(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
                                 tmp_ampr = judge_filter(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
                                 tmp_safe = judge_filter(&ctr_ok_safe[i], &ctr_err_safe[i], avg_pos[i], safe_pos[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_zero = judge_filter(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], stop_pos_zero[i], MAX_LEN_CLLST);
-                                tmp_mid = judge_filter(&ctr_ok_mid[i], &ctr_err_mid[i], avg_pos[i], stop_pos_mid[i] - 5000, stop_pos_mid[i] + 5000, MAX_LEN_CLLST);
-                                tmp_dest = judge_filter(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], stop_pos_dest[i], max_pos[i], MAX_LEN_CLLST);
+                                tmp_zero = judge_filter(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i] + delta_nega[i], MAX_LEN_CLLST);
+                                tmp_mid = judge_filter(&ctr_ok_mid[i], &ctr_err_mid[i], avg_pos[i], pos_mid[i] - 5000, pos_mid[i] + 5000, MAX_LEN_CLLST);
+                                tmp_dest = judge_filter(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i] + delta_posi[i], max_pos[i], MAX_LEN_CLLST);
                                 tmp_stop = judge_filter(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
                                 tmp_load = judge_filter(&ctr_ok_load[i], &ctr_err_load[i], avg_ampr[i], load_ampr[i], max_ampr[i], MAX_LEN_CLLST);
                                 if (tmp_pos == -1)
@@ -314,8 +414,11 @@ void t_rse(void) /* Task: RaiSE arm */
                         all_zero = result[0] & result[1] & result[2] & result[3] & RESULT_ZERO;
                         all_mid = result[0] & result[1] & result[2] & result[3] & RESULT_MID;
                         all_dest = result[0] & result[1] & result[2] & result[3] & RESULT_DEST;
-                        all_load = result[0] & result[1] & result[2] & result[3] & RESULT_LOAD;
-                        all_unload = (result[0] | result[1] | result[2] | result[3]) & RESULT_LOAD;
+                        num_load = 0;
+                        for (i = 0; i < n; i++) {
+                                if (result[i] & RESULT_LOAD)
+                                        num_load++;
+                        }
                         sub_01 = avg_pos[0] - avg_pos[1];
                         sub_23 = avg_pos[2] - avg_pos[3];
                         sub_0123 = (avg_pos[0] - avg_pos[3] + avg_pos[1] - avg_pos[2]) / 2;
@@ -379,8 +482,8 @@ void t_rse(void) /* Task: RaiSE arm */
                                 for (i = 0; i < n; i++) {
                                         plan_vel[i] = 0;
                                         plan_len_pass[i] = 0;
-                                        plan_len_posi[i] = stop_pos_dest[i] - cur_pos[i];
-                                        plan_len_nega[i] = cur_pos[i];
+                                        plan_len_posi[i] = pos_dest[i] - cur_pos[i];
+                                        plan_len_nega[i] = cur_pos[i] - pos_zero[i];
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
@@ -413,8 +516,10 @@ void t_rse(void) /* Task: RaiSE arm */
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_posi[i] = 0;
                                         } else {
-                                                plan(&plan_vel[i], &plan_len_posi[i], &plan_len_pass[i],
-                                                     &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                ext_plan_len[i] = max_plan_len[i];
+                                                ext_plan_len[i].high += delta_posi[i];
+                                                plan(&plan_vel[i], plan_len_posi[i] + delta_posi[i], &plan_len_pass[i],
+                                                     &plan_len[i], ext_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                 tx[i].data.cmd.vel = (s16)plan_vel[i];
                                         }
                                         tx[i].data.cmd.ampr = 1000;
@@ -437,7 +542,7 @@ void t_rse(void) /* Task: RaiSE arm */
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len_posi[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], &plan_len_posi[i], &plan_len_pass[i],
+                                                        plan(&plan_vel[i], plan_len_posi[i], &plan_len_pass[i],
                                                              &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                         tx[i].data.cmd.vel = (s16)plan_vel[i];
                                                 }
@@ -476,8 +581,10 @@ void t_rse(void) /* Task: RaiSE arm */
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_nega[i] = 0;
                                         } else {
-                                                plan(&plan_vel[i], &plan_len_nega[i], &plan_len_pass[i],
-                                                     &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                ext_plan_len[i] = max_plan_len[i];
+                                                ext_plan_len[i].high += delta_nega[i];
+                                                plan(&plan_vel[i], plan_len_nega[i] + delta_nega[i], &plan_len_pass[i],
+                                                     &plan_len[i], ext_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                 tx[i].data.cmd.vel = -(s16)plan_vel[i];
                                         }
                                         tx[i].data.cmd.ampr = 1000;
@@ -500,7 +607,7 @@ void t_rse(void) /* Task: RaiSE arm */
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len_nega[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], &plan_len_nega[i], &plan_len_pass[i],
+                                                        plan(&plan_vel[i], plan_len_nega[i], &plan_len_pass[i],
                                                              &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                         tx[i].data.cmd.vel = -(s16)plan_vel[i];
                                                 }

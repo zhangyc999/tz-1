@@ -6,24 +6,25 @@
 
 #define SYS_TICK_PER_SEC 200
 
-extern void t_main(void);
-extern void t_can(void);
-extern void t_psu(void);
+void t_main(void);
+void t_can(void);
+void t_psu(void);
 #if 0
-extern void t_mom(void);
+void t_mom(void);
 #endif
-extern void t_swh(void);
-extern void t_rse(void);
-extern void t_swv(void);
-extern void t_prp(void);
+void t_swh(void);
+void t_rse(void);
+void t_swv(void);
+void t_prp(void);
 #if 0
-extern void t_x(void);
+void t_x(void);
 #endif
-extern void t_dbg(void);
-extern void udp_server(void);
+void t_lvl(void);
+void t_dbg(void);
+void udp_server(void);
 
 #ifdef DUMMY
-extern void t_dum(void);
+void t_dum(void);
 #endif
 
 MSG_Q_ID msg_main;
@@ -35,6 +36,7 @@ MSG_Q_ID msg_rse;
 MSG_Q_ID msg_swv;
 MSG_Q_ID msg_prp;
 MSG_Q_ID msg_x;
+MSG_Q_ID msg_lvl;
 RING_ID rng_can[2];
 RING_ID rng_udp[2];
 RING_ID rng_dbg[2];
@@ -52,6 +54,7 @@ void tz(void)
         msg_swv = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_prp = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_x = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
+        msg_lvl = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         rng_can[0] = rngCreate(64 * sizeof(struct frame_can));
         rng_can[1] = rngCreate(64 * sizeof(struct frame_can));
         rng_udp[0] = rngCreate(64 * sizeof(struct frame_can));
@@ -75,6 +78,7 @@ void tz(void)
 #if 0
         taskSpawn("X", 90, VX_FP_TASK, 20000, (FUNCPTR)t_x, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #endif
+        taskSpawn("LVL", 90, VX_FP_TASK, 20000, (FUNCPTR)t_lvl, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #ifdef DUMMY
         taskSpawn("DUM", 90, VX_FP_TASK, 20000, (FUNCPTR)t_dum, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #endif /* DUMMY */
