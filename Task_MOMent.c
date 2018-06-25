@@ -418,9 +418,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
                         } else {
                                 state.type = TASK_STATE_RUNNING;
-                                if (all_zero)
-                                        state.type = TASK_STATE_ZERO;
-                                else if (all_dest)
+                                if (num_load > 3)
                                         state.type = TASK_STATE_DEST;
                         }
                         state.type |= TASK_NOTIFY_MOM;
@@ -432,6 +430,10 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                         case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_STOP:
                         case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                 for (i = 0; i < n; i++) {
+                                        plan_vel[i] = 0;
+                                        plan_len_pass[i] = 0;
+                                        plan_len_posi[i] = pos_dest[i] - cur_pos[i];
+                                        plan_len_nega[i] = cur_pos[i] - pos_zero[i];
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
@@ -455,6 +457,62 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                         period = PERIOD_FAST;
                                 break;
                         case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                for (i = 0; i < n; i++) {
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = J1939_FORM_SERVO_AMPR;
+                                        tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                        tx[i].data.cmd.pos = 0x1100;
+                                        tx[i].data.cmd.vel = 0x3322;
+                                        if (avg_ampr[i] < load_ampr[i] - 5)
+                                                tx[i].data.cmd.ampr = -(s16)(avg_ampr[i] + 5);
+                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
+                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
+                                }
+                                period = PERIOD_FAST;
+                                break;
+                        case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                for (i = 0; i < n; i++) {
+                                        if (verify.data & 1 << i) {
+                                                tx[i].dest = addr[i];
+                                                tx[i].form = J1939_FORM_SERVO_VEL;
+                                                tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                                tx[i].data.cmd.pos = 0x1100;
+                                                if (result[i] & RESULT_DEST) {
+                                                        tx[i].data.cmd.vel = 0;
+                                                        plan_len_posi[i] = 0;
+                                                } else {
+                                                        plan(&plan_vel[i], plan_len_posi[i], &plan_len_pass[i],
+                                                             &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                        tx[i].data.cmd.vel = (s16)plan_vel_medium[i];
+                                                }
+                                                tx[i].data.cmd.ampr = 1000;
+                                                tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
+                                                tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
+                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                                semGive(sem_can[cable[i]]);
+                                        } else {
+                                                tx[i].dest = addr[i];
+                                                tx[i].form = J1939_FORM_QUERY;
+                                                tx[i].prio = J1939_PRIO_QUERY;
+                                                tx[i].data.query[0] = 0x00;
+                                                tx[i].data.query[1] = 0x11;
+                                                tx[i].data.query[2] = 0x22;
+                                                tx[i].data.query[3] = 0x33;
+                                                tx[i].data.query[4] = 0x44;
+                                                tx[i].data.query[5] = 0x55;
+                                                tx[i].data.query[6] = 0x66;
+                                                tx[i].data.query[7] = 0x77;
+                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                                semGive(sem_can[cable[i]]);
+                                        }
+                                }
+                                period = PERIOD_FAST;
+                                break;
                         case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_NEGA:
                                 for (i = 0; i < n; i++) {
                                         tx[i].dest = addr[i];
@@ -469,6 +527,46 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
+                                }
+                                period = PERIOD_FAST;
+                                break;
+                        case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                for (i = 0; i < n; i++) {
+                                        if (verify.data & 1 << i) {
+                                                tx[i].dest = addr[i];
+                                                tx[i].form = J1939_FORM_SERVO_VEL;
+                                                tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                                tx[i].data.cmd.pos = 0x1100;
+                                                if (result[i] & RESULT_ZERO) {
+                                                        tx[i].data.cmd.vel = 0;
+                                                        plan_len_nega[i] = 0;
+                                                } else {
+                                                        plan(&plan_vel[i], plan_len_nega[i], &plan_len_pass[i],
+                                                             &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                        tx[i].data.cmd.vel = -(s16)plan_vel_medium[i];
+                                                }
+                                                tx[i].data.cmd.ampr = 1000;
+                                                tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
+                                                tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
+                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                                semGive(sem_can[cable[i]]);
+                                        } else {
+                                                tx[i].dest = addr[i];
+                                                tx[i].form = J1939_FORM_QUERY;
+                                                tx[i].prio = J1939_PRIO_QUERY;
+                                                tx[i].data.query[0] = 0x00;
+                                                tx[i].data.query[1] = 0x11;
+                                                tx[i].data.query[2] = 0x22;
+                                                tx[i].data.query[3] = 0x33;
+                                                tx[i].data.query[4] = 0x44;
+                                                tx[i].data.query[5] = 0x55;
+                                                tx[i].data.query[6] = 0x66;
+                                                tx[i].data.query[7] = 0x77;
+                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                                semGive(sem_can[cable[i]]);
+                                        }
                                 }
                                 period = PERIOD_FAST;
                                 break;
