@@ -22,20 +22,21 @@
 #define RESULT_FAULT_AMPR    0x00002000
 #define RESULT_FAULT_SYNC    0x00004000
 #define RESULT_FAULT_COMM    0x00008000
-#define RESULT_SAFE          0x00010000
-#define RESULT_ZERO          0x00020000
-#define RESULT_MID           0x00040000
-#define RESULT_DEST          0x00080000
-#define RESULT_STOP          0x00100000
-#define RESULT_LOAD          0x00200000
+#define RESULT_ZERO          0x00010000
+#define RESULT_DEST          0x00020000
+#define RESULT_STOP          0x00040000
+#define RESULT_SAFE          0x00080000
+#define RESULT_LOAD          0x00100000
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
 
-void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
-int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int remap_form_index(u8 form);
+int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
+int max_pos_of_n(int pos[], int n);
+int min_pos_of_n(int pos[], int n);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_rse;
@@ -45,7 +46,6 @@ extern SEM_ID sem_can[];
 const static int addr[MAX_NUM_DEV] = {J1939_ADDR_RSE0, J1939_ADDR_RSE1, J1939_ADDR_RSE2, J1939_ADDR_RSE3};
 const static int cable[MAX_NUM_DEV] = {1, 1, 1, 1};
 const static int io_pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
-const static int io_pos_mid[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
 const static int io_pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
 const static int min_pos[MAX_NUM_DEV] = {-1000, -1000, -1000, -1000};
 const static int max_pos[MAX_NUM_DEV] = {36000, 36000, 36000, 36000};
@@ -53,17 +53,13 @@ const static int min_vel[MAX_NUM_DEV] = {-1500, -1500, -1500, -1500};
 const static int max_vel[MAX_NUM_DEV] = {1500, 1500, 1500, 1500};
 const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200, 200, 200};
-const static int safe_pos[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
 const static int pos_zero[MAX_NUM_DEV] = {500, 500, 500, 500};
-const static int pos_mid[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
 const static int pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
+const static int pos_safe[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
 const static int ampr_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
-const static int ampr_mid[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int ampr_dest[MAX_NUM_DEV] = {100, 100, 100, 100};
-const static int load_ampr[MAX_NUM_DEV] = {150, 150, 150, 150};
-const static int err_sync_01 = 500;
-const static int err_sync_23 = 500;
-const static int err_sync_0123 = 1000;
+const static int ampr_load[MAX_NUM_DEV] = {150, 150, 150, 150};
+const static int err_sync = 1000;
 const static struct plan max_plan_len[MAX_NUM_DEV] = {
         {1000, 4000, 10000},
         {1000, 4000, 10000},
@@ -101,27 +97,21 @@ static int old_io[MAX_NUM_DEV];
 static int ctr_ok_pos[MAX_NUM_DEV];
 static int ctr_ok_vel[MAX_NUM_DEV];
 static int ctr_ok_ampr[MAX_NUM_DEV];
-static int ctr_ok_safe[MAX_NUM_DEV];
 static int ctr_ok_zero[MAX_NUM_DEV];
-static int ctr_ok_mid[MAX_NUM_DEV];
 static int ctr_ok_dest[MAX_NUM_DEV];
 static int ctr_ok_stop[MAX_NUM_DEV];
+static int ctr_ok_safe[MAX_NUM_DEV];
 static int ctr_ok_load[MAX_NUM_DEV];
-static int ctr_ok_sync_01;
-static int ctr_ok_sync_23;
-static int ctr_ok_sync_0123;
+static int ctr_ok_sync;
 static int ctr_err_pos[MAX_NUM_DEV];
 static int ctr_err_vel[MAX_NUM_DEV];
 static int ctr_err_ampr[MAX_NUM_DEV];
-static int ctr_err_safe[MAX_NUM_DEV];
 static int ctr_err_zero[MAX_NUM_DEV];
-static int ctr_err_mid[MAX_NUM_DEV];
 static int ctr_err_dest[MAX_NUM_DEV];
 static int ctr_err_stop[MAX_NUM_DEV];
+static int ctr_err_safe[MAX_NUM_DEV];
 static int ctr_err_load[MAX_NUM_DEV];
-static int ctr_err_sync_01;
-static int ctr_err_sync_23;
-static int ctr_err_sync_0123;
+static int ctr_err_sync;
 static int ctr_fault[MAX_NUM_DEV];
 static int ctr_io[MAX_NUM_DEV];
 static int ctr_comm[MAX_NUM_DEV];
@@ -129,31 +119,24 @@ static int result[MAX_NUM_DEV];
 static int tmp_pos;
 static int tmp_vel;
 static int tmp_ampr;
-static int tmp_safe;
 static int tmp_zero;
-static int tmp_mid;
 static int tmp_dest;
 static int tmp_stop;
+static int tmp_safe;
 static int tmp_load;
-static int tmp_sync_01;
-static int tmp_sync_23;
-static int tmp_sync_0123;
-static int all_safe;
+static int tmp_sync;
 static int all_zero;
-static int all_mid;
 static int all_dest;
+static int all_safe;
 static int num_load;
 static int any_fault;
-static int sub_01;
-static int sub_23;
-static int sub_0123;
+static int sub;
 static int plan_vel[MAX_NUM_DEV];
 static int plan_len_pass[MAX_NUM_DEV];
 static int plan_len_posi[MAX_NUM_DEV];
 static int plan_len_nega[MAX_NUM_DEV];
 static struct plan plan_len[MAX_NUM_DEV];
 static struct plan ext_plan_len[MAX_NUM_DEV];
-static int segement;
 static int delta_posi[MAX_NUM_DEV];
 static int delta_nega[MAX_NUM_DEV];
 static int i;
@@ -364,12 +347,11 @@ void t_rse(void) /* Task: RaiSE arm */
                                 tmp_pos = judge_filter(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], MAX_LEN_CLLST);
                                 tmp_vel = judge_filter(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
                                 tmp_ampr = judge_filter(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
-                                tmp_safe = judge_filter(&ctr_ok_safe[i], &ctr_err_safe[i], avg_pos[i], safe_pos[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_zero = judge_filter(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i] + delta_nega[i], MAX_LEN_CLLST);
-                                tmp_mid = judge_filter(&ctr_ok_mid[i], &ctr_err_mid[i], avg_pos[i], pos_mid[i] - 5000, pos_mid[i] + 5000, MAX_LEN_CLLST);
-                                tmp_dest = judge_filter(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i] + delta_posi[i], max_pos[i], MAX_LEN_CLLST);
+                                tmp_zero = judge_filter(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
+                                tmp_dest = judge_filter(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
                                 tmp_stop = judge_filter(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
-                                tmp_load = judge_filter(&ctr_ok_load[i], &ctr_err_load[i], avg_ampr[i], load_ampr[i], max_ampr[i], MAX_LEN_CLLST);
+                                tmp_safe = judge_filter(&ctr_ok_safe[i], &ctr_err_safe[i], avg_pos[i], pos_safe[i], max_pos[i], MAX_LEN_CLLST);
+                                tmp_load = judge_filter(&ctr_ok_load[i], &ctr_err_load[i], avg_ampr[i], ampr_load[i], max_ampr[i], MAX_LEN_CLLST);
                                 if (tmp_pos == -1)
                                         result[i] |= RESULT_FAULT_POS;
                                 else if (tmp_pos == 1)
@@ -382,18 +364,10 @@ void t_rse(void) /* Task: RaiSE arm */
                                         result[i] |= RESULT_FAULT_AMPR;
                                 else if (tmp_ampr == 1)
                                         result[i] &= ~RESULT_FAULT_AMPR;
-                                if (tmp_safe == 1)
-                                        result[i] |= RESULT_SAFE;
-                                else if (tmp_safe == -1)
-                                        result[i] &= ~RESULT_SAFE;
                                 if (tmp_zero == 1)
                                         result[i] |= RESULT_ZERO;
                                 else if (tmp_zero == -1)
                                         result[i] &= ~RESULT_ZERO;
-                                if (tmp_mid == 1)
-                                        result[i] |= RESULT_MID;
-                                else if (tmp_mid == -1)
-                                        result[i] &= ~RESULT_MID;
                                 if (tmp_dest == 1)
                                         result[i] |= RESULT_DEST;
                                 else if (tmp_dest == -1)
@@ -402,6 +376,10 @@ void t_rse(void) /* Task: RaiSE arm */
                                         result[i] |= RESULT_STOP;
                                 else if (tmp_stop == -1)
                                         result[i] &= ~RESULT_STOP;
+                                if (tmp_safe == 1)
+                                        result[i] |= RESULT_SAFE;
+                                else if (tmp_safe == -1)
+                                        result[i] &= ~RESULT_SAFE;
                                 if (tmp_load == 1)
                                         result[i] |= RESULT_LOAD;
                                 else if (tmp_load == -1)
@@ -410,27 +388,22 @@ void t_rse(void) /* Task: RaiSE arm */
                         default:
                                 break;
                         }
-                        all_safe = result[0] & result[1] & result[2] & result[3] & RESULT_SAFE;
                         all_zero = result[0] & result[1] & result[2] & result[3] & RESULT_ZERO;
-                        all_mid = result[0] & result[1] & result[2] & result[3] & RESULT_MID;
                         all_dest = result[0] & result[1] & result[2] & result[3] & RESULT_DEST;
+                        all_safe = result[0] & result[1] & result[2] & result[3] & RESULT_SAFE;
                         num_load = 0;
                         for (i = 0; i < MAX_NUM_DEV; i++) {
                                 if (result[i] & RESULT_LOAD)
                                         num_load++;
                         }
-                        sub_01 = avg_pos[0] - avg_pos[1];
-                        sub_23 = avg_pos[2] - avg_pos[3];
-                        sub_0123 = (avg_pos[0] - avg_pos[3] + avg_pos[1] - avg_pos[2]) / 2;
-                        tmp_sync_01 = judge_filter(&ctr_ok_sync_01, &ctr_err_sync_01, sub_01, -err_sync_01, err_sync_01, MAX_LEN_CLLST);
-                        tmp_sync_23 = judge_filter(&ctr_ok_sync_23, &ctr_err_sync_23, sub_23, -err_sync_23, err_sync_23, MAX_LEN_CLLST);
-                        tmp_sync_0123 = judge_filter(&ctr_ok_sync_0123, &ctr_err_sync_0123, sub_0123, -err_sync_0123, err_sync_0123, MAX_LEN_CLLST);
-                        if (tmp_sync_0123 == -1) {
+                        sub = avg_pos[max_pos_of_n(avg_pos, MAX_NUM_DEV)] - avg_pos[min_pos_of_n(avg_pos, MAX_NUM_DEV)];
+                        tmp_sync = judge_filter(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
+                        if (tmp_sync == -1) {
                                 result[0] |= RESULT_FAULT_SYNC;
                                 result[1] |= RESULT_FAULT_SYNC;
                                 result[2] |= RESULT_FAULT_SYNC;
                                 result[3] |= RESULT_FAULT_SYNC;
-                        } else if (tmp_sync_0123 == 1) {
+                        } else if (tmp_sync == 1) {
                                 result[0] &= ~RESULT_FAULT_SYNC;
                                 result[1] &= ~RESULT_FAULT_SYNC;
                                 result[2] &= ~RESULT_FAULT_SYNC;
@@ -468,7 +441,7 @@ void t_rse(void) /* Task: RaiSE arm */
                                 state.type = TASK_STATE_RUNNING;
                                 if (all_zero)
                                         state.type = TASK_STATE_ZERO;
-                                else if (all_dest)
+                                else if (all_safe)
                                         state.type = TASK_STATE_DEST;
                         }
                         state.type |= TASK_NOTIFY_RSE;

@@ -50,14 +50,14 @@ const static int min_vel = -1500;
 const static int max_vel = 1500;
 const static int min_ampr = 0;
 const static int max_ampr = 200;
-const static int safe_pos = 10000;
+const static int pos_safe = 10000;
 const static int pos_zero = 500;
 const static int pos_mid = 10000;
 const static int pos_dest = 20000;
 const static int ampr_zero = 100;
 const static int ampr_mid = 100;
 const static int ampr_dest = 100;
-const static int load_ampr = 150;
+const static int ampr_load = 150;
 const static int err_sync_01 = 500;
 const static int err_sync_23 = 500;
 const static int err_sync_0123 = 1000;
@@ -300,12 +300,12 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 tmp_pos = judge_filter(&ctr_ok_pos, &ctr_err_pos, avg_pos, min_pos, max_pos, MAX_LEN_CLLST);
                                 tmp_vel = judge_filter(&ctr_ok_vel, &ctr_err_vel, avg_vel, min_vel, max_vel, MAX_LEN_CLLST);
                                 tmp_ampr = judge_filter(&ctr_ok_ampr, &ctr_err_ampr, avg_ampr, min_ampr, max_ampr, MAX_LEN_CLLST);
-                                tmp_safe = judge_filter(&ctr_ok_safe, &ctr_err_safe, avg_pos, safe_pos, max_pos, MAX_LEN_CLLST);
+                                tmp_safe = judge_filter(&ctr_ok_safe, &ctr_err_safe, avg_pos, pos_safe, max_pos, MAX_LEN_CLLST);
                                 tmp_zero = judge_filter(&ctr_ok_zero, &ctr_err_zero, avg_pos, min_pos, pos_zero, MAX_LEN_CLLST);
                                 tmp_mid = judge_filter(&ctr_ok_mid, &ctr_err_mid, avg_pos, pos_mid - 5000, pos_mid + 5000, MAX_LEN_CLLST);
                                 tmp_dest = judge_filter(&ctr_ok_dest, &ctr_err_dest, avg_pos, pos_dest, max_pos, MAX_LEN_CLLST);
                                 tmp_stop = judge_filter(&ctr_ok_stop, &ctr_err_stop, avg_vel, -5, 5, MAX_LEN_CLLST);
-                                tmp_load = judge_filter(&ctr_ok_load, &ctr_err_load, avg_ampr, load_ampr, max_ampr, MAX_LEN_CLLST);
+                                tmp_load = judge_filter(&ctr_ok_load, &ctr_err_load, avg_ampr, ampr_load, max_ampr, MAX_LEN_CLLST);
                                 if (tmp_pos == -1)
                                         result |= RESULT_FAULT_POS;
                                 else if (tmp_pos == 1)

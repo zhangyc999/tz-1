@@ -51,7 +51,7 @@ const static int min_vel[2] = {-1500, -1500};
 const static int max_vel[2] = {1500, 1500};
 const static int min_ampr[2] = {-2000, -2000};
 const static int max_ampr[2] = {2000, 2000};
-const static int safe_pos[2] = {10000, 10000};
+const static int pos_safe[2] = {10000, 10000};
 const static int err_sync = 10000;
 const static int plan_len_low[2] = {1000, 1000};
 const static int plan_len_acc[2] = {4000, 4000};
@@ -349,7 +349,7 @@ void t_x(void) /* crane for X-axis */
                                 state.type |= TASK_STATE_OK;
                         }
                         for (i = 0; i < n; i++) {
-                                if (avg_pos[i] < safe_pos[i])
+                                if (avg_pos[i] < pos_safe[i])
                                         break;
                         }
                         if (i != n)

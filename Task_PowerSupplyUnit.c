@@ -21,9 +21,9 @@
 typedef struct frame_psu_rx FRAME_RX;
 typedef struct frame_psu_tx FRAME_TX;
 
-int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int remap_form_index(u8 form);
+int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
 int psu_delay(int cur, int old);
 u8 check_xor(u8 *buf, int n);
 

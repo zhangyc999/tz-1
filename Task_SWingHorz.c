@@ -30,10 +30,10 @@
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
 
-void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
-int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int remap_form_index(u8 form);
+int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_swh;
@@ -52,7 +52,7 @@ const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200, 200, 200};
 const static int pos_zero[MAX_NUM_DEV] = {500, 500, 500, 500};
 const static int pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
-const static int safe_pos[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
+const static int pos_safe[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
 const static int ampr_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int err_sync_01 = 500;
 const static int err_sync_23 = 500;
@@ -315,7 +315,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 tmp_zero = judge_filter(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
                                 tmp_dest = judge_filter(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
                                 tmp_stop = judge_filter(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
-                                tmp_safe = judge_filter(&ctr_ok_safe[i], &ctr_err_safe[i], avg_pos[i], safe_pos[i], max_pos[i], MAX_LEN_CLLST);
+                                tmp_safe = judge_filter(&ctr_ok_safe[i], &ctr_err_safe[i], avg_pos[i], pos_safe[i], max_pos[i], MAX_LEN_CLLST);
                                 if (tmp_pos == -1)
                                         result[i] |= RESULT_FAULT_POS;
                                 else if (tmp_pos == 1)
