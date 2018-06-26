@@ -7,6 +7,8 @@
 #define PERIOD_SLOW 200
 #define PERIOD_FAST 20
 
+#define MAX_NUM_DEV   4
+#define MAX_NUM_FORM  3
 #define MAX_LEN_CLLST 16
 
 #define UNMASK_RESULT_IO     0x000000FF
@@ -40,39 +42,37 @@ extern MSG_Q_ID msg_mom;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
 
-const static int n = 4;
-const static int max_form = 3;
-const static int addr[4] = {J1939_ADDR_MOM0, J1939_ADDR_MOM1, J1939_ADDR_MOM2, J1939_ADDR_MOM3};
-const static int cable[4] = {1, 1, 1, 1};
-const static int io_pos_zero[4] = {100, 100, 100, 100};
-const static int io_pos_mid[4] = {10000, 10000, 10000, 10000};
-const static int io_pos_dest[4] = {20000, 20000, 20000, 20000};
-const static int min_pos[4] = {-1000, -1000, -1000, -1000};
-const static int max_pos[4] = {36000, 36000, 36000, 36000};
-const static int min_vel[4] = {-1500, -1500, -1500, -1500};
-const static int max_vel[4] = {1500, 1500, 1500, 1500};
-const static int min_ampr[4] = {0, 0, 0, 0};
-const static int max_ampr[4] = {100, 100, 100, 100};
-const static int safe_pos[4] = {10000, 10000, 10000, 10000};
-const static int pos_zero[4] = {500, 500, 500, 500};
-const static int pos_mid[4] = {10000, 10000, 10000, 10000};
-const static int pos_dest[4] = {20000, 20000, 20000, 20000};
-const static int ampr_zero[4] = {100, 100, 100, 100};
-const static int ampr_mid[4] = {100, 100, 100, 100};
-const static int ampr_dest[4] = {100, 100, 100, 100};
-const static int load_ampr[4] = {50, 50, 50, 50};
+const static int addr[MAX_NUM_DEV] = {J1939_ADDR_MOM0, J1939_ADDR_MOM1, J1939_ADDR_MOM2, J1939_ADDR_MOM3};
+const static int cable[MAX_NUM_DEV] = {1, 1, 1, 1};
+const static int io_pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
+const static int io_pos_mid[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
+const static int io_pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
+const static int min_pos[MAX_NUM_DEV] = {-1000, -1000, -1000, -1000};
+const static int max_pos[MAX_NUM_DEV] = {36000, 36000, 36000, 36000};
+const static int min_vel[MAX_NUM_DEV] = {-1500, -1500, -1500, -1500};
+const static int max_vel[MAX_NUM_DEV] = {1500, 1500, 1500, 1500};
+const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
+const static int max_ampr[MAX_NUM_DEV] = {100, 100, 100, 100};
+const static int safe_pos[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
+const static int pos_zero[MAX_NUM_DEV] = {500, 500, 500, 500};
+const static int pos_mid[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
+const static int pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
+const static int ampr_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
+const static int ampr_mid[MAX_NUM_DEV] = {100, 100, 100, 100};
+const static int ampr_dest[MAX_NUM_DEV] = {100, 100, 100, 100};
+const static int load_ampr[MAX_NUM_DEV] = {50, 50, 50, 50};
 const static int err_sync_01 = 500;
 const static int err_sync_23 = 500;
 const static int err_sync_0123 = 1000;
-const static struct plan max_plan_len[4] = {
+const static struct plan max_plan_len[MAX_NUM_DEV] = {
         {1000, 4000, 10000},
         {1000, 4000, 10000},
         {1000, 4000, 10000},
         {1000, 4000, 10000}
 };
-const static int plan_vel_low[4] = {100, 100, 100, 100};
-const static int plan_vel_high[4] = {1000, 1000, 1000, 1000};
-const static int plan_vel_medium[4] = {500, 500, 500, 500};
+const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100};
+const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000};
+const static int plan_vel_medium[MAX_NUM_DEV] = {500, 500, 500, 500};
 
 static int period = PERIOD_SLOW;
 static u32 prev;
@@ -83,49 +83,49 @@ static struct main verify = {CMD_IDLE, 0};
 static struct main state;
 static struct main old_state;
 static struct frame_can can;
-static struct frame_can rx[4][3][MAX_LEN_CLLST];
-static FRAME_RX *p[4][3];
-static FRAME_TX tx[4];
-static int has_received[4];
-static int cur_pos[4];
-static int cur_vel[4];
-static int cur_ampr[4];
-static int sum_pos[4];
-static int sum_vel[4];
-static int sum_ampr[4];
-static int avg_pos[4];
-static int avg_vel[4];
-static int avg_ampr[4];
-static int old_fault[4];
-static int old_io[4];
-static int ctr_ok_pos[4];
-static int ctr_ok_vel[4];
-static int ctr_ok_ampr[4];
-static int ctr_ok_safe[4];
-static int ctr_ok_zero[4];
-static int ctr_ok_mid[4];
-static int ctr_ok_dest[4];
-static int ctr_ok_stop[4];
-static int ctr_ok_load[4];
+static struct frame_can rx[MAX_NUM_DEV][MAX_NUM_FORM][MAX_LEN_CLLST];
+static FRAME_RX *p[MAX_NUM_DEV][MAX_NUM_FORM];
+static FRAME_TX tx[MAX_NUM_DEV];
+static int has_received[MAX_NUM_DEV];
+static int cur_pos[MAX_NUM_DEV];
+static int cur_vel[MAX_NUM_DEV];
+static int cur_ampr[MAX_NUM_DEV];
+static int sum_pos[MAX_NUM_DEV];
+static int sum_vel[MAX_NUM_DEV];
+static int sum_ampr[MAX_NUM_DEV];
+static int avg_pos[MAX_NUM_DEV];
+static int avg_vel[MAX_NUM_DEV];
+static int avg_ampr[MAX_NUM_DEV];
+static int old_fault[MAX_NUM_DEV];
+static int old_io[MAX_NUM_DEV];
+static int ctr_ok_pos[MAX_NUM_DEV];
+static int ctr_ok_vel[MAX_NUM_DEV];
+static int ctr_ok_ampr[MAX_NUM_DEV];
+static int ctr_ok_safe[MAX_NUM_DEV];
+static int ctr_ok_zero[MAX_NUM_DEV];
+static int ctr_ok_mid[MAX_NUM_DEV];
+static int ctr_ok_dest[MAX_NUM_DEV];
+static int ctr_ok_stop[MAX_NUM_DEV];
+static int ctr_ok_load[MAX_NUM_DEV];
 static int ctr_ok_sync_01;
 static int ctr_ok_sync_23;
 static int ctr_ok_sync_0123;
-static int ctr_err_pos[4];
-static int ctr_err_vel[4];
-static int ctr_err_ampr[4];
-static int ctr_err_safe[4];
-static int ctr_err_zero[4];
-static int ctr_err_mid[4];
-static int ctr_err_dest[4];
-static int ctr_err_stop[4];
-static int ctr_err_load[4];
+static int ctr_err_pos[MAX_NUM_DEV];
+static int ctr_err_vel[MAX_NUM_DEV];
+static int ctr_err_ampr[MAX_NUM_DEV];
+static int ctr_err_safe[MAX_NUM_DEV];
+static int ctr_err_zero[MAX_NUM_DEV];
+static int ctr_err_mid[MAX_NUM_DEV];
+static int ctr_err_dest[MAX_NUM_DEV];
+static int ctr_err_stop[MAX_NUM_DEV];
+static int ctr_err_load[MAX_NUM_DEV];
 static int ctr_err_sync_01;
 static int ctr_err_sync_23;
 static int ctr_err_sync_0123;
-static int ctr_fault[4];
-static int ctr_io[4];
-static int ctr_comm[4];
-static int result[4];
+static int ctr_fault[MAX_NUM_DEV];
+static int ctr_io[MAX_NUM_DEV];
+static int ctr_comm[MAX_NUM_DEV];
+static int result[MAX_NUM_DEV];
 static int tmp_pos;
 static int tmp_vel;
 static int tmp_ampr;
@@ -147,22 +147,22 @@ static int any_fault;
 static int sub_01;
 static int sub_23;
 static int sub_0123;
-static int plan_vel[4];
-static int plan_len_pass[4];
-static int plan_len_posi[4];
-static int plan_len_nega[4];
-static struct plan plan_len[4];
-static struct plan ext_plan_len[4];
+static int plan_vel[MAX_NUM_DEV];
+static int plan_len_pass[MAX_NUM_DEV];
+static int plan_len_posi[MAX_NUM_DEV];
+static int plan_len_nega[MAX_NUM_DEV];
+static struct plan plan_len[MAX_NUM_DEV];
+static struct plan ext_plan_len[MAX_NUM_DEV];
 static int segement;
-static int delta_posi[4];
-static int delta_nega[4];
+static int delta_posi[MAX_NUM_DEV];
+static int delta_nega[MAX_NUM_DEV];
 static int i;
 static int j;
 
 void t_mom(void) /* Task: constant MOMent electric machinery */
 {
-        for (i = 0; i < n; i++) {
-                for (j = 0; j < max_form; j++)
+        for (i = 0; i < MAX_NUM_DEV; i++) {
+                for (j = 0; j < MAX_NUM_FORM; j++)
                         p[i][j] = (FRAME_RX *)can_cllst_init(rx[i][j], MAX_LEN_CLLST);
         }
         for (;;) {
@@ -378,7 +378,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                         all_mid = result[0] & result[1] & result[2] & result[3] & RESULT_MID;
                         all_dest = result[0] & result[1] & result[2] & result[3] & RESULT_DEST;
                         num_load = 0;
-                        for (i = 0; i < n; i++) {
+                        for (i = 0; i < MAX_NUM_DEV; i++) {
                                 if (result[i] & RESULT_LOAD)
                                         num_load++;
                         }
@@ -391,7 +391,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                         period -= tickGet() - prev;
                         break;
                 default:
-                        for (i = 0; i < n; i++) {
+                        for (i = 0; i < MAX_NUM_DEV; i++) {
                                 if (has_received[i]) {
                                         has_received[i] = 0;
                                         if (ctr_comm[i] < 0)
@@ -429,7 +429,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                         switch (verify.type) {
                         case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_STOP:
                         case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                for (i = 0; i < n; i++) {
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
                                         plan_vel[i] = 0;
                                         plan_len_pass[i] = 0;
                                         plan_len_posi[i] = pos_dest[i] - cur_pos[i];
@@ -447,17 +447,17 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
-                                for (i = 0; i < n; i++) {
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
                                         if (tx[i].data.cmd.enable != J1939_SERVO_DISABLE)
                                                 break;
                                 }
-                                if (i == n)
+                                if (i == MAX_NUM_DEV)
                                         period = PERIOD_SLOW;
                                 else
                                         period = PERIOD_FAST;
                                 break;
                         case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                for (i = 0; i < n; i++) {
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_AMPR;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
@@ -474,7 +474,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 period = PERIOD_FAST;
                                 break;
                         case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                for (i = 0; i < n; i++) {
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
                                         if (verify.data & 1 << i) {
                                                 tx[i].dest = addr[i];
                                                 tx[i].form = J1939_FORM_SERVO_VEL;
@@ -514,7 +514,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 period = PERIOD_FAST;
                                 break;
                         case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                for (i = 0; i < n; i++) {
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_AMPR;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
@@ -531,7 +531,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 period = PERIOD_FAST;
                                 break;
                         case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                for (i = 0; i < n; i++) {
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
                                         if (verify.data & 1 << i) {
                                                 tx[i].dest = addr[i];
                                                 tx[i].form = J1939_FORM_SERVO_VEL;
@@ -571,7 +571,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 period = PERIOD_FAST;
                                 break;
                         default:
-                                for (i = 0; i < n; i++) {
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_QUERY;
                                         tx[i].prio = J1939_PRIO_QUERY;

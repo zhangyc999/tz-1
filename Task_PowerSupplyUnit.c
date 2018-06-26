@@ -6,6 +6,7 @@
 
 #define PERIOD_SLOW 200
 
+#define MAX_NUM_FORM  3
 #define MAX_LEN_CLLST 16
 
 #define UNMASK_RESULT_FAULT   0x0000FF00
@@ -31,7 +32,6 @@ extern MSG_Q_ID msg_psu;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
 
-const static int max_form = 3;
 const static int min_volt_24 = 2000;
 const static int max_volt_24 = 2800;
 const static int min_ampr_24 = 0;
@@ -50,8 +50,8 @@ static struct main verify = {CMD_IDLE, 0};
 static struct main state;
 static struct main old_state;
 static struct frame_can can;
-static struct frame_can rx[3][MAX_LEN_CLLST];
-static FRAME_RX *p[3];
+static struct frame_can rx[MAX_NUM_FORM][MAX_LEN_CLLST];
+static FRAME_RX *p[MAX_NUM_FORM];
 static FRAME_TX tx;
 static int has_received;
 static int cur_volt_24;
@@ -88,7 +88,7 @@ static int i;
 
 void t_psu(void) /* Task: Power Supply Unit */
 {
-        for (i = 0; i < max_form; i++)
+        for (i = 0; i < MAX_NUM_FORM; i++)
                 p[i] = (FRAME_RX *)can_cllst_init(rx[i], MAX_LEN_CLLST);
         for (;;) {
                 prev = tickGet();

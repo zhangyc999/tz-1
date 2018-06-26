@@ -6,6 +6,8 @@
 
 #define PERIOD_SLOW 200
 
+#define MAX_NUM_DEV   2
+#define MAX_NUM_FORM  3
 #define MAX_LEN_CLLST 16
 
 #define UNMASK_RESULT_FAULT   0x0000FF00
@@ -32,16 +34,14 @@ extern MSG_Q_ID msg_prp;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
 
-const static int n = 2;
-const static int max_form = 3;
-const static int addr[2] = {J1939_ADDR_LVL0, J1939_ADDR_LVL1};
-const static int cable[2] = {0, 0};
-const static int min_x[2] = {-2000, -2000};
-const static int max_x[2] = {2000, 2000};
-const static int min_y[2] = {-2000, -2000};
-const static int max_y[2] = {2000, 2000};
-const static int x_zero[0] = {0, 0};
-const static int y_zero[2] = {0, 0};
+const static int addr[MAX_NUM_DEV] = {J1939_ADDR_LVL0, J1939_ADDR_LVL1};
+const static int cable[MAX_NUM_DEV] = {0, 0};
+const static int min_x[MAX_NUM_DEV] = {-2000, -2000};
+const static int max_x[MAX_NUM_DEV] = {2000, 2000};
+const static int min_y[MAX_NUM_DEV] = {-2000, -2000};
+const static int max_y[MAX_NUM_DEV] = {2000, 2000};
+const static int x_zero[MAX_NUM_DEV] = {0, 0};
+const static int y_zero[MAX_NUM_DEV] = {0, 0};
 
 static int period = PERIOD_SLOW;
 static u32 prev;
@@ -52,28 +52,28 @@ static struct main verify = {CMD_IDLE, 0};
 static struct main state;
 static struct main old_state;
 static struct frame_can can;
-static struct frame_can rx[2][3][MAX_LEN_CLLST];
-static FRAME_RX *p[2][3];
-static FRAME_TX tx[2];
-static int has_received[2];
-static int cur_x[2];
+static struct frame_can rx[MAX_NUM_DEV][MAX_NUM_FORM][MAX_LEN_CLLST];
+static FRAME_RX *p[MAX_NUM_DEV][MAX_NUM_FORM];
+static FRAME_TX tx[MAX_NUM_DEV];
+static int has_received[MAX_NUM_DEV];
+static int cur_x[MAX_NUM_DEV];
 static int cur_y[4];
-static int sum_x[2];
-static int sum_y[2];
-static int avg_x[2];
-static int avg_y[2];
-static int old_fault[2];
-static int ctr_ok_x[2];
-static int ctr_ok_y[2];
-static int ctr_ok_x_zero[2];
-static int ctr_ok_y_zero[2];
-static int ctr_err_x[2];
-static int ctr_err_y[2];
-static int ctr_err_x_zero[2];
-static int ctr_err_y_zero[2];
-static int ctr_fault[2];
-static int ctr_comm[2];
-static int result[2];
+static int sum_x[MAX_NUM_DEV];
+static int sum_y[MAX_NUM_DEV];
+static int avg_x[MAX_NUM_DEV];
+static int avg_y[MAX_NUM_DEV];
+static int old_fault[MAX_NUM_DEV];
+static int ctr_ok_x[MAX_NUM_DEV];
+static int ctr_ok_y[MAX_NUM_DEV];
+static int ctr_ok_x_zero[MAX_NUM_DEV];
+static int ctr_ok_y_zero[MAX_NUM_DEV];
+static int ctr_err_x[MAX_NUM_DEV];
+static int ctr_err_y[MAX_NUM_DEV];
+static int ctr_err_x_zero[MAX_NUM_DEV];
+static int ctr_err_y_zero[MAX_NUM_DEV];
+static int ctr_fault[MAX_NUM_DEV];
+static int ctr_comm[MAX_NUM_DEV];
+static int result[MAX_NUM_DEV];
 static int tmp_x;
 static int tmp_y;
 static int tmp_x_zero;
@@ -85,8 +85,8 @@ static int j;
 
 void t_lvl(void) /* Task: LeVeL tilt sensor */
 {
-        for (i = 0; i < n; i++) {
-                for (j = 0; j < max_form; j++)
+        for (i = 0; i < MAX_NUM_DEV; i++) {
+                for (j = 0; j < MAX_NUM_FORM; j++)
                         p[i][j] = (FRAME_RX *)can_cllst_init(rx[i][j], MAX_LEN_CLLST);
         }
         for (;;) {
@@ -184,7 +184,7 @@ void t_lvl(void) /* Task: LeVeL tilt sensor */
                         period -= tickGet() - prev;
                         break;
                 default:
-                        for (i = 0; i < n; i++) {
+                        for (i = 0; i < MAX_NUM_DEV; i++) {
                                 if (has_received[i]) {
                                         has_received[i] = 0;
                                         if (ctr_comm[i] < 0)
@@ -224,7 +224,7 @@ void t_lvl(void) /* Task: LeVeL tilt sensor */
                         msgQSend(msg_rse, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         msgQSend(msg_prp, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         old_state = state;
-                        for (i = 0; i < n; i++) {
+                        for (i = 0; i < MAX_NUM_DEV; i++) {
                                 tx[i].dest = addr[i];
                                 tx[i].form = J1939_FORM_QUERY;
                                 tx[i].prio = J1939_PRIO_QUERY;
