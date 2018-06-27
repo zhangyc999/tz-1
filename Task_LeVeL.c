@@ -15,10 +15,8 @@
 #define RESULT_FAULT_GENERAL 0x00000100
 #define RESULT_FAULT_SERIOUS 0x00000200
 #define RESULT_FAULT_COMM    0x00008000
-#define RESULT_X_DEST        0x00010000
-#define RESULT_Y_DEST        0x00020000
-#define RESULT_OUT_X         0x00040000
-#define RESULT_OUT_Y         0x00080000
+#define RESULT_X             0x00010000
+#define RESULT_Y             0x00020000
 
 typedef struct frame_lvl_rx FRAME_RX;
 typedef struct frame_lvl_tx FRAME_TX;
@@ -36,12 +34,10 @@ extern SEM_ID sem_can[];
 
 const static int addr[MAX_NUM_DEV] = {J1939_ADDR_LVL0, J1939_ADDR_LVL1};
 const static int cable[MAX_NUM_DEV] = {0, 0};
-const static int min_x[MAX_NUM_DEV] = {-2000, -2000};
-const static int max_x[MAX_NUM_DEV] = {2000, 2000};
-const static int min_y[MAX_NUM_DEV] = {-2000, -2000};
-const static int max_y[MAX_NUM_DEV] = {2000, 2000};
-const static int x_dest[MAX_NUM_DEV] = {0, 0};
-const static int y_dest[MAX_NUM_DEV] = {0, 0};
+const static int min_x[MAX_NUM_DEV] = {-1000, -1000};
+const static int max_x[MAX_NUM_DEV] = {1000, 1000};
+const static int min_y[MAX_NUM_DEV] = {-1000, -1000};
+const static int max_y[MAX_NUM_DEV] = {1000, 1000};
 
 static int period = PERIOD_SLOW;
 static u32 prev;
@@ -65,19 +61,13 @@ static int avg_y[MAX_NUM_DEV];
 static int old_fault[MAX_NUM_DEV];
 static int ctr_ok_x[MAX_NUM_DEV];
 static int ctr_ok_y[MAX_NUM_DEV];
-static int ctr_ok_x_dest[MAX_NUM_DEV];
-static int ctr_ok_y_dest[MAX_NUM_DEV];
 static int ctr_err_x[MAX_NUM_DEV];
 static int ctr_err_y[MAX_NUM_DEV];
-static int ctr_err_x_dest[MAX_NUM_DEV];
-static int ctr_err_y_dest[MAX_NUM_DEV];
 static int ctr_fault[MAX_NUM_DEV];
 static int ctr_comm[MAX_NUM_DEV];
 static int result[MAX_NUM_DEV];
 static int tmp_x;
 static int tmp_y;
-static int tmp_x_dest;
-static int tmp_y_dest;
 static int both_fault;
 static int use;
 static int i;
@@ -157,24 +147,14 @@ void t_lvl(void) /* Task: LeVeL tilt sensor */
                                 }
                                 tmp_x = judge_filter(&ctr_ok_x[i], &ctr_err_x[i], avg_x[i], min_x[i], max_x[i], MAX_LEN_CLLST);
                                 tmp_y = judge_filter(&ctr_ok_y[i], &ctr_err_y[i], avg_y[i], min_y[i], max_y[i], MAX_LEN_CLLST);
-                                tmp_x_dest = judge_filter(&ctr_ok_x_dest[i], &ctr_err_x_dest[i], avg_x[i], x_dest[i] - 1000, x_dest[i] + 1000, MAX_LEN_CLLST);
-                                tmp_y_dest = judge_filter(&ctr_ok_y_dest[i], &ctr_err_y_dest[i], avg_y[i], y_dest[i] - 1000, y_dest[i] + 1000, MAX_LEN_CLLST);
-                                if (tmp_x == -1)
-                                        result[i] |= RESULT_OUT_X;
-                                else if (tmp_x == 1)
-                                        result[i] &= ~RESULT_OUT_X;
-                                if (tmp_y == -1)
-                                        result[i] |= RESULT_OUT_Y;
-                                else if (tmp_y == 1)
-                                        result[i] &= ~RESULT_OUT_Y;
-                                if (tmp_x_dest == 1)
-                                        result[i] |= RESULT_X_DEST;
-                                else if (tmp_x_dest == -1)
-                                        result[i] &= ~RESULT_X_DEST;
-                                if (tmp_y_dest == 1)
-                                        result[i] |= RESULT_Y_DEST;
-                                else if (tmp_y_dest == -1)
-                                        result[i] &= ~RESULT_Y_DEST;
+                                if (tmp_x == 1)
+                                        result[i] |= RESULT_X;
+                                else if (tmp_x == -1)
+                                        result[i] &= ~RESULT_X;
+                                if (tmp_y == 1)
+                                        result[i] |= RESULT_Y;
+                                else if (tmp_y == -1)
+                                        result[i] &= ~RESULT_Y;
                                 break;
                         case 2:
                                 break;
@@ -211,15 +191,17 @@ void t_lvl(void) /* Task: LeVeL tilt sensor */
                                         use = 1;
                                 else
                                         use = 0;
-                                if (result[use] & RESULT_X_DEST && result[use] & RESULT_Y_DEST)
+                                if (result[use] & RESULT_X && result[use] & RESULT_Y)
                                         state.type = TASK_STATE_DEST;
                         }
                         state.type |= TASK_NOTIFY_LVL;
                         state.data = avg_x[use] | avg_y[use] << 16;
                         if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
-                        msgQSend(msg_rse, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
-                        msgQSend(msg_prp, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
+                        if (old_state.type != state.type || old_state.data != state.data) {
+                                msgQSend(msg_rse, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
+                                msgQSend(msg_prp, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
+                        }
                         old_state = state;
                         for (i = 0; i < MAX_NUM_DEV; i++) {
                                 tx[i].dest = addr[i];

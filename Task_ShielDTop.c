@@ -21,20 +21,17 @@
 #define RESULT_FAULT_AMPR    0x00002000
 #define RESULT_FAULT_SYNC    0x00004000
 #define RESULT_FAULT_COMM    0x00008000
-#define RESULT_SAFE          0x00010000
-#define RESULT_ZERO          0x00020000
-#define RESULT_MID           0x00040000
-#define RESULT_DEST          0x00080000
-#define RESULT_STOP          0x00100000
-#define RESULT_LOAD          0x00200000
+#define RESULT_ZERO          0x00010000
+#define RESULT_DEST          0x00020000
+#define RESULT_STOP          0x00040000
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
 
-void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
-int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int remap_form_index(u8 form);
+int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_sdt;
@@ -42,7 +39,6 @@ extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
 
 const static int io_pos_zero = 100;
-const static int io_pos_mid = 10000;
 const static int io_pos_dest = 20000;
 const static int min_pos = -1000;
 const static int max_pos = 36000;
@@ -50,17 +46,11 @@ const static int min_vel = -1500;
 const static int max_vel = 1500;
 const static int min_ampr = 0;
 const static int max_ampr = 200;
-const static int pos_safe = 10000;
 const static int pos_zero = 500;
-const static int pos_mid = 10000;
 const static int pos_dest = 20000;
 const static int ampr_zero = 100;
-const static int ampr_mid = 100;
 const static int ampr_dest = 100;
 const static int ampr_load = 150;
-const static int err_sync_01 = 500;
-const static int err_sync_23 = 500;
-const static int err_sync_0123 = 1000;
 const static struct plan max_plan_len = {1000, 4000, 10000};
 const static int plan_vel_low = 100;
 const static int plan_vel_high = 1000;
@@ -93,27 +83,15 @@ static int old_io;
 static int ctr_ok_pos;
 static int ctr_ok_vel;
 static int ctr_ok_ampr;
-static int ctr_ok_safe;
 static int ctr_ok_zero;
-static int ctr_ok_mid;
 static int ctr_ok_dest;
 static int ctr_ok_stop;
-static int ctr_ok_load;
-static int ctr_ok_sync_01;
-static int ctr_ok_sync_23;
-static int ctr_ok_sync_0123;
 static int ctr_err_pos;
 static int ctr_err_vel;
 static int ctr_err_ampr;
-static int ctr_err_safe;
 static int ctr_err_zero;
-static int ctr_err_mid;
 static int ctr_err_dest;
 static int ctr_err_stop;
-static int ctr_err_load;
-static int ctr_err_sync_01;
-static int ctr_err_sync_23;
-static int ctr_err_sync_0123;
 static int ctr_fault;
 static int ctr_io;
 static int ctr_comm;
@@ -121,24 +99,9 @@ static int result;
 static int tmp_pos;
 static int tmp_vel;
 static int tmp_ampr;
-static int tmp_safe;
 static int tmp_zero;
-static int tmp_mid;
 static int tmp_dest;
 static int tmp_stop;
-static int tmp_load;
-static int tmp_sync_01;
-static int tmp_sync_23;
-static int tmp_sync_0123;
-static int all_safe;
-static int all_zero;
-static int all_mid;
-static int all_dest;
-static int all_load;
-static int any_fault;
-static int sub_01;
-static int sub_23;
-static int sub_0123;
 static int plan_vel;
 static int plan_len_pass;
 static int plan_len_posi;
@@ -300,12 +263,9 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 tmp_pos = judge_filter(&ctr_ok_pos, &ctr_err_pos, avg_pos, min_pos, max_pos, MAX_LEN_CLLST);
                                 tmp_vel = judge_filter(&ctr_ok_vel, &ctr_err_vel, avg_vel, min_vel, max_vel, MAX_LEN_CLLST);
                                 tmp_ampr = judge_filter(&ctr_ok_ampr, &ctr_err_ampr, avg_ampr, min_ampr, max_ampr, MAX_LEN_CLLST);
-                                tmp_safe = judge_filter(&ctr_ok_safe, &ctr_err_safe, avg_pos, pos_safe, max_pos, MAX_LEN_CLLST);
                                 tmp_zero = judge_filter(&ctr_ok_zero, &ctr_err_zero, avg_pos, min_pos, pos_zero, MAX_LEN_CLLST);
-                                tmp_mid = judge_filter(&ctr_ok_mid, &ctr_err_mid, avg_pos, pos_mid - 5000, pos_mid + 5000, MAX_LEN_CLLST);
                                 tmp_dest = judge_filter(&ctr_ok_dest, &ctr_err_dest, avg_pos, pos_dest, max_pos, MAX_LEN_CLLST);
                                 tmp_stop = judge_filter(&ctr_ok_stop, &ctr_err_stop, avg_vel, -5, 5, MAX_LEN_CLLST);
-                                tmp_load = judge_filter(&ctr_ok_load, &ctr_err_load, avg_ampr, ampr_load, max_ampr, MAX_LEN_CLLST);
                                 if (tmp_pos == -1)
                                         result |= RESULT_FAULT_POS;
                                 else if (tmp_pos == 1)
@@ -318,18 +278,10 @@ void t_sdt(void) /* Task: ShielD of Top */
                                         result |= RESULT_FAULT_AMPR;
                                 else if (tmp_ampr == 1)
                                         result &= ~RESULT_FAULT_AMPR;
-                                if (tmp_safe == 1)
-                                        result |= RESULT_SAFE;
-                                else if (tmp_safe == -1)
-                                        result &= ~RESULT_SAFE;
                                 if (tmp_zero == 1)
                                         result |= RESULT_ZERO;
                                 else if (tmp_zero == -1)
                                         result &= ~RESULT_ZERO;
-                                if (tmp_mid == 1)
-                                        result |= RESULT_MID;
-                                else if (tmp_mid == -1)
-                                        result &= ~RESULT_MID;
                                 if (tmp_dest == 1)
                                         result |= RESULT_DEST;
                                 else if (tmp_dest == -1)
@@ -338,19 +290,10 @@ void t_sdt(void) /* Task: ShielD of Top */
                                         result |= RESULT_STOP;
                                 else if (tmp_stop == -1)
                                         result &= ~RESULT_STOP;
-                                if (tmp_load == 1)
-                                        result |= RESULT_LOAD;
-                                else if (tmp_load == -1)
-                                        result &= ~RESULT_LOAD;
                                 break;
                         default:
                                 break;
                         }
-                        all_safe = result & RESULT_SAFE;
-                        all_zero = result & RESULT_ZERO;
-                        all_mid = result & RESULT_MID;
-                        all_dest = result & RESULT_DEST;
-                        all_load = result & RESULT_LOAD;
                         period -= tickGet() - prev;
                         break;
                 default:
@@ -370,15 +313,14 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 if (ctr_comm == -MAX_LEN_CLLST)
                                         result |= RESULT_FAULT_COMM;
                         }
-                        any_fault = result & UNMASK_RESULT_FAULT;
-                        if (any_fault) {
+                        if (result & UNMASK_RESULT_FAULT) {
                                 state.type = TASK_STATE_FAULT;
                                 verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
                         } else {
                                 state.type = TASK_STATE_RUNNING;
-                                if (all_zero)
+                                if (result & RESULT_ZERO)
                                         state.type = TASK_STATE_ZERO;
-                                else if (all_dest)
+                                else if (result & RESULT_DEST)
                                         state.type = TASK_STATE_DEST;
                         }
                         state.type |= TASK_NOTIFY_SDT;
@@ -405,10 +347,10 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 semTake(sem_can[1], WAIT_FOREVER);
                                 rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
                                 semGive(sem_can[1]);
-                                if (tx.data.cmd.enable != J1939_SERVO_DISABLE)
-                                        period = PERIOD_FAST;
-                                else
+                                if (tx.data.cmd.enable == J1939_SERVO_DISABLE)
                                         period = PERIOD_SLOW;
+                                else
+                                        period = PERIOD_FAST;
                                 break;
                         case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_POSI:
                         case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_POSI:

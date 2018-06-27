@@ -610,20 +610,18 @@ void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct 
                 *vel = 0;
                 return;
         }
-        if (*len_pass == 0) {
-                if (len_total < max_plan_len.low * 2) {
-                        plan_len->low = len_total / 2;
-                        plan_len->acc = 0;
-                        plan_len->high = 0;
-                } else if (len_total < max_plan_len.low * 2 + max_plan_len.acc * 2) {
-                        plan_len->low = max_plan_len.low;
-                        plan_len->acc = len_total / 2 - plan_len->low;
-                        plan_len->high = 0;
-                } else {
-                        plan_len->low = max_plan_len.low;
-                        plan_len->acc = max_plan_len.acc;
-                        plan_len->high = len_total - max_plan_len.low * 2 - max_plan_len.acc * 2;
-                }
+        if (len_total < max_plan_len.low * 2) {
+                plan_len->low = len_total / 2;
+                plan_len->acc = 0;
+                plan_len->high = 0;
+        } else if (len_total < max_plan_len.low * 2 + max_plan_len.acc * 2) {
+                plan_len->low = max_plan_len.low;
+                plan_len->acc = len_total / 2 - plan_len->low;
+                plan_len->high = 0;
+        } else {
+                plan_len->low = max_plan_len.low;
+                plan_len->acc = max_plan_len.acc;
+                plan_len->high = len_total - max_plan_len.low * 2 - max_plan_len.acc * 2;
         }
         if (max_plan_len.acc)
                 acc = (plan_vel_high - plan_vel_low) * (plan_vel_high + plan_vel_low) * period / max_plan_len.acc / 2 / sysClkRateGet();
