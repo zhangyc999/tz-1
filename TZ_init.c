@@ -15,6 +15,7 @@ void t_rse(void);
 void t_swv(void);
 void t_prp(void);
 void t_sdt(void);
+void t_sds(void);
 void t_lvl(void);
 void t_dbg(void);
 void udp_server(void);
@@ -32,6 +33,7 @@ MSG_Q_ID msg_rse;
 MSG_Q_ID msg_swv;
 MSG_Q_ID msg_prp;
 MSG_Q_ID msg_sdt;
+MSG_Q_ID msg_sds;
 MSG_Q_ID msg_lvl;
 RING_ID rng_can[2];
 RING_ID rng_udp[2];
@@ -50,6 +52,7 @@ void tz(void)
         msg_swv = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_prp = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_sdt = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
+        msg_sds = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_lvl = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         rng_can[0] = rngCreate(64 * sizeof(struct frame_can));
         rng_can[1] = rngCreate(64 * sizeof(struct frame_can));
@@ -70,6 +73,7 @@ void tz(void)
         taskSpawn("SWV", 90, VX_FP_TASK, 20000, (FUNCPTR)t_swv, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("PRP", 90, VX_FP_TASK, 20000, (FUNCPTR)t_prp, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("SDT", 90, VX_FP_TASK, 20000, (FUNCPTR)t_sdt, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        taskSpawn("SDS", 90, VX_FP_TASK, 20000, (FUNCPTR)t_sds, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("LVL", 90, VX_FP_TASK, 20000, (FUNCPTR)t_lvl, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #ifdef DUMMY
         taskSpawn("DUM", 90, VX_FP_TASK, 20000, (FUNCPTR)t_dum, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
