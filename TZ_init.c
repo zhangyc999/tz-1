@@ -14,7 +14,7 @@ void t_swh(void);
 void t_rse(void);
 void t_swv(void);
 void t_prp(void);
-void t_sdt(void);
+void t_top(void);
 void t_sds(void);
 void t_lvl(void);
 void t_dbg(void);
@@ -32,7 +32,7 @@ MSG_Q_ID msg_swh;
 MSG_Q_ID msg_rse;
 MSG_Q_ID msg_swv;
 MSG_Q_ID msg_prp;
-MSG_Q_ID msg_sdt;
+MSG_Q_ID msg_top;
 MSG_Q_ID msg_sds;
 MSG_Q_ID msg_lvl;
 RING_ID rng_can[2];
@@ -51,7 +51,7 @@ void tz(void)
         msg_rse = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_swv = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_prp = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
-        msg_sdt = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
+        msg_top = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_sds = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         msg_lvl = msgQCreate(4, sizeof(struct frame_can), MSG_Q_FIFO);
         rng_can[0] = rngCreate(64 * sizeof(struct frame_can));
@@ -72,7 +72,7 @@ void tz(void)
         taskSpawn("RSE", 90, VX_FP_TASK, 20000, (FUNCPTR)t_rse, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("SWV", 90, VX_FP_TASK, 20000, (FUNCPTR)t_swv, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("PRP", 90, VX_FP_TASK, 20000, (FUNCPTR)t_prp, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        taskSpawn("SDT", 90, VX_FP_TASK, 20000, (FUNCPTR)t_sdt, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        taskSpawn("TOP", 90, VX_FP_TASK, 20000, (FUNCPTR)t_top, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("SDS", 90, VX_FP_TASK, 20000, (FUNCPTR)t_sds, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("LVL", 90, VX_FP_TASK, 20000, (FUNCPTR)t_lvl, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #ifdef DUMMY

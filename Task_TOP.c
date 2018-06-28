@@ -34,7 +34,7 @@ int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
 void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 
 extern MSG_Q_ID msg_main;
-extern MSG_Q_ID msg_sdt;
+extern MSG_Q_ID msg_top;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
 
@@ -109,7 +109,7 @@ static int plan_len_nega;
 static struct plan plan_len;
 static int i;
 
-void t_sdt(void) /* Task: ShielD of Top */
+void t_top(void) /* Task: TOP lengthwise electric machinery */
 {
         for (i = 0; i < MAX_NUM_FORM; i++)
                 p[i] = (FRAME_RX *)can_cllst_init(rx[i], MAX_LEN_CLLST);
@@ -117,66 +117,66 @@ void t_sdt(void) /* Task: ShielD of Top */
                 prev = tickGet();
                 if (period < 0 || period > PERIOD_SLOW)
                         period = 0;
-                len = msgQReceive(msg_sdt, (char *)&tmp, sizeof(tmp), period);
+                len = msgQReceive(msg_top, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
                         cmd = *(struct main *)tmp;
                         switch (verify.type) {
                         case CMD_IDLE:
-                        case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                        case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                 switch (cmd.type) {
                                 case CMD_IDLE:
-                                case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_POSI:
                                 switch (cmd.type) {
-                                case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_POSI:
+                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                        case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_NEGA:
                                 switch (cmd.type) {
-                                case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                        case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_POSI:
                                 switch (cmd.type) {
-                                case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                        case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
                                 switch (cmd.type) {
-                                case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                         verify = cmd;
                                         break;
                                 default:
@@ -323,19 +323,19 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 else if (result & RESULT_DEST)
                                         state.type = TASK_STATE_DEST;
                         }
-                        state.type |= TASK_NOTIFY_SDT;
+                        state.type |= TASK_NOTIFY_TOP;
                         state.data = 0;
                         if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         old_state = state;
                         switch (verify.type) {
-                        case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
+                        case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
                                 plan_vel = 0;
                                 plan_len_pass = 0;
                                 plan_len_posi = pos_dest - cur_pos;
                                 plan_len_nega = cur_pos - pos_zero;
-                                tx.dest = J1939_ADDR_SDT;
+                                tx.dest = J1939_ADDR_TOP;
                                 tx.form = J1939_FORM_SERVO_VEL;
                                 tx.prio = J1939_PRIO_SERVO_CTRL;
                                 tx.data.cmd.pos = 0x1100;
@@ -352,9 +352,9 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 else
                                         period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_POSI:
-                        case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                tx.dest = J1939_ADDR_SDT;
+                        case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                tx.dest = J1939_ADDR_TOP;
                                 tx.form = J1939_FORM_SERVO_VEL;
                                 tx.prio = J1939_PRIO_SERVO_CTRL;
                                 tx.data.cmd.pos = 0x1100;
@@ -374,9 +374,9 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 semGive(sem_can[1]);
                                 period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_SDT | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                        case CMD_ACT_SDT | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                tx.dest = J1939_ADDR_SDT;
+                        case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                        case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                tx.dest = J1939_ADDR_TOP;
                                 tx.form = J1939_FORM_SERVO_VEL;
                                 tx.prio = J1939_PRIO_SERVO_CTRL;
                                 tx.data.cmd.pos = 0x1100;
@@ -397,7 +397,7 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 period = PERIOD_FAST;
                                 break;
                         default:
-                                tx.dest = J1939_ADDR_SDT;
+                                tx.dest = J1939_ADDR_TOP;
                                 tx.form = J1939_FORM_QUERY;
                                 tx.prio = J1939_PRIO_QUERY;
                                 tx.data.query[0] = 0x00;

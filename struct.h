@@ -187,6 +187,45 @@ struct frame_lvl_tx {
         struct frame_lvl_tx *next;
 };
 
+struct frame_vsl_rx {
+        u8 src;
+        u8 dest;
+        u8 form;
+        u8 prio;
+        union {
+                u8 fault[8];
+                struct {
+                        s16 x;
+                        s16 y;
+                        s16 z;
+                        u8 fault;
+                        u8 proc;
+                } state;
+        } data;
+        u32 tsc;
+        struct frame_vsl_rx *next;
+};
+
+struct frame_vsl_tx {
+        u8 src;
+        u8 dest;
+        u8 form;
+        u8 prio;
+        union {
+                u8 fault[8];
+                u8 query[8];
+                struct {
+                        s16 x;
+                        s16 y;
+                        s16 z;
+                        u8 mode;
+                        u8 proc;
+                } cmd;
+        } data;
+        u32 tsc;
+        struct frame_vsl_tx *next;
+};
+
 struct frame_udp_rx {
         int head;
         struct main cmd;

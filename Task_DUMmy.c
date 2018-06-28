@@ -141,7 +141,7 @@ void t_dum(void)
                                 j = 27;
                                 period[j] = 20;
                                 break;
-                        case J1939_ADDR_SDT:
+                        case J1939_ADDR_TOP:
                                 j = 28;
                                 period[j] = 20;
                                 break;
@@ -297,7 +297,7 @@ void t_dum(void)
                         case J1939_ADDR_MOM1:
                         case J1939_ADDR_MOM2:
                         case J1939_ADDR_MOM3:
-                        case J1939_ADDR_SDT:
+                        case J1939_ADDR_TOP:
                         case J1939_ADDR_SDS0:
                         case J1939_ADDR_SDS1:
                         case J1939_ADDR_SDS2:

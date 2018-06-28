@@ -17,7 +17,7 @@ extern MSG_Q_ID msg_swh;
 extern MSG_Q_ID msg_rse;
 extern MSG_Q_ID msg_swv;
 extern MSG_Q_ID msg_prp;
-extern MSG_Q_ID msg_sdt;
+extern MSG_Q_ID msg_top;
 
 static struct main rx;
 static struct main tx;
@@ -72,7 +72,7 @@ void t_main(void)
                 case CMD_ACT_RSE:
                 case CMD_ACT_SWV:
                 case CMD_ACT_PRP:
-                case CMD_ACT_SDT:
+                case CMD_ACT_TOP:
                         switch (rx.type & UNMASK_CMD_ACT) {
                         case CMD_IDLE:
                                 verify = rx;
@@ -108,10 +108,10 @@ void t_main(void)
                                 tx = rx;
                                 msgQSend(msg_prp, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
-                        case CMD_ACT_SDT:
+                        case CMD_ACT_TOP:
                                 verify = rx;
                                 tx = rx;
-                                msgQSend(msg_sdt, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
+                                msgQSend(msg_top, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
                         default:
                                 break;

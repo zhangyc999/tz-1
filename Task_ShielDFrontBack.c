@@ -37,19 +37,18 @@ int max_pos_of_n(int pos[], int n);
 int min_pos_of_n(int pos[], int n);
 
 extern MSG_Q_ID msg_main;
-extern MSG_Q_ID msg_sdf;
-extern MSG_Q_ID msg_sdb;
+extern MSG_Q_ID msg_sdfb;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
 
 const static int addr[MAX_NUM_DEV] = {J1939_ADDR_SDF0, J1939_ADDR_SDF1, J1939_ADDR_SDF2, J1939_ADDR_SDF3,
                                       J1939_ADDR_SDB0, J1939_ADDR_SDB1, J1939_ADDR_SDB2, J1939_ADDR_SDB3
                                      };
-const static int cable[MAX_NUM_DEV] = {0, 0, 0, 0, 0, 0, 0, 0};
+const static int cable[MAX_NUM_DEV] = {1, 1, 1, 1, 0, 0, 0, 0};
 const static int io_pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100, 100, 100, 100, 100};
 const static int io_pos_dest[MAX_NUM_DEV] = {350000, 350000, 350000, 350000, 350000, 350000, 350000, 350000};
-const static int min_pos[MAX_NUM_DEV] = {5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000};
-const static int max_pos[MAX_NUM_DEV] = {50000, 50000, 50000, 50000, 50000, 50000, 50000, 50000};
+const static int min_pos[MAX_NUM_DEV] = {-100, -100, -100, -100, -100, -100, -100, -100};
+const static int max_pos[MAX_NUM_DEV] = {30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000};
 const static int min_vel[MAX_NUM_DEV] = {-1500, -1500, -1500, -1500, -1500, -1500, -1500, -1500};
 const static int max_vel[MAX_NUM_DEV] = {1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500};
 const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -143,7 +142,7 @@ void t_sdfb(void) /* Task: ShielD of Front/Back */
                 prev = tickGet();
                 if (period < 0 || period > PERIOD_SLOW)
                         period = 0;
-                len = msgQReceive(msg_sds, (char *)&tmp, sizeof(tmp), period);
+                len = msgQReceive(msg_sdfb, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
                         cmd = *(struct main *)tmp;
@@ -474,7 +473,7 @@ void t_sdfb(void) /* Task: ShielD of Front/Back */
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        if (avg_pos[i] > pos_dest[i]) {
+                                        if (result[i] & RESULT_DEST) {
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_posi[i] = 0;
                                         } else {
@@ -499,7 +498,7 @@ void t_sdfb(void) /* Task: ShielD of Front/Back */
                                                 tx[i].form = J1939_FORM_SERVO_VEL;
                                                 tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                                 tx[i].data.cmd.pos = 0x1100;
-                                                if (avg_pos[i] > pos_dest[i]) {
+                                                if (result[i] & RESULT_DEST) {
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len_posi[i] = 0;
                                                 } else {
@@ -539,7 +538,7 @@ void t_sdfb(void) /* Task: ShielD of Front/Back */
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        if (avg_pos[i] > pos_zero[i]) {
+                                        if (result[i] & RESULT_ZERO) {
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_nega[i] = 0;
                                         } else {
@@ -564,7 +563,7 @@ void t_sdfb(void) /* Task: ShielD of Front/Back */
                                                 tx[i].form = J1939_FORM_SERVO_VEL;
                                                 tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                                 tx[i].data.cmd.pos = 0x1100;
-                                                if (avg_pos[i] > pos_zero[i]) {
+                                                if (result[i] & RESULT_ZERO) {
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len_nega[i] = 0;
                                                 } else {

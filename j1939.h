@@ -37,7 +37,7 @@
 #define J1939_ADDR_MOM1 0x85 /* constant MOMent electric machinery on the back  left  */
 #define J1939_ADDR_MOM2 0x89 /* constant MOMent electric machinery on the back  right */
 #define J1939_ADDR_MOM3 0x86 /* constant MOMent electric machinery on the front right */
-#define J1939_ADDR_SDT  0x93 /* ShielD of Top                                         */
+#define J1939_ADDR_TOP  0x93 /* TOP lengthwise electric machinery                     */
 #define J1939_ADDR_SDS0 0xA3 /* ShielD of Side on the front left                      */
 #define J1939_ADDR_SDS1 0xA5 /* ShielD of Side on the back  left                      */
 #define J1939_ADDR_SDS2 0xA9 /* ShielD of Side on the back  right                     */

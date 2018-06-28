@@ -174,7 +174,7 @@ void t_udp_tx(int fd)
                                 case J1939_ADDR_MOM3:
                                         offset = 35;
                                         break;
-                                case J1939_ADDR_SDT:
+                                case J1939_ADDR_TOP:
                                         offset = 36;
                                         break;
                                 case J1939_ADDR_SDS0:
