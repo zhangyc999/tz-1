@@ -219,8 +219,8 @@ void t_udp_tx(int fd)
                                 if (offset >= 0 && offset < 50)
                                         memcpy((u8 *)&tx + 8 + offset * (sizeof(can) - 4), &can, sizeof(can) - 4);
                         }
-                        sendto(fd, (caddr_t)&tx, sizeof(tx), 0, (struct sockaddr *)&client, size);
                 }
+                sendto(fd, (caddr_t)&tx, sizeof(tx), 0, (struct sockaddr *)&client, size);
         }
 }
 

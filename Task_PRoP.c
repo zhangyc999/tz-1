@@ -389,9 +389,17 @@ void t_prp(void) /* Task: PRoP */
                         default:
                                 break;
                         }
-                        all_zero = result[0] & result[1] & result[2] & result[3] & RESULT_ZERO;
-                        all_dest = result[0] & result[1] & result[2] & result[3] & RESULT_DEST;
-                        all_mid = result[0] & result[1] & result[2] & result[3] & RESULT_MID;
+                        all_zero = 0;
+                        all_dest = 0;
+                        all_mid = 0;
+                        for (i = 0; i < MAX_NUM_DEV; i++) {
+                                all_zero &= result[i];
+                                all_dest &= result[i];
+                                all_mid &= result[i];
+                        }
+                        all_zero &= RESULT_ZERO;
+                        all_dest &= RESULT_DEST;
+                        all_mid &= RESULT_MID;
                         num_load = 0;
                         for (i = 0; i < MAX_NUM_DEV; i++) {
                                 if (result[i] & RESULT_LOAD)
@@ -400,15 +408,11 @@ void t_prp(void) /* Task: PRoP */
                         sub = avg_pos[max_pos_of_n(avg_pos, MAX_NUM_DEV)] - avg_pos[min_pos_of_n(avg_pos, MAX_NUM_DEV)];
                         tmp_sync = judge_filter(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
                         if (tmp_sync == -1) {
-                                result[0] |= RESULT_FAULT_SYNC;
-                                result[1] |= RESULT_FAULT_SYNC;
-                                result[2] |= RESULT_FAULT_SYNC;
-                                result[3] |= RESULT_FAULT_SYNC;
+                                for (i = 0; i < MAX_NUM_DEV; i++)
+                                        result[i] |= RESULT_FAULT_SYNC;
                         } else if (tmp_sync == 1) {
-                                result[0] &= ~RESULT_FAULT_SYNC;
-                                result[1] &= ~RESULT_FAULT_SYNC;
-                                result[2] &= ~RESULT_FAULT_SYNC;
-                                result[3] &= ~RESULT_FAULT_SYNC;
+                                for (i = 0; i < MAX_NUM_DEV; i++)
+                                        result[i] &= ~RESULT_FAULT_SYNC;
                         }
                         period -= tickGet() - prev;
                         break;
@@ -431,10 +435,13 @@ void t_prp(void) /* Task: PRoP */
                                                 result[i] |= RESULT_FAULT_COMM;
                                 }
                         }
+                        any_fault = 0;
+                        for (i = 0; i < MAX_NUM_DEV; i++)
+                                any_fault |= result[i];
                         if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_AUTO)
-                                any_fault = (result[0] | result[1] | result[2] | result[3]) & UNMASK_RESULT_FAULT;
+                                any_fault &= UNMASK_RESULT_FAULT;
                         else if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_MANUAL)
-                                any_fault = (result[0] | result[1] | result[2] | result[3]) & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
+                                any_fault = any_fault & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
                                 verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;

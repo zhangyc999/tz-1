@@ -348,9 +348,17 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         default:
                                 break;
                         }
-                        all_zero = result[0] & result[1] & result[2] & result[3] & RESULT_ZERO;
-                        all_dest = result[0] & result[1] & result[2] & result[3] & RESULT_DEST;
-                        all_safe = result[0] & result[1] & result[2] & result[3] & RESULT_SAFE;
+                        all_zero = 0;
+                        all_dest = 0;
+                        all_safe = 0;
+                        for (i = 0; i < MAX_NUM_DEV; i++) {
+                                all_zero &= result[i];
+                                all_dest &= result[i];
+                                all_safe &= result[i];
+                        }
+                        all_zero &= RESULT_ZERO;
+                        all_dest &= RESULT_DEST;
+                        all_safe &RESULT_SAFE;
                         sub_01 = avg_pos[0] - avg_pos[1];
                         sub_23 = avg_pos[2] - avg_pos[3];
                         sub_0123 = (avg_pos[0] - avg_pos[3] + avg_pos[1] - avg_pos[2]) / 2;
@@ -403,10 +411,13 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 result[i] |= RESULT_FAULT_COMM;
                                 }
                         }
+                        any_fault = 0;
+                        for (i = 0; i < MAX_NUM_DEV; i++)
+                                any_fault |= result[i];
                         if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_AUTO)
-                                any_fault = (result[0] | result[1] | result[2] | result[3]) & UNMASK_RESULT_FAULT;
+                                any_fault &= UNMASK_RESULT_FAULT;
                         else if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_MANUAL)
-                                any_fault = (result[0] | result[1] | result[2] | result[3]) & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
+                                any_fault = any_fault & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
                                 verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
