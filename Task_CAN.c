@@ -122,10 +122,12 @@ void t_can(void)
                                 continue;
                         if (sizeof(buf) != rngBufGet(rng_can[i], (char *)&buf, sizeof(buf)))
                                 continue;
+#if 0
                         if (i == 0)
                                 printf("\033[25;1HCAN0:%8d", rngNBytes(rng_can[0]));
                         if (i == 1)
                                 printf("\033[25;16HCAN1:%8d", rngNBytes(rng_can[1]));
+#endif
                         buf.tsc = tickGet();
                         id[0] = J1939_ADDR_MAIN;
                         id[1] = buf.dest;
@@ -155,12 +157,18 @@ static void isr_can_rx0(void)
         struct frame_can can;
         u8 id[4];
         MSG_Q_ID msg;
-        if (read_reg_byte(ADDR_CAN0, PELI_IR) != 0x01)
+        if (read_reg_byte(ADDR_CAN0, PELI_IR) != 0x01) {
+                write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
                 return;
-        if ((read_reg_byte(ADDR_CAN0, PELI_SR) & 0x03) != 0x01)
+        }
+        if ((read_reg_byte(ADDR_CAN0, PELI_SR) & 0x03) != 0x01) {
+                write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
                 return;
-        if (read_reg_byte(ADDR_CAN0, PELI_RXB0) != 0x88)
+        }
+        if (read_reg_byte(ADDR_CAN0, PELI_RXB0) != 0x88) {
+                write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
                 return;
+        }
         id[3] = read_reg_byte(ADDR_CAN0, PELI_RXB1);
         id[2] = read_reg_byte(ADDR_CAN0, PELI_RXB2);
         id[1] = read_reg_byte(ADDR_CAN0, PELI_RXB3);
@@ -168,8 +176,10 @@ static void isr_can_rx0(void)
         *(int *)id >>= 3;
         can.src = id[0];
         can.dest = id[1];
-        if (can.dest != J1939_ADDR_MAIN)
+        if (can.dest != J1939_ADDR_MAIN) {
+                write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
                 return;
+        }
         can.form = id[2];
         can.prio = id[3];
         can.data[0] = read_reg_byte(ADDR_CAN0, PELI_RXB5);
@@ -195,12 +205,18 @@ static void isr_can_rx1(void)
         struct frame_can can;
         u8 id[4];
         MSG_Q_ID msg;
-        if (read_reg_byte(ADDR_CAN1, PELI_IR) != 0x01)
+        if (read_reg_byte(ADDR_CAN1, PELI_IR) != 0x01) {
+                write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
                 return;
-        if ((read_reg_byte(ADDR_CAN1, PELI_SR) & 0x03) != 0x01)
+        }
+        if ((read_reg_byte(ADDR_CAN1, PELI_SR) & 0x03) != 0x01) {
+                write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
                 return;
-        if (read_reg_byte(ADDR_CAN1, PELI_RXB0) != 0x88)
+        }
+        if (read_reg_byte(ADDR_CAN1, PELI_RXB0) != 0x88) {
+                write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
                 return;
+        }
         id[3] = read_reg_byte(ADDR_CAN1, PELI_RXB1);
         id[2] = read_reg_byte(ADDR_CAN1, PELI_RXB2);
         id[1] = read_reg_byte(ADDR_CAN1, PELI_RXB3);
@@ -208,8 +224,10 @@ static void isr_can_rx1(void)
         *(int *)id >>= 3;
         can.src = id[0];
         can.dest = id[1];
-        if (can.dest != J1939_ADDR_MAIN)
+        if (can.dest != J1939_ADDR_MAIN) {
+                write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
                 return;
+        }
         can.form = id[2];
         can.prio = id[3];
         can.data[0] = read_reg_byte(ADDR_CAN1, PELI_RXB5);

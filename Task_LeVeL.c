@@ -195,7 +195,7 @@ void t_lvl(void) /* Task: LeVeL tilt sensor */
                                         state.type = TASK_STATE_DEST;
                         }
                         state.type |= TASK_NOTIFY_LVL;
-                        state.data = avg_x[use] | avg_y[use] << 16;
+                        state.data = (int)(avg_x[use]) & 0x0000FFFF | (int)avg_y[use] << 16;
                         if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         if (old_state.type != state.type || old_state.data != state.data) {

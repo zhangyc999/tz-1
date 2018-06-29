@@ -4,6 +4,8 @@
 #include "type.h"
 #include "vx.h"
 
+#include <math.h>
+
 #define PERIOD_SLOW 200
 #define PERIOD_FAST 20
 
@@ -28,6 +30,10 @@
 #define RESULT_SAFE          0x00080000
 #define RESULT_LOAD          0x00100000
 
+#define PI 3.141592653589793
+#define AA 1000000
+#define BB 1000000
+
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
 
@@ -37,6 +43,8 @@ int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
 void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 int max_pos_of_n(int pos[], int n);
 int min_pos_of_n(int pos[], int n);
+void lvl_posi(int delta[], int a, int b, int data);
+void lvl_nega(int delta[], int a, int b, int data);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_rse;
@@ -159,33 +167,19 @@ void t_rse(void) /* Task: RaiSE arm */
                         if ((cmd.type & UNMASK_TASK_NOTIFY) == TASK_NOTIFY_LVL) {
                                 if ((cmd.type & UNMASK_TASK_STATE) == TASK_STATE_RUNNING) {
                                         if (num_load > 2) {
-                                                delta_posi[0] = 10000; /* WQ: LF+ */
-                                                delta_posi[1] = 10000; /* WQ: LB+ */
-                                                delta_posi[2] = 10000; /* WQ: RB+ */
-                                                delta_posi[3] = 10000; /* WQ: RF+ */
-                                                delta_nega[0] = 10000; /* WQ: LF- */
-                                                delta_nega[1] = 10000; /* WQ: LB- */
-                                                delta_nega[2] = 10000; /* WQ: RB- */
-                                                delta_nega[3] = 10000; /* WQ: RF- */
+                                                lvl_posi(delta_posi, AA, BB, cmd.data);
+                                                lvl_nega(delta_nega, AA, BB, cmd.data);
                                         } else {
-                                                delta_posi[0] = 0;
-                                                delta_posi[1] = 0;
-                                                delta_posi[2] = 0;
-                                                delta_posi[3] = 0;
-                                                delta_nega[0] = 0;
-                                                delta_nega[1] = 0;
-                                                delta_nega[2] = 0;
-                                                delta_nega[3] = 0;
+                                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                                        delta_posi[i] = 0;
+                                                        delta_nega[i] = 0;
+                                                }
                                         }
                                 } else {
-                                        delta_posi[0] = 0;
-                                        delta_posi[1] = 0;
-                                        delta_posi[2] = 0;
-                                        delta_posi[3] = 0;
-                                        delta_nega[0] = 0;
-                                        delta_nega[1] = 0;
-                                        delta_nega[2] = 0;
-                                        delta_nega[3] = 0;
+                                        for (i = 0; i < MAX_NUM_DEV; i++) {
+                                                delta_posi[i] = 0;
+                                                delta_nega[i] = 0;
+                                        }
                                 }
                         } else {
                                 switch (verify.type) {
@@ -443,7 +437,7 @@ void t_rse(void) /* Task: RaiSE arm */
                                 any_fault = any_fault & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
-                                verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
+                                /* verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP; */
                         } else {
                                 state.type = TASK_STATE_RUNNING;
                                 if (all_zero)
@@ -638,5 +632,61 @@ void t_rse(void) /* Task: RaiSE arm */
                         }
                         break;
                 }
+        }
+}
+
+void lvl_posi(int delta[], int a, int b, int data)
+{
+        double x, y;
+        x = ((s16)(data & 0x0000FFFF) * 0.001 + 0.1) * PI / 180;
+        y = ((s16)((data & 0xFFFF0000) >> 16) * 0.001 + 0.1) * PI / 180;
+        if (x >= 0 && y >= 0) {
+                delta[0] = 0;
+                delta[1] = sin(x) * b * 0.01;
+                delta[2] = (sin(x) * b + sin(x) * a) * 0.01;
+                delta[3] = sin(y) * a * 0.01;
+        } else if (x >= 0 && y < 0) {
+                delta[0] = -sin(y) * a * 0.01;
+                delta[1] = (sin(x) * b - sin(y) * a) * 0.01;
+                delta[2] = sin(x) * b * 0.01;
+                delta[3] = 0;
+        } else if (x < 0 && y >= 0) {
+                delta[0] = -sin(x) * b * 0.01;
+                delta[1] = 0;
+                delta[2] = sin(y) * a * 0.01;
+                delta[3] = (-sin(x) * b + sin(y) * a) * 0.01;
+        } else {
+                delta[0] = (-sin(x) * b - sin(y) * a) * 0.01;
+                delta[1] = -sin(y) * a * 0.01;
+                delta[2] = 0;
+                delta[3] = -sin(x) * b * 0.01;
+        }
+}
+
+void lvl_nega(int delta[], int a, int b, int data)
+{
+        double x, y;
+        x = ((s16)(data & 0x0000FFFF) * 0.001 + 0.1) * PI / 180;
+        y = ((s16)((data & 0xFFFF0000) >> 16) * 0.001 + 0.1) * PI / 180;
+        if (x >= 0 && y >= 0) {
+                delta[0] = -(sin(x) * b + sin(x) * a) * 0.01;
+                delta[1] = -sin(x) * a * 0.01;
+                delta[2] = 0;
+                delta[3] = -sin(x) * b  * 0.01;
+        } else if (x >= 0 && y < 0) {
+                delta[0] = -sin(x) * b * 0.01;
+                delta[1] = 0;
+                delta[2] = sin(y) * a * 0.01;
+                delta[3] = (sin(y) * a - sin(x) * b) * 0.01;
+        } else if (x < 0 && y >= 0) {
+                delta[0] = -sin(y) * a * 0.01;
+                delta[1] = (sin(x) * b - sin(y) * a) * 0.01;
+                delta[2] = sin(x) * b * 0.01;
+                delta[3] = 0;
+        } else {
+                delta[0] = 0;
+                delta[1] = sin(x) * b * 0.01;
+                delta[2] = (sin(x) * b + sin(y) * a) * 0.01;
+                delta[3] = sin(y) * a * 0.01;
         }
 }

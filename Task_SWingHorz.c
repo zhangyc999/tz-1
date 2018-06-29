@@ -420,7 +420,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 any_fault = any_fault & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
-                                verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
+                                /* verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP; */
                         } else {
                                 state.type = TASK_STATE_RUNNING;
                                 if (all_zero)
