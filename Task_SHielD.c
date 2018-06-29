@@ -33,8 +33,8 @@ struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int remap_form_index(u8 form);
 int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
 void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
-int max_pos_of_n(int pos[], int n);
-int min_pos_of_n(int pos[], int n);
+int max_of_n(int buf[], int n);
+int min_of_n(int buf[], int n);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_shd;
@@ -363,7 +363,7 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                         }
                         all_zero &= RESULT_ZERO;
                         all_dest &= RESULT_DEST;
-                        sub = avg_pos[max_pos_of_n(avg_pos, MAX_NUM_DEV)] - avg_pos[min_pos_of_n(avg_pos, MAX_NUM_DEV)];
+                        sub = max_of_n(avg_pos, MAX_NUM_DEV) - min_of_n(avg_pos, MAX_NUM_DEV);
                         tmp_sync = judge_filter(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
                         if (tmp_sync == -1) {
                                 for (i = 0; i < MAX_NUM_DEV; i++)

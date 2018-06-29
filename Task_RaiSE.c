@@ -41,8 +41,8 @@ struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int remap_form_index(u8 form);
 int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
 void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
-int max_pos_of_n(int pos[], int n);
-int min_pos_of_n(int pos[], int n);
+int max_of_n(int buf[], int n);
+int min_of_n(int buf[], int n);
 void lvl_posi(int delta[], int a, int b, int data);
 void lvl_nega(int delta[], int a, int b, int data);
 
@@ -144,7 +144,6 @@ static int plan_len_pass[MAX_NUM_DEV];
 static int plan_len_posi[MAX_NUM_DEV];
 static int plan_len_nega[MAX_NUM_DEV];
 static struct plan plan_len[MAX_NUM_DEV];
-static struct plan ext_plan_len[MAX_NUM_DEV];
 static int delta_posi[MAX_NUM_DEV];
 static int delta_nega[MAX_NUM_DEV];
 static int i;
@@ -398,7 +397,7 @@ void t_rse(void) /* Task: RaiSE arm */
                                 if (result[i] & RESULT_LOAD)
                                         num_load++;
                         }
-                        sub = avg_pos[max_pos_of_n(avg_pos, MAX_NUM_DEV)] - avg_pos[min_pos_of_n(avg_pos, MAX_NUM_DEV)];
+                        sub = max_of_n(avg_pos, MAX_NUM_DEV) - min_of_n(avg_pos, MAX_NUM_DEV);
                         tmp_sync = judge_filter(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
 #if 0
                         if (tmp_sync == -1) {
@@ -492,10 +491,8 @@ void t_rse(void) /* Task: RaiSE arm */
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_posi[i] = 0;
                                         } else {
-                                                ext_plan_len[i] = max_plan_len[i];
-                                                ext_plan_len[i].high += delta_posi[i];
                                                 plan(&plan_vel[i], plan_len_posi[i] + delta_posi[i], &plan_len_pass[i],
-                                                     &plan_len[i], ext_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                     &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                 tx[i].data.cmd.vel = (s16)plan_vel[i];
                                         }
                                         tx[i].data.cmd.ampr = 1000;
@@ -557,10 +554,8 @@ void t_rse(void) /* Task: RaiSE arm */
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_nega[i] = 0;
                                         } else {
-                                                ext_plan_len[i] = max_plan_len[i];
-                                                ext_plan_len[i].high += delta_nega[i];
                                                 plan(&plan_vel[i], plan_len_nega[i] + delta_nega[i], &plan_len_pass[i],
-                                                     &plan_len[i], ext_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                     &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                 tx[i].data.cmd.vel = -(s16)plan_vel[i];
                                         }
                                         tx[i].data.cmd.ampr = 1000;
@@ -640,55 +635,65 @@ void t_rse(void) /* Task: RaiSE arm */
 void lvl_posi(int delta[], int a, int b, int data)
 {
         double x, y;
+        int tmp[4];
         x = ((s16)(data & 0x0000FFFF) * 0.001 + 0.1) * PI / 180;
         y = ((s16)((data & 0xFFFF0000) >> 16) * 0.001 + 0.1) * PI / 180;
         if (x >= 0 && y >= 0) {
-                delta[0] = 0;
-                delta[1] = sin(x) * b * 0.01;
-                delta[2] = (sin(x) * b + sin(x) * a) * 0.01;
-                delta[3] = sin(y) * a * 0.01;
+                tmp[0] = 0;
+                tmp[1] = sin(x) * b * 0.01;
+                tmp[2] = (sin(x) * b + sin(x) * a) * 0.01;
+                tmp[3] = sin(y) * a * 0.01;
         } else if (x >= 0 && y < 0) {
-                delta[0] = -sin(y) * a * 0.01;
-                delta[1] = (sin(x) * b - sin(y) * a) * 0.01;
-                delta[2] = sin(x) * b * 0.01;
-                delta[3] = 0;
+                tmp[0] = -sin(y) * a * 0.01;
+                tmp[1] = (sin(x) * b - sin(y) * a) * 0.01;
+                tmp[2] = sin(x) * b * 0.01;
+                tmp[3] = 0;
         } else if (x < 0 && y >= 0) {
-                delta[0] = -sin(x) * b * 0.01;
-                delta[1] = 0;
-                delta[2] = sin(y) * a * 0.01;
-                delta[3] = (-sin(x) * b + sin(y) * a) * 0.01;
+                tmp[0] = -sin(x) * b * 0.01;
+                tmp[1] = 0;
+                tmp[2] = sin(y) * a * 0.01;
+                tmp[3] = (-sin(x) * b + sin(y) * a) * 0.01;
         } else {
-                delta[0] = (-sin(x) * b - sin(y) * a) * 0.01;
-                delta[1] = -sin(y) * a * 0.01;
-                delta[2] = 0;
-                delta[3] = -sin(x) * b * 0.01;
+                tmp[0] = (-sin(x) * b - sin(y) * a) * 0.01;
+                tmp[1] = -sin(y) * a * 0.01;
+                tmp[2] = 0;
+                tmp[3] = -sin(x) * b * 0.01;
         }
+        delta[0] = tmp[0] - max_of_n(tmp, 4);
+        delta[1] = tmp[1] - max_of_n(tmp, 4);
+        delta[2] = tmp[2] - max_of_n(tmp, 4);
+        delta[3] = tmp[3] - max_of_n(tmp, 4);
 }
 
 void lvl_nega(int delta[], int a, int b, int data)
 {
         double x, y;
+        int tmp[4];
         x = ((s16)(data & 0x0000FFFF) * 0.001 + 0.1) * PI / 180;
         y = ((s16)((data & 0xFFFF0000) >> 16) * 0.001 + 0.1) * PI / 180;
         if (x >= 0 && y >= 0) {
-                delta[0] = -(sin(x) * b + sin(x) * a) * 0.01;
-                delta[1] = -sin(x) * a * 0.01;
-                delta[2] = 0;
-                delta[3] = -sin(x) * b  * 0.01;
+                tmp[0] = -(sin(x) * b + sin(x) * a) * 0.01;
+                tmp[1] = -sin(x) * a * 0.01;
+                tmp[2] = 0;
+                tmp[3] = -sin(x) * b  * 0.01;
         } else if (x >= 0 && y < 0) {
-                delta[0] = -sin(x) * b * 0.01;
-                delta[1] = 0;
-                delta[2] = sin(y) * a * 0.01;
-                delta[3] = (sin(y) * a - sin(x) * b) * 0.01;
+                tmp[0] = -sin(x) * b * 0.01;
+                tmp[1] = 0;
+                tmp[2] = sin(y) * a * 0.01;
+                tmp[3] = (sin(y) * a - sin(x) * b) * 0.01;
         } else if (x < 0 && y >= 0) {
-                delta[0] = -sin(y) * a * 0.01;
-                delta[1] = (sin(x) * b - sin(y) * a) * 0.01;
-                delta[2] = sin(x) * b * 0.01;
-                delta[3] = 0;
+                tmp[0] = -sin(y) * a * 0.01;
+                tmp[1] = (sin(x) * b - sin(y) * a) * 0.01;
+                tmp[2] = sin(x) * b * 0.01;
+                tmp[3] = 0;
         } else {
-                delta[0] = 0;
-                delta[1] = sin(x) * b * 0.01;
-                delta[2] = (sin(x) * b + sin(y) * a) * 0.01;
-                delta[3] = sin(y) * a * 0.01;
+                tmp[0] = 0;
+                tmp[1] = sin(x) * b * 0.01;
+                tmp[2] = (sin(x) * b + sin(y) * a) * 0.01;
+                tmp[3] = sin(y) * a * 0.01;
         }
+        delta[0] = tmp[0] - min_of_n(tmp, 4);
+        delta[1] = tmp[1] - min_of_n(tmp, 4);
+        delta[2] = tmp[2] - min_of_n(tmp, 4);
+        delta[3] = tmp[3] - min_of_n(tmp, 4);
 }

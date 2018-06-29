@@ -79,5 +79,5 @@ void tz(void)
         taskSpawn("DUM", 90, VX_FP_TASK, 20000, (FUNCPTR)t_dum, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #endif /* DUMMY */
         taskSpawn("DBG", 100, VX_FP_TASK, 20000, (FUNCPTR)t_dbg, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        udp_server();
+        /*        udp_server();*/
 }

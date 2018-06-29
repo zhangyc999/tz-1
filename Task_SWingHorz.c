@@ -708,3 +708,17 @@ int min_pos_of_n(int pos[], int n)
         }
         return j;
 }
+
+int max_of_n(int *buf, int n)
+{
+        if (n > 1)
+                return max(*buf, max_of_n(buf + 1, n - 1));
+        return *buf;
+}
+
+int min_of_n(int *buf, int n)
+{
+        if (n > 1)
+                return min(*buf, min_of_n(buf + 1, n - 1));
+        return *buf;
+}
