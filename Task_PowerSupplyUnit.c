@@ -225,6 +225,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                         old_state = state;
                         switch (verify.type) {
                         case CMD_ACT_PSU_24 | CMD_DIR_POSI:
+                                tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
                                 tx.prio = J1939_PRIO_PSU_CTRL;
@@ -238,6 +239,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 period = PERIOD_SLOW;
                                 break;
                         case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
+                                tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
                                 tx.prio = J1939_PRIO_PSU_CTRL;
@@ -250,6 +252,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 period = PERIOD_SLOW;
                                 break;
                         case CMD_ACT_PSU_500 | CMD_DIR_POSI:
+                                tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
                                 tx.prio = J1939_PRIO_PSU_CTRL;
@@ -262,6 +265,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 period = PERIOD_SLOW;
                                 break;
                         case CMD_ACT_PSU_500 | CMD_DIR_NEGA:
+                                tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
                                 tx.prio = J1939_PRIO_PSU_CTRL;
@@ -274,6 +278,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 period = PERIOD_SLOW;
                                 break;
                         default:
+                                tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_QUERY;
                                 tx.prio = J1939_PRIO_QUERY;

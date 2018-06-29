@@ -204,6 +204,7 @@ void t_lvl(void) /* Task: LeVeL tilt sensor */
                         }
                         old_state = state;
                         for (i = 0; i < MAX_NUM_DEV; i++) {
+                                tx[i].src = J1939_ADDR_MAIN;
                                 tx[i].dest = addr[i];
                                 tx[i].form = J1939_FORM_QUERY;
                                 tx[i].prio = J1939_PRIO_QUERY;

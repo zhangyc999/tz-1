@@ -441,6 +441,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         plan_len_pass[i] = 0;
                                         plan_len_posi[i] = pos_dest[i] - cur_pos[i];
                                         plan_len_nega[i] = cur_pos[i] - pos_zero[i];
+                                        tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
@@ -465,6 +466,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_POSI:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
@@ -489,6 +491,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_POSI:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         if (verify.data & 1 << i) {
+                                                tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
                                                 tx[i].form = J1939_FORM_SERVO_VEL;
                                                 tx[i].prio = J1939_PRIO_SERVO_CTRL;
@@ -508,6 +511,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                                 semGive(sem_can[cable[i]]);
                                         } else {
+                                                tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
                                                 tx[i].form = J1939_FORM_QUERY;
                                                 tx[i].prio = J1939_PRIO_QUERY;
@@ -528,6 +532,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 break;
                         case CMD_ACT_SWH | CMD_MODE_AUTO | CMD_DIR_NEGA:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
@@ -552,6 +557,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         case CMD_ACT_SWH | CMD_MODE_MANUAL | CMD_DIR_NEGA:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         if (verify.data & 1 << i) {
+                                                tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
                                                 tx[i].form = J1939_FORM_SERVO_VEL;
                                                 tx[i].prio = J1939_PRIO_SERVO_CTRL;
@@ -571,6 +577,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                                 semGive(sem_can[cable[i]]);
                                         } else {
+                                                tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
                                                 tx[i].form = J1939_FORM_QUERY;
                                                 tx[i].prio = J1939_PRIO_QUERY;
@@ -591,6 +598,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 break;
                         default:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
                                         tx[i].form = J1939_FORM_QUERY;
                                         tx[i].prio = J1939_PRIO_QUERY;

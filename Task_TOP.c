@@ -332,6 +332,7 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                                 plan_len_pass = 0;
                                 plan_len_posi = pos_dest - cur_pos;
                                 plan_len_nega = cur_pos - pos_zero;
+                                tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_TOP;
                                 tx.form = J1939_FORM_SERVO_VEL;
                                 tx.prio = J1939_PRIO_SERVO_CTRL;
@@ -351,6 +352,7 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                                 break;
                         case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_POSI:
                         case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                                tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_TOP;
                                 tx.form = J1939_FORM_SERVO_VEL;
                                 tx.prio = J1939_PRIO_SERVO_CTRL;
@@ -373,6 +375,7 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                                 break;
                         case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_NEGA:
                         case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                                tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_TOP;
                                 tx.form = J1939_FORM_SERVO_VEL;
                                 tx.prio = J1939_PRIO_SERVO_CTRL;
@@ -394,6 +397,7 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                                 period = PERIOD_FAST;
                                 break;
                         default:
+                                tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_TOP;
                                 tx.form = J1939_FORM_QUERY;
                                 tx.prio = J1939_PRIO_QUERY;

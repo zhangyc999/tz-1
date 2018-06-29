@@ -118,8 +118,10 @@ void t_can(void)
         for (;;) {
                 taskDelay(1);
                 for (i = 0; i < 2; i++) {
-                        if (read_reg_byte(addr_can[i], PELI_SR) & 0x80)
+                        if (read_reg_byte(addr_can[i], PELI_SR) & 0x80) {
+                                init_can(i);
                                 continue;
+                        }
                         if (sizeof(buf) != rngBufGet(rng_can[i], (char *)&buf, sizeof(buf)))
                                 continue;
 #if 0
@@ -129,7 +131,7 @@ void t_can(void)
                                 printf("\033[25;16HCAN1:%8d", rngNBytes(rng_can[1]));
 #endif
                         buf.tsc = tickGet();
-                        id[0] = J1939_ADDR_MAIN;
+                        id[0] = buf.src;
                         id[1] = buf.dest;
                         id[2] = buf.form;
                         id[3] = buf.prio;
