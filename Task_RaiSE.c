@@ -400,6 +400,7 @@ void t_rse(void) /* Task: RaiSE arm */
                         }
                         sub = avg_pos[max_pos_of_n(avg_pos, MAX_NUM_DEV)] - avg_pos[min_pos_of_n(avg_pos, MAX_NUM_DEV)];
                         tmp_sync = judge_filter(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
+#if 0
                         if (tmp_sync == -1) {
                                 for (i = 0; i < MAX_NUM_DEV; i++)
                                         result[i] |= RESULT_FAULT_SYNC;
@@ -407,6 +408,7 @@ void t_rse(void) /* Task: RaiSE arm */
                                 for (i = 0; i < MAX_NUM_DEV; i++)
                                         result[i] &= ~RESULT_FAULT_SYNC;
                         }
+#endif
                         period -= tickGet() - prev;
                         break;
                 default:
@@ -437,7 +439,7 @@ void t_rse(void) /* Task: RaiSE arm */
                                 any_fault = any_fault & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
-                                /* verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP; */
+                                verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
                         } else {
                                 state.type = TASK_STATE_RUNNING;
                                 if (all_zero)
