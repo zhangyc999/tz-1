@@ -33,7 +33,7 @@ typedef struct frame_cyl_tx FRAME_TX;
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int remap_form_index(u8 form);
 int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
-void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
+void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_swh;
@@ -136,7 +136,6 @@ static int plan_vel[MAX_NUM_DEV];
 static int plan_len_pass[MAX_NUM_DEV];
 static int plan_len_posi[MAX_NUM_DEV];
 static int plan_len_nega[MAX_NUM_DEV];
-static struct plan plan_len[MAX_NUM_DEV];
 static int i;
 static int j;
 
@@ -475,8 +474,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_posi[i] = 0;
                                         } else {
-                                                plan(&plan_vel[i], plan_len_posi[i], &plan_len_pass[i],
-                                                     &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
+                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                 tx[i].data.cmd.vel = (s16)plan_vel[i];
                                         }
                                         tx[i].data.cmd.ampr = 1000;
@@ -500,8 +499,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len_posi[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], plan_len_posi[i], &plan_len_pass[i],
-                                                             &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
+                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                         tx[i].data.cmd.vel = (s16)plan_vel[i];
                                                 }
                                                 tx[i].data.cmd.ampr = 1000;
@@ -537,12 +536,12 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         tx[i].form = J1939_FORM_SERVO_VEL;
                                         tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        if (avg_ampr[i] > ampr_zero[i]) {
+                                        if (avg_ampr[i] > ampr_zero[i]) { /* && result[i] & RESULT_ZERO */
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_nega[i] = 0;
                                         } else {
-                                                plan(&plan_vel[i], plan_len_nega[i], &plan_len_pass[i],
-                                                     &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
+                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                 tx[i].data.cmd.vel = -(s16)plan_vel[i];
                                         }
                                         tx[i].data.cmd.ampr = 1000;
@@ -562,12 +561,12 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 tx[i].form = J1939_FORM_SERVO_VEL;
                                                 tx[i].prio = J1939_PRIO_SERVO_CTRL;
                                                 tx[i].data.cmd.pos = 0x1100;
-                                                if (avg_ampr[i] > ampr_zero[i]) {
+                                                if (avg_ampr[i] > ampr_zero[i]) { /* && result[i] & RESULT_ZERO */
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len_nega[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], plan_len_nega[i], &plan_len_pass[i],
-                                                             &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
+                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                         tx[i].data.cmd.vel = -(s16)plan_vel[i];
                                                 }
                                                 tx[i].data.cmd.ampr = 1000;
@@ -622,41 +621,42 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         }
 }
 
-void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period)
+void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period)
 {
+        struct plan tmp;
         int acc = 0;
-        if (len_total <= 0) {
+        if (len <= 0) {
                 *vel = 0;
                 return;
         }
-        if (len_total < max_plan_len.low * 2) {
-                plan_len->low = len_total / 2;
-                plan_len->acc = 0;
-                plan_len->high = 0;
-        } else if (len_total < max_plan_len.low * 2 + max_plan_len.acc * 2) {
-                plan_len->low = max_plan_len.low;
-                plan_len->acc = len_total / 2 - plan_len->low;
-                plan_len->high = 0;
+        if (len < max_plan_len.low * 2) {
+                tmp.low = len / 2;
+                tmp.acc = 0;
+                tmp.high = 0;
+        } else if (len < max_plan_len.low * 2 + max_plan_len.acc * 2) {
+                tmp.low = max_plan_len.low;
+                tmp.acc = len / 2 - tmp.low;
+                tmp.high = 0;
         } else {
-                plan_len->low = max_plan_len.low;
-                plan_len->acc = max_plan_len.acc;
-                plan_len->high = len_total - max_plan_len.low * 2 - max_plan_len.acc * 2;
+                tmp.low = max_plan_len.low;
+                tmp.acc = max_plan_len.acc;
+                tmp.high = len - max_plan_len.low * 2 - max_plan_len.acc * 2;
         }
         if (max_plan_len.acc)
                 acc = (plan_vel_high - plan_vel_low) * (plan_vel_high + plan_vel_low) * period / max_plan_len.acc / 2 / sysClkRateGet();
         else
                 acc = 0;
-        if (*len_pass < plan_len->low) {
+        if (*len_pass < tmp.low) {
                 *vel = plan_vel_low;
-        } else if (*len_pass < plan_len->low + plan_len->acc) {
+        } else if (*len_pass < tmp.low + tmp.acc) {
                 if (*vel < plan_vel_high - acc)
                         *vel += acc;
-        } else if (*len_pass < plan_len->low + plan_len->acc + plan_len->high) {
+        } else if (*len_pass < tmp.low + tmp.acc + tmp.high) {
                 *vel = plan_vel_high;
-        } else if (*len_pass < plan_len->low + plan_len->acc + plan_len->high + plan_len->acc) {
+        } else if (*len_pass < tmp.low + tmp.acc * 2 + tmp.high) {
                 if (*vel > plan_vel_low + acc)
                         *vel -= acc;
-        } else if (*len_pass < plan_len->low * 2 + plan_len->acc * 2 + plan_len->high) {
+        } else if (*len_pass < tmp.low * 2 + tmp.acc * 2 + tmp.high) {
                 *vel = plan_vel_low;
         }
         *len_pass += *vel * period / sysClkRateGet();
@@ -693,38 +693,38 @@ struct frame_can *can_cllst_init(struct frame_can buf[], int len)
         return buf;
 }
 
-int max_pos_of_n(int pos[], int n)
+int max_index_of_n(int buf[], int n)
 {
         int tmp;
         int i;
         int j = 0;
         for (i = 0; i < n; i++) {
-                if (pos[j] < pos[i])
+                if (buf[j] < buf[i])
                         j = i;
         }
         return j;
 }
 
-int min_pos_of_n(int pos[], int n)
+int min_index_of_n(int buf[], int n)
 {
         int tmp;
         int i;
         int j = 0;
         for (i = 0; i < n; i++) {
-                if (pos[j] > pos[i])
+                if (buf[j] > buf[i])
                         j = i;
         }
         return j;
 }
 
-int max_of_n(int *buf, int n)
+int max_of_n(int buf[], int n)
 {
         if (n > 1)
                 return max(*buf, max_of_n(buf + 1, n - 1));
         return *buf;
 }
 
-int min_of_n(int *buf, int n)
+int min_of_n(int buf[], int n)
 {
         if (n > 1)
                 return min(*buf, min_of_n(buf + 1, n - 1));

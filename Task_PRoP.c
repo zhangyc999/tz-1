@@ -5,6 +5,7 @@
 #include "vx.h"
 
 #include <math.h>
+
 #define PERIOD_SLOW 200
 #define PERIOD_FAST 20
 
@@ -28,6 +29,7 @@
 #define RESULT_STOP          0x00040000
 #define RESULT_MID           0x00080000
 #define RESULT_LOAD          0x00100000
+
 #define PI 3.141592653589793
 #define AA 1000000
 #define BB 1000000
@@ -38,7 +40,7 @@ typedef struct frame_cyl_tx FRAME_TX;
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int remap_form_index(u8 form);
 int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
-void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
+void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 int max_of_n(int buf[], int n);
 int min_of_n(int buf[], int n);
 void lvl_posi(int delta[], int a, int b, int data);
@@ -141,7 +143,6 @@ static int plan_vel[MAX_NUM_DEV];
 static int plan_len_pass[MAX_NUM_DEV];
 static int plan_len_posi[MAX_NUM_DEV];
 static int plan_len_nega[MAX_NUM_DEV];
-static struct plan plan_len[MAX_NUM_DEV];
 static int delta_posi[MAX_NUM_DEV];
 static int delta_nega[MAX_NUM_DEV];
 static int segement;
@@ -509,8 +510,8 @@ void t_prp(void) /* Task: PRoP */
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_posi[i] = 0;
                                         } else {
-                                                plan(&plan_vel[i], plan_len_posi[i] + delta_posi[i], &plan_len_pass[i],
-                                                     &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
+                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                 tx[i].data.cmd.vel = (s16)plan_vel[i];
                                         }
                                         tx[i].data.cmd.ampr = 1000;
@@ -534,8 +535,8 @@ void t_prp(void) /* Task: PRoP */
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len_posi[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], plan_len_posi[i], &plan_len_pass[i],
-                                                             &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
+                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                         tx[i].data.cmd.vel = (s16)plan_vel[i];
                                                 }
                                                 tx[i].data.cmd.ampr = 1000;
@@ -585,8 +586,8 @@ void t_prp(void) /* Task: PRoP */
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_nega[i] = 0;
                                         } else {
-                                                plan(&plan_vel[i], plan_len_nega[i] + delta_nega[i], &plan_len_pass[i],
-                                                     &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
+                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                 tx[i].data.cmd.vel = -(s16)plan_vel[i];
                                         }
                                         tx[i].data.cmd.ampr = 1000;
@@ -610,8 +611,8 @@ void t_prp(void) /* Task: PRoP */
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len_nega[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], plan_len_nega[i], &plan_len_pass[i],
-                                                             &plan_len[i], max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
+                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                         tx[i].data.cmd.vel = -(s16)plan_vel[i];
                                                 }
                                                 tx[i].data.cmd.ampr = 1000;

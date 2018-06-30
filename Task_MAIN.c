@@ -67,7 +67,7 @@ void t_main(void)
                 case CMD_IDLE:
                 case CMD_ACT_GEND:
                 case CMD_ACT_GENS:
-                case CMD_ACT_PSU_24:
+                case CMD_ACT_PSU:
                 case CMD_ACT_SWH:
                 case CMD_ACT_RSE:
                 case CMD_ACT_SWV:
@@ -83,7 +83,7 @@ void t_main(void)
                                 tx = rx;
                                 msgQSend(msg_gen, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);
                                 break;
-                        case CMD_ACT_PSU_24:
+                        case CMD_ACT_PSU:
                                 verify = rx;
                                 tx = rx;
                                 msgQSend(msg_psu, (char *)&tx, sizeof(tx), NO_WAIT, MSG_PRI_NORMAL);

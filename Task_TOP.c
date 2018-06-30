@@ -31,7 +31,7 @@ typedef struct frame_cyl_tx FRAME_TX;
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int remap_form_index(u8 form);
 int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
-void plan(int *vel, int len_total, int *len_pass, struct plan *plan_len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
+void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_top;
@@ -103,7 +103,6 @@ static int plan_vel;
 static int plan_len_pass;
 static int plan_len_posi;
 static int plan_len_nega;
-static struct plan plan_len;
 static int i;
 
 void t_top(void) /* Task: TOP lengthwise electric machinery */
@@ -361,8 +360,8 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                                         tx.data.cmd.vel = 0;
                                         plan_len_posi = 0;
                                 } else {
-                                        plan(&plan_vel, plan_len_posi, &plan_len_pass,
-                                             &plan_len, max_plan_len, plan_vel_low, plan_vel_high, PERIOD_FAST);
+                                        plan(&plan_vel, &plan_len_pass, plan_len_posi,
+                                             max_plan_len, plan_vel_low, plan_vel_high, PERIOD_FAST);
                                         tx.data.cmd.vel = (s16)plan_vel;
                                 }
                                 tx.data.cmd.ampr = 1000;
@@ -384,8 +383,8 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                                         tx.data.cmd.vel = 0;
                                         plan_len_nega = 0;
                                 } else {
-                                        plan(&plan_vel, plan_len_nega, &plan_len_pass,
-                                             &plan_len, max_plan_len, plan_vel_low, plan_vel_high, PERIOD_FAST);
+                                        plan(&plan_vel, &plan_len_pass, plan_len_nega,
+                                             max_plan_len, plan_vel_low, plan_vel_high, PERIOD_FAST);
                                         tx.data.cmd.vel = -(s16)plan_vel;
                                 }
                                 tx.data.cmd.ampr = 1000;

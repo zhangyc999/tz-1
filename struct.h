@@ -76,7 +76,9 @@ struct frame_psu_rx {
         union {
                 u8 fault[8];
                 struct {
-                        u32 v24;
+                        u8 brake;
+                        u8 light;
+                        u16 v24;
                         u16 v500;
                         u8 fault;
                         u8 xor;
@@ -101,7 +103,9 @@ struct frame_psu_tx {
                 u8 fault[8];
                 u8 query[8];
                 struct {
-                        u32 v24;
+                        u8 brake;
+                        u8 light;
+                        u16 v24;
                         u16 v500;
                         u8 res;
                         u8 xor;

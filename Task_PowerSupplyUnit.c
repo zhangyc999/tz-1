@@ -100,10 +100,14 @@ void t_psu(void) /* Task: Power Supply Unit */
                         cmd = *(struct main *)tmp;
                         switch (verify.type) {
                         case CMD_IDLE:
-                        case CMD_ACT_PSU_24 | CMD_DIR_POSI:
-                        case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
-                        case CMD_ACT_PSU_500 | CMD_DIR_POSI:
-                        case CMD_ACT_PSU_500 | CMD_DIR_NEGA:
+                        case CMD_ACT_PSU | CMD_PSU_BRAKE | CMD_DIR_POSI:
+                        case CMD_ACT_PSU | CMD_PSU_BRAKE | CMD_DIR_NEGA:
+                        case CMD_ACT_PSU | CMD_PSU_LIGHT | CMD_DIR_POSI:
+                        case CMD_ACT_PSU | CMD_PSU_LIGHT | CMD_DIR_NEGA:
+                        case CMD_ACT_PSU | CMD_PSU_24 | CMD_DIR_POSI:
+                        case CMD_ACT_PSU | CMD_PSU_24 | CMD_DIR_NEGA:
+                        case CMD_ACT_PSU | CMD_PSU_500 | CMD_DIR_POSI:
+                        case CMD_ACT_PSU | CMD_PSU_500 | CMD_DIR_NEGA:
                                 verify = cmd;
                                 break;
                         default:
@@ -224,54 +228,80 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         old_state = state;
                         switch (verify.type) {
-                        case CMD_ACT_PSU_24 | CMD_DIR_POSI:
+                        case CMD_ACT_PSU | CMD_PSU_BRAKE | CMD_DIR_POSI:
+                        case CMD_ACT_PSU | CMD_PSU_BRAKE | CMD_DIR_NEGA:
                                 tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
-                                tx.prio = J1939_PRIO_PSU_CTRL;
-                                tx.data.io.v24 = psu_delay(verify.data, old_cmd);
-                                old_cmd = tx.data.io.v24;
+                                tx.data.io.light = (u8)verify.data;
                                 tx.data.io.res = 0x66;
-                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
                                 semTake(sem_can[0], WAIT_FOREVER);
                                 rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
                                 semGive(sem_can[0]);
                                 period = PERIOD_SLOW;
                                 break;
-                        case CMD_ACT_PSU_24 | CMD_DIR_NEGA:
+                        case CMD_ACT_PSU | CMD_PSU_LIGHT | CMD_DIR_POSI:
+                        case CMD_ACT_PSU | CMD_PSU_LIGHT | CMD_DIR_NEGA:
+                                tx.src = J1939_ADDR_MAIN;
+                                tx.dest = J1939_ADDR_PSU;
+                                tx.form = J1939_FORM_PSU_CTRL;
+                                tx.data.io.light = (u8)verify.data;
+                                tx.data.io.res = 0x66;
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
+                                semTake(sem_can[0], WAIT_FOREVER);
+                                rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[0]);
+                                period = PERIOD_SLOW;
+                                break;
+                        case CMD_ACT_PSU | CMD_PSU_24 | CMD_DIR_POSI:
+                                tx.src = J1939_ADDR_MAIN;
+                                tx.dest = J1939_ADDR_PSU;
+                                tx.form = J1939_FORM_PSU_CTRL;
+                                tx.prio = J1939_PRIO_PSU_CTRL;
+                                tx.data.io.v24 = (u16)psu_delay(verify.data, old_cmd);
+                                old_cmd = tx.data.io.v24;
+                                tx.data.io.res = 0x66;
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
+                                semTake(sem_can[0], WAIT_FOREVER);
+                                rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[0]);
+                                period = PERIOD_SLOW;
+                                break;
+                        case CMD_ACT_PSU | CMD_PSU_24 | CMD_DIR_NEGA:
                                 tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
                                 tx.prio = J1939_PRIO_PSU_CTRL;
                                 tx.data.io.v24 = 0;
                                 tx.data.io.res = 0x66;
-                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
                                 semTake(sem_can[0], WAIT_FOREVER);
                                 rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
                                 semGive(sem_can[0]);
                                 period = PERIOD_SLOW;
                                 break;
-                        case CMD_ACT_PSU_500 | CMD_DIR_POSI:
+                        case CMD_ACT_PSU | CMD_PSU_500 | CMD_DIR_POSI:
                                 tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
                                 tx.prio = J1939_PRIO_PSU_CTRL;
-                                tx.data.io.v500 = verify.data;
+                                tx.data.io.v500 = (u16)verify.data;
                                 tx.data.io.res = 0x66;
-                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
                                 semTake(sem_can[0], WAIT_FOREVER);
                                 rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
                                 semGive(sem_can[0]);
                                 period = PERIOD_SLOW;
                                 break;
-                        case CMD_ACT_PSU_500 | CMD_DIR_NEGA:
+                        case CMD_ACT_PSU | CMD_PSU_500 | CMD_DIR_NEGA:
                                 tx.src = J1939_ADDR_MAIN;
                                 tx.dest = J1939_ADDR_PSU;
                                 tx.form = J1939_FORM_PSU_CTRL;
                                 tx.prio = J1939_PRIO_PSU_CTRL;
                                 tx.data.io.v500 = 0;
                                 tx.data.io.res = 0x66;
-                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.v24, 7);
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
                                 semTake(sem_can[0], WAIT_FOREVER);
                                 rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
                                 semGive(sem_can[0]);
