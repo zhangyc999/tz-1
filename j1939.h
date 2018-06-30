@@ -54,6 +54,7 @@
 
 #define J1939_PRIO_PASSWD     0x08
 #define J1939_PRIO_SAVE       0x08
+#define J1939_PRIO_SET_ADDR   0x08
 #define J1939_PRIO_QUERY      0x0C
 #define J1939_PRIO_FAULT      0x0C
 #define J1939_PRIO_SERVO_ZERO 0x08
@@ -62,6 +63,7 @@
 
 #define J1939_FORM_PASSWD     0x40
 #define J1939_FORM_SAVE       0x4F
+#define J1939_FORM_SET_ADDR   0x46
 #define J1939_FORM_QUERY      0x5C
 #define J1939_FORM_FAULT      0x5F
 #define J1939_FORM_SERVO_ZERO 0xA9

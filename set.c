@@ -56,6 +56,41 @@ void save_config(u8 addr)
         rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
 }
 
+void set_addr(u8 old, u8 addr)
+{
+        tx.src = J1939_ADDR_GW;
+        tx.dest = old;
+        tx.form = J1939_FORM_SET_ADDR;
+        tx.prio = J1939_PRIO_SET_ADDR;
+        tx.data[0] = 0x00;
+        tx.data[1] = old;
+        tx.data[2] = 0x00;
+        tx.data[3] = 0x00;
+        tx.data[4] = 0x00;
+        tx.data[5] = addr;
+        tx.data[6] = 0x00;
+        tx.data[7] = 0x00;
+        rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
+}
+
+void set_ratio(u8 addr, u16 ratio)
+{
+        tx.src = J1939_ADDR_GW;
+        tx.dest = addr;
+        tx.form = J1939_FORM_SET_ADDR;
+        tx.prio = J1939_PRIO_SET_ADDR;
+        memcpy(&tx.data[0], &ratio, sizeof(u16));
+        tx.data[2] = 0x00;
+        tx.data[3] = 0x00;
+        tx.data[4] = 0x00;
+        tx.data[5] = 0x00;
+        tx.data[6] = 0x00;
+        tx.data[7] = 0x00;
+        rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
+}
+
 void set_zero(u8 addr)
 {
         tx.src = J1939_ADDR_MAIN;
