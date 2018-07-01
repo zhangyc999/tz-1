@@ -4,11 +4,15 @@
 #include "type.h"
 #include "vx.h"
 
+#define MSG    msg_shd
+#define CMD    CMD_ACT_SHD
+#define NOTIFY TASK_NOTIFY_SHD
+
 #define PERIOD_SLOW 200
 #define PERIOD_FAST 20
 
 #define MAX_NUM_DEV   12
-#define MAX_NUM_FORM  3
+#define MAX_NUM_FORM  1
 #define MAX_LEN_CLLST 16
 
 #define UNMASK_RESULT_IO     0x000000FF
@@ -22,22 +26,25 @@
 #define RESULT_FAULT_AMPR    0x00002000
 #define RESULT_FAULT_SYNC    0x00004000
 #define RESULT_FAULT_COMM    0x00008000
-#define RESULT_ZERO          0x00010000
-#define RESULT_DEST          0x00020000
-#define RESULT_STOP          0x00040000
+#define RESULT_STOP          0x01000000
+#define RESULT_ZERO          0x02000000
+#define RESULT_DEST          0x04000000
+#define RESULT_LOAD          0x08000000
+#define RESULT_SAFE          0x10000000
+#define RESULT_PART_POSI(x)  (0x00010000 << x)
+#define RESULT_PART_NEGA(x)  (0x00100000 << x)
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
 
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
-int remap_form_index(u8 form);
-int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+int filter_judge(int *ok, int *err, int value, int min, int max, int ctr);
 void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 int max_of_n(int buf[], int n);
 int min_of_n(int buf[], int n);
 
 extern MSG_Q_ID msg_main;
-extern MSG_Q_ID msg_shd;
+extern MSG_Q_ID MSG;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
 
@@ -46,7 +53,8 @@ const static int addr[MAX_NUM_DEV] = {
         J1939_ADDR_SDF0, J1939_ADDR_SDF1, J1939_ADDR_SDF2, J1939_ADDR_SDF3,
         J1939_ADDR_SDB0, J1939_ADDR_SDB1, J1939_ADDR_SDB2, J1939_ADDR_SDB3
 };
-const static int cable[MAX_NUM_DEV] = {0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0};
+const static int cable[MAX_NUM_DEV] = {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0};
+const static int sign[MAX_NUM_DEV] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 const static int io_pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100};
 const static int io_pos_dest[MAX_NUM_DEV] = {350000, 350000, 350000, 350000, 350000, 350000, 350000, 350000, 350000, 350000, 350000, 350000};
 const static int min_pos[MAX_NUM_DEV] = {-100, -100, -100, -100, -100, -100, -100, -100, -100, -100, -100, -100};
@@ -94,32 +102,32 @@ static int old_io[MAX_NUM_DEV];
 static int ctr_ok_pos[MAX_NUM_DEV];
 static int ctr_ok_vel[MAX_NUM_DEV];
 static int ctr_ok_ampr[MAX_NUM_DEV];
+static int ctr_ok_stop[MAX_NUM_DEV];
 static int ctr_ok_zero[MAX_NUM_DEV];
 static int ctr_ok_dest[MAX_NUM_DEV];
-static int ctr_ok_stop[MAX_NUM_DEV];
 static int ctr_ok_sync;
 static int ctr_err_pos[MAX_NUM_DEV];
 static int ctr_err_vel[MAX_NUM_DEV];
 static int ctr_err_ampr[MAX_NUM_DEV];
+static int ctr_err_stop[MAX_NUM_DEV];
 static int ctr_err_zero[MAX_NUM_DEV];
 static int ctr_err_dest[MAX_NUM_DEV];
-static int ctr_err_stop[MAX_NUM_DEV];
 static int ctr_err_sync;
 static int ctr_fault[MAX_NUM_DEV];
 static int ctr_io[MAX_NUM_DEV];
 static int ctr_comm[MAX_NUM_DEV];
-static int result[MAX_NUM_DEV];
-static int tmp_pos;
-static int tmp_vel;
-static int tmp_ampr;
-static int tmp_zero;
-static int tmp_dest;
-static int tmp_stop;
+static int tmp_pos[MAX_NUM_DEV];
+static int tmp_vel[MAX_NUM_DEV];
+static int tmp_ampr[MAX_NUM_DEV];
+static int tmp_stop[MAX_NUM_DEV];
+static int tmp_zero[MAX_NUM_DEV];
+static int tmp_dest[MAX_NUM_DEV];
+static int sub;
 static int tmp_sync;
+static int result[MAX_NUM_DEV];
 static int all_zero;
 static int all_dest;
 static int any_fault;
-static int sub;
 static int plan_vel[MAX_NUM_DEV];
 static int plan_len_pass[MAX_NUM_DEV];
 static int plan_len_posi[MAX_NUM_DEV];
@@ -137,66 +145,66 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                 prev = tickGet();
                 if (period < 0 || period > PERIOD_SLOW)
                         period = 0;
-                len = msgQReceive(msg_shd, (char *)&tmp, sizeof(tmp), period);
+                len = msgQReceive(MSG, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
                         cmd = *(struct main *)tmp;
                         switch (verify.type) {
                         case CMD_IDLE:
-                        case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
                                 switch (cmd.type) {
                                 case CMD_IDLE:
-                                case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                 switch (cmd.type) {
-                                case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                        case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                 switch (cmd.type) {
-                                case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                 switch (cmd.type) {
-                                case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                 switch (cmd.type) {
-                                case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
                                 default:
@@ -210,68 +218,29 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                         break;
                 case sizeof(struct frame_can):
                         can = *(struct frame_can *)tmp;
-                        switch (can.src) {
-                        case J1939_ADDR_SDS0:
-                                i = 0;
-                                break;
-                        case J1939_ADDR_SDS1:
-                                i = 1;
-                                break;
-                        case J1939_ADDR_SDS2:
-                                i = 2;
-                                break;
-                        case J1939_ADDR_SDS3:
-                                i = 3;
-                                break;
-                        case J1939_ADDR_SDF0:
-                                i = 4;
-                                break;
-                        case J1939_ADDR_SDF1:
-                                i = 5;
-                                break;
-                        case J1939_ADDR_SDF2:
-                                i = 6;
-                                break;
-                        case J1939_ADDR_SDF3:
-                                i = 7;
-                                break;
-                        case J1939_ADDR_SDB0:
-                                i = 8;
-                                break;
-                        case J1939_ADDR_SDB1:
-                                i = 9;
-                                break;
-                        case J1939_ADDR_SDB2:
-                                i = 10;
-                                break;
-                        case J1939_ADDR_SDB3:
-                                i = 11;
-                                break;
-                        default:
-                                break;
+                        for (i = 0; i < MAX_NUM_DEV; i++) {
+                                if (can.src == addr[i])
+                                        break;
                         }
                         has_received[i] = 1;
-                        j = remap_form_index(can.form);
-                        switch (j) {
-                        case 0:
-                        case 1:
-                                break;
-                        case 2:
+                        switch (can.form) {
+                        case 0xC6:
+                                j = 0;
                                 p[i][j] = p[i][j]->next;
-                                sum_pos[i] -= (int)(p[i][j]->data.state.pos) * 20;
+                                sum_pos[i] -= (int)p[i][j]->data.state.pos * 20;
                                 sum_vel[i] -= p[i][j]->data.state.vel;
                                 sum_ampr[i] -= abs(p[i][j]->data.state.ampr);
                                 old_fault[i] = p[i][j]->data.state.fault;
                                 old_io[i] = p[i][j]->data.state.io;
-                                p[i][j]->data.state.pos = ((FRAME_RX *)&can)->data.state.pos;
-                                p[i][j]->data.state.vel = ((FRAME_RX *)&can)->data.state.vel;
+                                p[i][j]->data.state.pos = sign[i] * ((FRAME_RX *)&can)->data.state.pos;
+                                p[i][j]->data.state.vel = sign[i] * ((FRAME_RX *)&can)->data.state.vel;
                                 p[i][j]->data.state.ampr = ((FRAME_RX *)&can)->data.state.ampr;
                                 p[i][j]->data.state.fault = ((FRAME_RX *)&can)->data.state.fault;
                                 p[i][j]->data.state.io = ((FRAME_RX *)&can)->data.state.io;
-                                cur_pos[i] = (int)(p[i][j]->data.state.pos) * 20;
+                                cur_pos[i] = (int)p[i][j]->data.state.pos * 20;
                                 cur_vel[i] = p[i][j]->data.state.vel;
                                 cur_ampr[i] = abs(p[i][j]->data.state.ampr);
-                                sum_pos[i] += (int)(p[i][j]->data.state.pos) * 20;
+                                sum_pos[i] += (int)p[i][j]->data.state.pos * 20;
                                 sum_vel[i] += p[i][j]->data.state.vel;
                                 sum_ampr[i] += abs(p[i][j]->data.state.ampr);
                                 avg_pos[i] = sum_pos[i] / MAX_LEN_CLLST;
@@ -284,19 +253,19 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                         ctr_fault[i] = 0;
                                 }
                                 switch (p[i][j]->data.state.fault) {
-                                case J1939_FAULT_NORMAL:
-                                case J1939_FAULT_WARN:
+                                case 0x00:
+                                case 0x03:
                                         if (ctr_fault[i] < 5)
                                                 break;
                                         result[i] &= ~RESULT_FAULT_GENERAL;
                                         result[i] &= ~RESULT_FAULT_SERIOUS;
                                         break;
-                                case J1939_FAULT_GENERAL:
+                                case 0x0C:
                                         if (ctr_fault[i] < 3)
                                                 break;
                                         result[i] |= RESULT_FAULT_GENERAL;
                                         break;
-                                case J1939_FAULT_SERIOUS:
+                                case 0xF0:
                                         result[i] |= RESULT_FAULT_SERIOUS;
                                         break;
                                 default:
@@ -310,46 +279,46 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                 }
                                 if (ctr_io[i] > 5)
                                         result[i] = result[i] & ~UNMASK_RESULT_IO | p[i][j]->data.state.io;
+                                tmp_pos[i] = filter_judge(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], MAX_LEN_CLLST);
+                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
+                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
+                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
+                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
+                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
 #if 0
-                                if (avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x0000000C) != 0x00000004
-                                    || avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x0000000C) != 0x00000008
-                                    || avg_pos[i] > io_pos_zero[i] + 500 && avg_pos[i] < io_pos_dest[i] - 500 && (result[i] & 0x0000000C) != 0x0000000C
-                                    || avg_pos[i] >= io_pos_dest[i] - 500 && avg_pos[i] <= io_pos_dest[i] + 500 && result[i] & 0x00000008
-                                    || avg_pos[i] >= io_pos_zero[i] - 500 && avg_pos[i] <= io_pos_zero[i] + 500 && result[i] & 0x00000004)
+                                if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
+                                    || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
+                                    || avg_pos[i] > io_pos_zero[i] + 500 && avg_pos[i] < io_pos_dest[i] - 500 && result[i] & 0x00000003
+                                    || avg_pos[i] >= io_pos_zero[i] - 500 && avg_pos[i] <= io_pos_zero[i] + 500 && result[i] & 0x00000002
+                                    || avg_pos[i] >= io_pos_dest[i] - 500 && avg_pos[i] <= io_pos_dest[i] + 500 && result[i] & 0x00000001)
                                         result[i] |= RESULT_FAULT_IO;
                                 else
                                         result[i] &= ~RESULT_FAULT_IO;
 #endif
-                                tmp_pos = judge_filter(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_vel = judge_filter(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
-                                tmp_ampr = judge_filter(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
-                                tmp_zero = judge_filter(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
-                                tmp_dest = judge_filter(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_stop = judge_filter(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
-                                if (tmp_pos == -1)
+                                if (tmp_pos[i] == -1)
                                         result[i] |= RESULT_FAULT_POS;
-                                else if (tmp_pos == 1)
+                                else if (tmp_pos[i] == 1)
                                         result[i] &= ~RESULT_FAULT_POS;
-                                if (tmp_vel == -1)
+                                if (tmp_vel[i] == -1)
                                         result[i] |= RESULT_FAULT_VEL;
-                                else if (tmp_vel == 1)
+                                else if (tmp_vel[i] == 1)
                                         result[i] &= ~RESULT_FAULT_VEL;
-                                if (tmp_ampr == -1)
+                                if (tmp_ampr[i] == -1)
                                         result[i] |= RESULT_FAULT_AMPR;
-                                else if (tmp_ampr == 1)
+                                else if (tmp_ampr[i] == 1)
                                         result[i] &= ~RESULT_FAULT_AMPR;
-                                if (tmp_zero == 1)
-                                        result[i] |= RESULT_ZERO;
-                                else if (tmp_zero == -1)
-                                        result[i] &= ~RESULT_ZERO;
-                                if (tmp_dest == 1)
-                                        result[i] |= RESULT_DEST;
-                                else if (tmp_dest == -1)
-                                        result[i] &= ~RESULT_DEST;
-                                if (tmp_stop == 1)
+                                if (tmp_stop[i] == 1)
                                         result[i] |= RESULT_STOP;
-                                else if (tmp_stop == -1)
+                                else if (tmp_stop[i] == -1)
                                         result[i] &= ~RESULT_STOP;
+                                if (tmp_zero[i] == 1)
+                                        result[i] |= RESULT_ZERO;
+                                else if (tmp_zero[i] == -1)
+                                        result[i] &= ~RESULT_ZERO;
+                                if (tmp_dest[i] == 1)
+                                        result[i] |= RESULT_DEST;
+                                else if (tmp_dest[i] == -1)
+                                        result[i] &= ~RESULT_DEST;
                                 break;
                         default:
                                 break;
@@ -362,8 +331,9 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                         }
                         all_zero &= RESULT_ZERO;
                         all_dest &= RESULT_DEST;
+#if 0
                         sub = max_of_n(avg_pos, MAX_NUM_DEV) - min_of_n(avg_pos, MAX_NUM_DEV);
-                        tmp_sync = judge_filter(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
+                        tmp_sync = filter_judge(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
                         if (tmp_sync == -1) {
                                 for (i = 0; i < MAX_NUM_DEV; i++)
                                         result[i] |= RESULT_FAULT_SYNC;
@@ -371,6 +341,7 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                 for (i = 0; i < MAX_NUM_DEV; i++)
                                         result[i] &= ~RESULT_FAULT_SYNC;
                         }
+#endif
                         period -= tickGet() - prev;
                         break;
                 default:
@@ -409,14 +380,14 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                 else if (all_dest)
                                         state.type = TASK_STATE_DEST;
                         }
-                        state.type |= TASK_NOTIFY_SHD;
+                        state.type |= NOTIFY;
                         state.data = 0;
                         if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         old_state = state;
                         switch (verify.type) {
-                        case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         plan_vel[i] = 0;
                                         plan_len_pass[i] = 0;
@@ -424,20 +395,20 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                         plan_len_nega[i] = cur_pos[i] - pos_zero[i];
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
-                                        tx[i].form = J1939_FORM_SERVO_VEL;
-                                        tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                        tx[i].form = 0xA5;
+                                        tx[i].prio = 0x08;
                                         tx[i].data.cmd.pos = 0x1100;
                                         tx[i].data.cmd.vel = 0;
                                         tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
+                                        tx[i].data.cmd.exec = 0x9A;
                                         if (result[i] & RESULT_STOP)
-                                                tx[i].data.cmd.enable = J1939_SERVO_DISABLE;
+                                                tx[i].data.cmd.enable = 0x3C;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        if (tx[i].data.cmd.enable != J1939_SERVO_DISABLE)
+                                        if (tx[i].data.cmd.enable != 0x3C)
                                                 break;
                                 }
                                 if (i == MAX_NUM_DEV)
@@ -445,12 +416,12 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                 else
                                         period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
-                                        tx[i].form = J1939_FORM_SERVO_VEL;
-                                        tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                        tx[i].form = 0xA5;
+                                        tx[i].prio = 0x08;
                                         tx[i].data.cmd.pos = 0x1100;
                                         if (result[i] & RESULT_DEST) {
                                                 tx[i].data.cmd.vel = 0;
@@ -458,24 +429,48 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                         } else {
                                                 plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
                                                      max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                tx[i].data.cmd.vel = (s16)plan_vel[i];
+                                                tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
                                         }
                                         tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
+                                        tx[i].data.cmd.exec = 0x9A;
+                                        tx[i].data.cmd.enable = 0xC3;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
                                 period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA5;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.cmd.pos = 0x1100;
+                                        if (result[i] & RESULT_ZERO) {
+                                                tx[i].data.cmd.vel = 0;
+                                                plan_len_nega[i] = 0;
+                                        } else {
+                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
+                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel[i];
+                                        }
+                                        tx[i].data.cmd.ampr = 1000;
+                                        tx[i].data.cmd.exec = 0x9A;
+                                        tx[i].data.cmd.enable = 0xC3;
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
+                                }
+                                period = PERIOD_FAST;
+                                break;
+                        case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         if (verify.data & 1 << i) {
                                                 tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
-                                                tx[i].form = J1939_FORM_SERVO_VEL;
-                                                tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                                tx[i].form = 0xA5;
+                                                tx[i].prio = 0x08;
                                                 tx[i].data.cmd.pos = 0x1100;
                                                 if (result[i] & RESULT_DEST) {
                                                         tx[i].data.cmd.vel = 0;
@@ -483,19 +478,19 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                                 } else {
                                                         plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
                                                              max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                        tx[i].data.cmd.vel = (s16)plan_vel[i];
+                                                        tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
                                                 }
                                                 tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                                tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
+                                                tx[i].data.cmd.exec = 0x9A;
+                                                tx[i].data.cmd.enable = 0xC3;
                                                 semTake(sem_can[cable[i]], WAIT_FOREVER);
                                                 rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                                 semGive(sem_can[cable[i]]);
                                         } else {
                                                 tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
-                                                tx[i].form = J1939_FORM_QUERY;
-                                                tx[i].prio = J1939_PRIO_QUERY;
+                                                tx[i].form = 0x5C;
+                                                tx[i].prio = 0x0C;
                                                 tx[i].data.query[0] = 0x00;
                                                 tx[i].data.query[1] = 0x11;
                                                 tx[i].data.query[2] = 0x22;
@@ -511,37 +506,13 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                 }
                                 period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_SHD | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = J1939_FORM_SERVO_VEL;
-                                        tx[i].prio = J1939_PRIO_SERVO_CTRL;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        if (result[i] & RESULT_ZERO) {
-                                                tx[i].data.cmd.vel = 0;
-                                                plan_len_nega[i] = 0;
-                                        } else {
-                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
-                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                tx[i].data.cmd.vel = -(s16)plan_vel[i];
-                                        }
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
-                                period = PERIOD_FAST;
-                                break;
-                        case CMD_ACT_SHD | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         if (verify.data & 1 << i) {
                                                 tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
-                                                tx[i].form = J1939_FORM_SERVO_VEL;
-                                                tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                                tx[i].form = 0xA5;
+                                                tx[i].prio = 0x08;
                                                 tx[i].data.cmd.pos = 0x1100;
                                                 if (result[i] & RESULT_ZERO) {
                                                         tx[i].data.cmd.vel = 0;
@@ -549,19 +520,19 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                                 } else {
                                                         plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
                                                              max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                        tx[i].data.cmd.vel = -(s16)plan_vel[i];
+                                                        tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel[i];
                                                 }
                                                 tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                                tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
+                                                tx[i].data.cmd.exec = 0x9A;
+                                                tx[i].data.cmd.enable = 0xC3;
                                                 semTake(sem_can[cable[i]], WAIT_FOREVER);
                                                 rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                                 semGive(sem_can[cable[i]]);
                                         } else {
                                                 tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
-                                                tx[i].form = J1939_FORM_QUERY;
-                                                tx[i].prio = J1939_PRIO_QUERY;
+                                                tx[i].form = 0x5C;
+                                                tx[i].prio = 0x0C;
                                                 tx[i].data.query[0] = 0x00;
                                                 tx[i].data.query[1] = 0x11;
                                                 tx[i].data.query[2] = 0x22;
@@ -581,8 +552,8 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
-                                        tx[i].form = J1939_FORM_QUERY;
-                                        tx[i].prio = J1939_PRIO_QUERY;
+                                        tx[i].form = 0x5C;
+                                        tx[i].prio = 0x0C;
                                         tx[i].data.query[0] = 0x00;
                                         tx[i].data.query[1] = 0x11;
                                         tx[i].data.query[2] = 0x22;

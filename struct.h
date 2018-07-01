@@ -18,19 +18,27 @@ struct frame_can {
         struct frame_can *next;
 };
 
-struct frame_gend_rx {
+struct frame_lvl_rx {
         u8 src;
         u8 dest;
         u8 form;
         u8 prio;
         union {
                 u8 fault[8];
+                struct {
+                        s16 x;
+                        s16 y;
+                        u8 res0;
+                        u8 res1;
+                        u8 fault;
+                        u8 xor;
+                } state;
         } data;
         u32 tsc;
-        struct frame_gend_rx *next;
+        struct frame_lvl_rx *next;
 };
 
-struct frame_gend_tx {
+struct frame_lvl_tx {
         u8 src;
         u8 dest;
         u8 form;
@@ -38,24 +46,35 @@ struct frame_gend_tx {
         union {
                 u8 fault[8];
                 u8 query[8];
+                struct {
+                        int update;
+                        int not;
+                } cmd;
         } data;
         u32 tsc;
-        struct frame_gend_tx *next;
+        struct frame_lvl_tx *next;
 };
 
-struct frame_gens_rx {
+struct frame_vsl_rx {
         u8 src;
         u8 dest;
         u8 form;
         u8 prio;
         union {
                 u8 fault[8];
+                struct {
+                        s16 x;
+                        s16 y;
+                        s16 z;
+                        u8 fault;
+                        u8 proc;
+                } state;
         } data;
         u32 tsc;
-        struct frame_gens_rx *next;
+        struct frame_vsl_rx *next;
 };
 
-struct frame_gens_tx {
+struct frame_vsl_tx {
         u8 src;
         u8 dest;
         u8 form;
@@ -63,9 +82,66 @@ struct frame_gens_tx {
         union {
                 u8 fault[8];
                 u8 query[8];
+                struct {
+                        s16 x;
+                        s16 y;
+                        s16 z;
+                        u8 mode;
+                        u8 proc;
+                } cmd;
         } data;
         u32 tsc;
-        struct frame_gens_tx *next;
+        struct frame_vsl_tx *next;
+};
+
+struct frame_gen_rx {
+        u8 src;
+        u8 dest;
+        u8 form;
+        u8 prio;
+        union {
+                struct {
+                        u8 tick;
+                        u16 pow;
+                        u16 fault;
+                        u8 res0;
+                        u8 res1;
+                        u8 res2;
+                } misc;
+                struct {
+                        u16 volt;
+                        u16 ampr;
+                        u16 rpm;
+                        u8 temp;
+                        u8 res0;
+                } state;
+                u8 fault[8];
+        } data;
+        u32 tsc;
+        struct frame_gen_rx *next;
+};
+
+struct frame_gen_tx {
+        u8 src;
+        u8 dest;
+        u8 form;
+        u8 prio;
+        union {
+                u8 fault[8];
+                u8 query[8];
+                struct {
+                        u8 type;
+                        u8 enable;
+                        u8 toggle;
+                        u8 protect;
+                        u8 res0;
+                        u8 res1;
+                        u8 res2;
+                        u8 res3;
+                } cmd;
+        } data;
+        u32 tsc;
+        struct frame_gen_tx *next;
 };
 
 struct frame_psu_rx {
@@ -152,82 +228,6 @@ struct frame_cyl_tx {
         } data;
         u32 tsc;
         struct frame_cyl_tx *next;
-};
-
-struct frame_lvl_rx {
-        u8 src;
-        u8 dest;
-        u8 form;
-        u8 prio;
-        union {
-                u8 fault[8];
-                struct {
-                        s16 x;
-                        s16 y;
-                        u8 res0;
-                        u8 res1;
-                        u8 fault;
-                        u8 xor;
-                } state;
-        } data;
-        u32 tsc;
-        struct frame_lvl_rx *next;
-};
-
-struct frame_lvl_tx {
-        u8 src;
-        u8 dest;
-        u8 form;
-        u8 prio;
-        union {
-                u8 fault[8];
-                u8 query[8];
-                struct {
-                        int upd;
-                        int not;
-                } cmd;
-        } data;
-        u32 tsc;
-        struct frame_lvl_tx *next;
-};
-
-struct frame_vsl_rx {
-        u8 src;
-        u8 dest;
-        u8 form;
-        u8 prio;
-        union {
-                u8 fault[8];
-                struct {
-                        s16 x;
-                        s16 y;
-                        s16 z;
-                        u8 fault;
-                        u8 proc;
-                } state;
-        } data;
-        u32 tsc;
-        struct frame_vsl_rx *next;
-};
-
-struct frame_vsl_tx {
-        u8 src;
-        u8 dest;
-        u8 form;
-        u8 prio;
-        union {
-                u8 fault[8];
-                u8 query[8];
-                struct {
-                        s16 x;
-                        s16 y;
-                        s16 z;
-                        u8 mode;
-                        u8 proc;
-                } cmd;
-        } data;
-        u32 tsc;
-        struct frame_vsl_tx *next;
 };
 
 struct frame_udp_rx {

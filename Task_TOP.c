@@ -4,10 +4,15 @@
 #include "type.h"
 #include "vx.h"
 
+#define MSG    msg_top
+#define CMD    CMD_ACT_TOP
+#define NOTIFY TASK_NOTIFY_TOP
+
 #define PERIOD_SLOW 200
 #define PERIOD_FAST 20
 
-#define MAX_NUM_FORM  3
+#define MAX_NUM_DEV   1
+#define MAX_NUM_FORM  1
 #define MAX_LEN_CLLST 16
 
 #define UNMASK_RESULT_IO     0x000000FF
@@ -21,37 +26,47 @@
 #define RESULT_FAULT_AMPR    0x00002000
 #define RESULT_FAULT_SYNC    0x00004000
 #define RESULT_FAULT_COMM    0x00008000
-#define RESULT_ZERO          0x00010000
-#define RESULT_DEST          0x00020000
-#define RESULT_STOP          0x00040000
+#define RESULT_STOP          0x01000000
+#define RESULT_ZERO          0x02000000
+#define RESULT_DEST          0x04000000
+#define RESULT_LOAD          0x08000000
+#define RESULT_SAFE          0x10000000
+#define RESULT_PART_POSI(x)  (0x00010000 << x)
+#define RESULT_PART_NEGA(x)  (0x00100000 << x)
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
 
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
-int remap_form_index(u8 form);
-int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+int filter_judge(int *ok, int *err, int value, int min, int max, int ctr);
 void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 
 extern MSG_Q_ID msg_main;
-extern MSG_Q_ID msg_top;
+extern MSG_Q_ID MSG;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
 
-const static int io_pos_zero = 100;
-const static int io_pos_dest = 20000;
-const static int min_pos = -1000;
-const static int max_pos = 36000;
-const static int min_vel = -1500;
-const static int max_vel = 1500;
-const static int min_ampr = 0;
-const static int max_ampr = 200;
-const static int pos_zero = 500;
-const static int pos_dest = 20000;
-const static struct plan max_plan_len = {1000, 4000, 10000};
-const static int plan_vel_low = 100;
-const static int plan_vel_high = 1000;
-const static int plan_vel_medium = 500;
+const static int addr[MAX_NUM_DEV] = {
+        J1939_ADDR_TOP
+};
+const static int cable[MAX_NUM_DEV] = {1};
+const static int sign[MAX_NUM_DEV] = {1};
+const static int io_pos_zero[MAX_NUM_DEV] = {100};
+const static int io_pos_dest[MAX_NUM_DEV] = {20000};
+const static int min_pos[MAX_NUM_DEV] = {-1000};
+const static int max_pos[MAX_NUM_DEV] = {36000};
+const static int min_vel[MAX_NUM_DEV] = {-1500};
+const static int max_vel[MAX_NUM_DEV] = {1500};
+const static int min_ampr[MAX_NUM_DEV] = {0};
+const static int max_ampr[MAX_NUM_DEV] = {200};
+const static int pos_zero[MAX_NUM_DEV] = {500};
+const static int pos_dest[MAX_NUM_DEV] = {20000};
+const static struct plan max_plan_len[MAX_NUM_DEV] = {
+        1000, 4000, 10000
+};
+const static int plan_vel_low[MAX_NUM_DEV] = {100};
+const static int plan_vel_high[MAX_NUM_DEV] = {1000};
+const static int plan_vel_medium[MAX_NUM_DEV] = {500};
 
 static int period = PERIOD_SLOW;
 static u32 prev;
@@ -62,117 +77,123 @@ static struct main verify = {CMD_IDLE, 0};
 static struct main state;
 static struct main old_state;
 static struct frame_can can;
-static struct frame_can rx[MAX_NUM_FORM][MAX_LEN_CLLST];
-static FRAME_RX *p[MAX_NUM_FORM];
-static FRAME_TX tx;
-static int has_received;
-static int cur_pos;
-static int cur_vel;
-static int cur_ampr;
-static int sum_pos;
-static int sum_vel;
-static int sum_ampr;
-static int avg_pos;
-static int avg_vel;
-static int avg_ampr;
-static int old_fault;
-static int old_io;
-static int ctr_ok_pos;
-static int ctr_ok_vel;
-static int ctr_ok_ampr;
-static int ctr_ok_zero;
-static int ctr_ok_dest;
-static int ctr_ok_stop;
-static int ctr_err_pos;
-static int ctr_err_vel;
-static int ctr_err_ampr;
-static int ctr_err_zero;
-static int ctr_err_dest;
-static int ctr_err_stop;
-static int ctr_fault;
-static int ctr_io;
-static int ctr_comm;
-static int result;
-static int tmp_pos;
-static int tmp_vel;
-static int tmp_ampr;
-static int tmp_zero;
-static int tmp_dest;
-static int tmp_stop;
-static int plan_vel;
-static int plan_len_pass;
-static int plan_len_posi;
-static int plan_len_nega;
+static struct frame_can rx[MAX_NUM_DEV][MAX_NUM_FORM][MAX_LEN_CLLST];
+static FRAME_RX *p[MAX_NUM_DEV][MAX_NUM_FORM];
+static FRAME_TX tx[MAX_NUM_DEV];
+static int has_received[MAX_NUM_DEV];
+static int cur_pos[MAX_NUM_DEV];
+static int cur_vel[MAX_NUM_DEV];
+static int cur_ampr[MAX_NUM_DEV];
+static int sum_pos[MAX_NUM_DEV];
+static int sum_vel[MAX_NUM_DEV];
+static int sum_ampr[MAX_NUM_DEV];
+static int avg_pos[MAX_NUM_DEV];
+static int avg_vel[MAX_NUM_DEV];
+static int avg_ampr[MAX_NUM_DEV];
+static int old_fault[MAX_NUM_DEV];
+static int old_io[MAX_NUM_DEV];
+static int ctr_ok_pos[MAX_NUM_DEV];
+static int ctr_ok_vel[MAX_NUM_DEV];
+static int ctr_ok_ampr[MAX_NUM_DEV];
+static int ctr_ok_stop[MAX_NUM_DEV];
+static int ctr_ok_zero[MAX_NUM_DEV];
+static int ctr_ok_dest[MAX_NUM_DEV];
+static int ctr_err_pos[MAX_NUM_DEV];
+static int ctr_err_vel[MAX_NUM_DEV];
+static int ctr_err_ampr[MAX_NUM_DEV];
+static int ctr_err_stop[MAX_NUM_DEV];
+static int ctr_err_zero[MAX_NUM_DEV];
+static int ctr_err_dest[MAX_NUM_DEV];
+static int ctr_fault[MAX_NUM_DEV];
+static int ctr_io[MAX_NUM_DEV];
+static int ctr_comm[MAX_NUM_DEV];
+static int tmp_pos[MAX_NUM_DEV];
+static int tmp_vel[MAX_NUM_DEV];
+static int tmp_ampr[MAX_NUM_DEV];
+static int tmp_stop[MAX_NUM_DEV];
+static int tmp_zero[MAX_NUM_DEV];
+static int tmp_dest[MAX_NUM_DEV];
+static int result[MAX_NUM_DEV];
+static int all_zero;
+static int all_dest;
+static int any_fault;
+static int plan_vel[MAX_NUM_DEV];
+static int plan_len_pass[MAX_NUM_DEV];
+static int plan_len_posi[MAX_NUM_DEV];
+static int plan_len_nega[MAX_NUM_DEV];
 static int i;
+static int j;
 
 void t_top(void) /* Task: TOP lengthwise electric machinery */
 {
-        for (i = 0; i < MAX_NUM_FORM; i++)
-                p[i] = (FRAME_RX *)can_cllst_init(rx[i], MAX_LEN_CLLST);
+        for (i = 0; i < MAX_NUM_DEV; i++) {
+                for (j = 0; j < MAX_NUM_FORM; j++)
+                        p[i][j] = (FRAME_RX *)can_cllst_init(rx[i][j], MAX_LEN_CLLST);
+        }
         for (;;) {
                 prev = tickGet();
                 if (period < 0 || period > PERIOD_SLOW)
                         period = 0;
-                len = msgQReceive(msg_top, (char *)&tmp, sizeof(tmp), period);
+                len = msgQReceive(MSG, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
                         cmd = *(struct main *)tmp;
                         switch (verify.type) {
                         case CMD_IDLE:
-                        case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
                                 switch (cmd.type) {
                                 case CMD_IDLE:
-                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                 switch (cmd.type) {
-                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                        case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                 switch (cmd.type) {
-                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                 switch (cmd.type) {
-                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                 switch (cmd.type) {
-                                case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
                                 default:
@@ -186,231 +207,354 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                         break;
                 case sizeof(struct frame_can):
                         can = *(struct frame_can *)tmp;
-                        has_received = 1;
-                        i = remap_form_index(can.form);
-                        switch (i) {
-                        case 0:
-                        case 1:
-                                break;
-                        case 2:
-                                p[i] = p[i]->next;
-                                sum_pos -= (int)(p[i]->data.state.pos) * 20;
-                                sum_vel -= p[i]->data.state.vel;
-                                sum_ampr -= abs(p[i]->data.state.ampr);
-                                old_fault = p[i]->data.state.fault;
-                                old_io = p[i]->data.state.io;
-                                p[i]->data.state.pos = ((FRAME_RX *)&can)->data.state.pos;
-                                p[i]->data.state.vel = ((FRAME_RX *)&can)->data.state.vel;
-                                p[i]->data.state.ampr = ((FRAME_RX *)&can)->data.state.ampr;
-                                p[i]->data.state.fault = ((FRAME_RX *)&can)->data.state.fault;
-                                p[i]->data.state.io = ((FRAME_RX *)&can)->data.state.io;
-                                cur_pos = (int)(p[i]->data.state.pos) * 20;
-                                cur_vel = p[i]->data.state.vel;
-                                cur_ampr = abs(p[i]->data.state.ampr);
-                                sum_pos += (int)(p[i]->data.state.pos) * 20;
-                                sum_vel += p[i]->data.state.vel;
-                                sum_ampr += abs(p[i]->data.state.ampr);
-                                avg_pos = sum_pos / MAX_LEN_CLLST;
-                                avg_vel = sum_vel / MAX_LEN_CLLST;
-                                avg_ampr = sum_ampr / MAX_LEN_CLLST;
-                                if (old_fault == p[i]->data.state.fault) {
-                                        if (ctr_fault < MAX_LEN_CLLST)
-                                                ctr_fault++;
+                        for (i = 0; i < MAX_NUM_DEV; i++) {
+                                if (can.src == addr[i])
+                                        break;
+                        }
+                        has_received[i] = 1;
+                        switch (can.form) {
+                        case 0xC6:
+                                j = 0;
+                                p[i][j] = p[i][j]->next;
+                                sum_pos[i] -= (int)p[i][j]->data.state.pos * 20;
+                                sum_vel[i] -= p[i][j]->data.state.vel;
+                                sum_ampr[i] -= abs(p[i][j]->data.state.ampr);
+                                old_fault[i] = p[i][j]->data.state.fault;
+                                old_io[i] = p[i][j]->data.state.io;
+                                p[i][j]->data.state.pos = sign[i] * ((FRAME_RX *)&can)->data.state.pos;
+                                p[i][j]->data.state.vel = sign[i] * ((FRAME_RX *)&can)->data.state.vel;
+                                p[i][j]->data.state.ampr = ((FRAME_RX *)&can)->data.state.ampr;
+                                p[i][j]->data.state.fault = ((FRAME_RX *)&can)->data.state.fault;
+                                p[i][j]->data.state.io = ((FRAME_RX *)&can)->data.state.io;
+                                cur_pos[i] = (int)p[i][j]->data.state.pos * 20;
+                                cur_vel[i] = p[i][j]->data.state.vel;
+                                cur_ampr[i] = abs(p[i][j]->data.state.ampr);
+                                sum_pos[i] += (int)p[i][j]->data.state.pos * 20;
+                                sum_vel[i] += p[i][j]->data.state.vel;
+                                sum_ampr[i] += abs(p[i][j]->data.state.ampr);
+                                avg_pos[i] = sum_pos[i] / MAX_LEN_CLLST;
+                                avg_vel[i] = sum_vel[i] / MAX_LEN_CLLST;
+                                avg_ampr[i] = sum_ampr[i] / MAX_LEN_CLLST;
+                                if (old_fault[i] == p[i][j]->data.state.fault) {
+                                        if (ctr_fault[i] < MAX_LEN_CLLST)
+                                                ctr_fault[i]++;
                                 } else {
-                                        ctr_fault = 0;
+                                        ctr_fault[i] = 0;
                                 }
-                                switch (p[i]->data.state.fault) {
-                                case J1939_FAULT_NORMAL:
-                                case J1939_FAULT_WARN:
-                                        if (ctr_fault < 5)
+                                switch (p[i][j]->data.state.fault) {
+                                case 0x00:
+                                case 0x03:
+                                        if (ctr_fault[i] < 5)
                                                 break;
-                                        result &= ~RESULT_FAULT_GENERAL;
-                                        result &= ~RESULT_FAULT_SERIOUS;
+                                        result[i] &= ~RESULT_FAULT_GENERAL;
+                                        result[i] &= ~RESULT_FAULT_SERIOUS;
                                         break;
-                                case J1939_FAULT_GENERAL:
-                                        if (ctr_fault < 3)
+                                case 0x0C:
+                                        if (ctr_fault[i] < 3)
                                                 break;
-                                        result |= RESULT_FAULT_GENERAL;
+                                        result[i] |= RESULT_FAULT_GENERAL;
                                         break;
-                                case J1939_FAULT_SERIOUS:
-                                        result |= RESULT_FAULT_SERIOUS;
+                                case 0xF0:
+                                        result[i] |= RESULT_FAULT_SERIOUS;
                                         break;
                                 default:
                                         break;
                                 }
-                                if (old_io == p[i]->data.state.io) {
-                                        if (ctr_io < MAX_LEN_CLLST)
-                                                ctr_io++;
+                                if (old_io[i] == p[i][j]->data.state.io) {
+                                        if (ctr_io[i] < MAX_LEN_CLLST)
+                                                ctr_io[i]++;
                                 } else {
-                                        ctr_io = 0;
+                                        ctr_io[i] = 0;
                                 }
-                                if (ctr_io > 5)
-                                        result = result & ~UNMASK_RESULT_IO | p[i]->data.state.io;
+                                if (ctr_io[i] > 5)
+                                        result[i] = result[i] & ~UNMASK_RESULT_IO | p[i][j]->data.state.io;
+                                tmp_pos[i] = filter_judge(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], MAX_LEN_CLLST);
+                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
+                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
+                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
+                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
+                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
 #if 0
-                                if (avg_pos > io_pos_dest + 500 && (result & 0x0000000C) != 0x00000004
-                                    || avg_pos < io_pos_zero - 500 && (result & 0x0000000C) != 0x00000008
-                                    || avg_pos > io_pos_zero + 500 && avg_pos < io_pos_dest - 500 && (result & 0x0000000C) != 0x0000000C
-                                    || avg_pos >= io_pos_dest - 500 && avg_pos <= io_pos_dest + 500 && result & 0x00000008
-                                    || avg_pos >= io_pos_zero - 500 && avg_pos <= io_pos_zero + 500 && result & 0x00000004)
-                                        result |= RESULT_FAULT_IO;
+                                if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
+                                    || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
+                                    || avg_pos[i] > io_pos_zero[i] + 500 && avg_pos[i] < io_pos_dest[i] - 500 && result[i] & 0x00000003
+                                    || avg_pos[i] >= io_pos_zero[i] - 500 && avg_pos[i] <= io_pos_zero[i] + 500 && result[i] & 0x00000002
+                                    || avg_pos[i] >= io_pos_dest[i] - 500 && avg_pos[i] <= io_pos_dest[i] + 500 && result[i] & 0x00000001)
+                                        result[i] |= RESULT_FAULT_IO;
                                 else
-                                        result &= ~RESULT_FAULT_IO;
+                                        result[i] &= ~RESULT_FAULT_IO;
 #endif
-                                tmp_pos = judge_filter(&ctr_ok_pos, &ctr_err_pos, avg_pos, min_pos, max_pos, MAX_LEN_CLLST);
-                                tmp_vel = judge_filter(&ctr_ok_vel, &ctr_err_vel, avg_vel, min_vel, max_vel, MAX_LEN_CLLST);
-                                tmp_ampr = judge_filter(&ctr_ok_ampr, &ctr_err_ampr, avg_ampr, min_ampr, max_ampr, MAX_LEN_CLLST);
-                                tmp_zero = judge_filter(&ctr_ok_zero, &ctr_err_zero, avg_pos, min_pos, pos_zero, MAX_LEN_CLLST);
-                                tmp_dest = judge_filter(&ctr_ok_dest, &ctr_err_dest, avg_pos, pos_dest, max_pos, MAX_LEN_CLLST);
-                                tmp_stop = judge_filter(&ctr_ok_stop, &ctr_err_stop, avg_vel, -5, 5, MAX_LEN_CLLST);
-                                if (tmp_pos == -1)
-                                        result |= RESULT_FAULT_POS;
-                                else if (tmp_pos == 1)
-                                        result &= ~RESULT_FAULT_POS;
-                                if (tmp_vel == -1)
-                                        result |= RESULT_FAULT_VEL;
-                                else if (tmp_vel == 1)
-                                        result &= ~RESULT_FAULT_VEL;
-                                if (tmp_ampr == -1)
-                                        result |= RESULT_FAULT_AMPR;
-                                else if (tmp_ampr == 1)
-                                        result &= ~RESULT_FAULT_AMPR;
-                                if (tmp_zero == 1)
-                                        result |= RESULT_ZERO;
-                                else if (tmp_zero == -1)
-                                        result &= ~RESULT_ZERO;
-                                if (tmp_dest == 1)
-                                        result |= RESULT_DEST;
-                                else if (tmp_dest == -1)
-                                        result &= ~RESULT_DEST;
-                                if (tmp_stop == 1)
-                                        result |= RESULT_STOP;
-                                else if (tmp_stop == -1)
-                                        result &= ~RESULT_STOP;
+                                if (tmp_pos[i] == -1)
+                                        result[i] |= RESULT_FAULT_POS;
+                                else if (tmp_pos[i] == 1)
+                                        result[i] &= ~RESULT_FAULT_POS;
+                                if (tmp_vel[i] == -1)
+                                        result[i] |= RESULT_FAULT_VEL;
+                                else if (tmp_vel[i] == 1)
+                                        result[i] &= ~RESULT_FAULT_VEL;
+                                if (tmp_ampr[i] == -1)
+                                        result[i] |= RESULT_FAULT_AMPR;
+                                else if (tmp_ampr[i] == 1)
+                                        result[i] &= ~RESULT_FAULT_AMPR;
+                                if (tmp_stop[i] == 1)
+                                        result[i] |= RESULT_STOP;
+                                else if (tmp_stop[i] == -1)
+                                        result[i] &= ~RESULT_STOP;
+                                if (tmp_zero[i] == 1)
+                                        result[i] |= RESULT_ZERO;
+                                else if (tmp_zero[i] == -1)
+                                        result[i] &= ~RESULT_ZERO;
+                                if (tmp_dest[i] == 1)
+                                        result[i] |= RESULT_DEST;
+                                else if (tmp_dest[i] == -1)
+                                        result[i] &= ~RESULT_DEST;
                                 break;
                         default:
                                 break;
                         }
+                        all_zero = 0;
+                        all_dest = 0;
+                        for (i = 0; i < MAX_NUM_DEV; i++) {
+                                all_zero &= result[i];
+                                all_dest &= result[i];
+                        }
+                        all_zero &= RESULT_ZERO;
+                        all_dest &= RESULT_DEST;
+#if 0
+                        sub = max_of_n(avg_pos, MAX_NUM_DEV) - min_of_n(avg_pos, MAX_NUM_DEV);
+                        tmp_sync = filter_judge(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
+                        if (tmp_sync == -1) {
+                                for (i = 0; i < MAX_NUM_DEV; i++)
+                                        result[i] |= RESULT_FAULT_SYNC;
+                        } else if (tmp_sync == 1) {
+                                for (i = 0; i < MAX_NUM_DEV; i++)
+                                        result[i] &= ~RESULT_FAULT_SYNC;
+                        }
+#endif
                         period -= tickGet() - prev;
                         break;
                 default:
-                        if (has_received) {
-                                has_received = 0;
-                                if (ctr_comm < 0)
-                                        ctr_comm = 0;
-                                if (ctr_comm < MAX_LEN_CLLST)
-                                        ctr_comm++;
-                                if (ctr_comm == MAX_LEN_CLLST)
-                                        result &= ~RESULT_FAULT_COMM;
-                        } else {
-                                if (ctr_comm > 0)
-                                        ctr_comm = 0;
-                                if (ctr_comm > -MAX_LEN_CLLST)
-                                        ctr_comm--;
-                                if (ctr_comm == -MAX_LEN_CLLST)
-                                        result |= RESULT_FAULT_COMM;
+                        for (i = 0; i < MAX_NUM_DEV; i++) {
+                                if (has_received[i]) {
+                                        has_received[i] = 0;
+                                        if (ctr_comm[i] < 0)
+                                                ctr_comm[i] = 0;
+                                        if (ctr_comm[i] < MAX_LEN_CLLST)
+                                                ctr_comm[i]++;
+                                        if (ctr_comm[i] == MAX_LEN_CLLST)
+                                                result[i] &= ~RESULT_FAULT_COMM;
+                                } else {
+                                        if (ctr_comm[i] > 0)
+                                                ctr_comm[i] = 0;
+                                        if (ctr_comm[i] > -MAX_LEN_CLLST)
+                                                ctr_comm[i]--;
+                                        if (ctr_comm[i] == -MAX_LEN_CLLST)
+                                                result[i] |= RESULT_FAULT_COMM;
+                                }
                         }
-                        if (result & UNMASK_RESULT_FAULT) {
+                        any_fault = 0;
+                        for (i = 0; i < MAX_NUM_DEV; i++)
+                                any_fault |= result[i];
+                        if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_AUTO)
+                                any_fault &= UNMASK_RESULT_FAULT;
+                        else if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_MANUAL)
+                                any_fault = any_fault & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
+                        if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
                                 verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
                         } else {
                                 state.type = TASK_STATE_RUNNING;
-                                if (result & RESULT_ZERO)
+                                if (all_zero)
                                         state.type = TASK_STATE_ZERO;
-                                else if (result & RESULT_DEST)
+                                else if (all_dest)
                                         state.type = TASK_STATE_DEST;
                         }
-                        state.type |= TASK_NOTIFY_TOP;
+                        state.type |= NOTIFY;
                         state.data = 0;
                         if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         old_state = state;
                         switch (verify.type) {
-                        case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_STOP:
-                                plan_vel = 0;
-                                plan_len_pass = 0;
-                                plan_len_posi = pos_dest - cur_pos;
-                                plan_len_nega = cur_pos - pos_zero;
-                                tx.src = J1939_ADDR_MAIN;
-                                tx.dest = J1939_ADDR_TOP;
-                                tx.form = J1939_FORM_SERVO_VEL;
-                                tx.prio = J1939_PRIO_SERVO_CTRL;
-                                tx.data.cmd.pos = 0x1100;
-                                tx.data.cmd.vel = 0;
-                                tx.data.cmd.ampr = 1000;
-                                tx.data.cmd.exec = J1939_SERVO_ASYNC;
-                                if (result & RESULT_STOP)
-                                        tx.data.cmd.enable = J1939_SERVO_DISABLE;
-                                semTake(sem_can[1], WAIT_FOREVER);
-                                rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
-                                semGive(sem_can[1]);
-                                if (tx.data.cmd.enable == J1939_SERVO_DISABLE)
+                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        plan_vel[i] = 0;
+                                        plan_len_pass[i] = 0;
+                                        plan_len_posi[i] = pos_dest[i] - cur_pos[i];
+                                        plan_len_nega[i] = cur_pos[i] - pos_zero[i];
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA5;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.cmd.pos = 0x1100;
+                                        tx[i].data.cmd.vel = 0;
+                                        tx[i].data.cmd.ampr = 1000;
+                                        tx[i].data.cmd.exec = 0x9A;
+                                        if (result[i] & RESULT_STOP)
+                                                tx[i].data.cmd.enable = 0x3C;
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
+                                }
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        if (tx[i].data.cmd.enable != 0x3C)
+                                                break;
+                                }
+                                if (i == MAX_NUM_DEV)
                                         period = PERIOD_SLOW;
                                 else
                                         period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_POSI:
-                        case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                tx.src = J1939_ADDR_MAIN;
-                                tx.dest = J1939_ADDR_TOP;
-                                tx.form = J1939_FORM_SERVO_VEL;
-                                tx.prio = J1939_PRIO_SERVO_CTRL;
-                                tx.data.cmd.pos = 0x1100;
-                                if (result & RESULT_DEST) {
-                                        tx.data.cmd.vel = 0;
-                                        plan_len_posi = 0;
-                                } else {
-                                        plan(&plan_vel, &plan_len_pass, plan_len_posi,
-                                             max_plan_len, plan_vel_low, plan_vel_high, PERIOD_FAST);
-                                        tx.data.cmd.vel = (s16)plan_vel;
+                        case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA5;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.cmd.pos = 0x1100;
+                                        if (result[i] & RESULT_DEST) {
+                                                tx[i].data.cmd.vel = 0;
+                                                plan_len_posi[i] = 0;
+                                        } else {
+                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
+                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
+                                        }
+                                        tx[i].data.cmd.ampr = 1000;
+                                        tx[i].data.cmd.exec = 0x9A;
+                                        tx[i].data.cmd.enable = 0xC3;
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
                                 }
-                                tx.data.cmd.ampr = 1000;
-                                tx.data.cmd.exec = J1939_SERVO_ASYNC;
-                                tx.data.cmd.enable = J1939_SERVO_ENABLE;
-                                semTake(sem_can[1], WAIT_FOREVER);
-                                rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
-                                semGive(sem_can[1]);
                                 period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_TOP | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                        case CMD_ACT_TOP | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                tx.src = J1939_ADDR_MAIN;
-                                tx.dest = J1939_ADDR_TOP;
-                                tx.form = J1939_FORM_SERVO_VEL;
-                                tx.prio = J1939_PRIO_SERVO_CTRL;
-                                tx.data.cmd.pos = 0x1100;
-                                if (result & RESULT_ZERO) {
-                                        tx.data.cmd.vel = 0;
-                                        plan_len_nega = 0;
-                                } else {
-                                        plan(&plan_vel, &plan_len_pass, plan_len_nega,
-                                             max_plan_len, plan_vel_low, plan_vel_high, PERIOD_FAST);
-                                        tx.data.cmd.vel = -(s16)plan_vel;
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA5;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.cmd.pos = 0x1100;
+                                        if (result[i] & RESULT_ZERO) {
+                                                tx[i].data.cmd.vel = 0;
+                                                plan_len_nega[i] = 0;
+                                        } else {
+                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
+                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel[i];
+                                        }
+                                        tx[i].data.cmd.ampr = 1000;
+                                        tx[i].data.cmd.exec = 0x9A;
+                                        tx[i].data.cmd.enable = 0xC3;
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
                                 }
-                                tx.data.cmd.ampr = 1000;
-                                tx.data.cmd.exec = J1939_SERVO_ASYNC;
-                                tx.data.cmd.enable = J1939_SERVO_ENABLE;
-                                semTake(sem_can[1], WAIT_FOREVER);
-                                rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
-                                semGive(sem_can[1]);
+                                period = PERIOD_FAST;
+                                break;
+                        case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        if (verify.data & 1 << i) {
+                                                tx[i].src = J1939_ADDR_MAIN;
+                                                tx[i].dest = addr[i];
+                                                tx[i].form = 0xA5;
+                                                tx[i].prio = 0x08;
+                                                tx[i].data.cmd.pos = 0x1100;
+                                                if (result[i] & RESULT_DEST) {
+                                                        tx[i].data.cmd.vel = 0;
+                                                        plan_len_posi[i] = 0;
+                                                } else {
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
+                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                        tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
+                                                }
+                                                tx[i].data.cmd.ampr = 1000;
+                                                tx[i].data.cmd.exec = 0x9A;
+                                                tx[i].data.cmd.enable = 0xC3;
+                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                                semGive(sem_can[cable[i]]);
+                                        } else {
+                                                tx[i].src = J1939_ADDR_MAIN;
+                                                tx[i].dest = addr[i];
+                                                tx[i].form = 0x5C;
+                                                tx[i].prio = 0x0C;
+                                                tx[i].data.query[0] = 0x00;
+                                                tx[i].data.query[1] = 0x11;
+                                                tx[i].data.query[2] = 0x22;
+                                                tx[i].data.query[3] = 0x33;
+                                                tx[i].data.query[4] = 0x44;
+                                                tx[i].data.query[5] = 0x55;
+                                                tx[i].data.query[6] = 0x66;
+                                                tx[i].data.query[7] = 0x77;
+                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                                semGive(sem_can[cable[i]]);
+                                        }
+                                }
+                                period = PERIOD_FAST;
+                                break;
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        if (verify.data & 1 << i) {
+                                                tx[i].src = J1939_ADDR_MAIN;
+                                                tx[i].dest = addr[i];
+                                                tx[i].form = 0xA5;
+                                                tx[i].prio = 0x08;
+                                                tx[i].data.cmd.pos = 0x1100;
+                                                if (result[i] & RESULT_ZERO) {
+                                                        tx[i].data.cmd.vel = 0;
+                                                        plan_len_nega[i] = 0;
+                                                } else {
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
+                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                        tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel[i];
+                                                }
+                                                tx[i].data.cmd.ampr = 1000;
+                                                tx[i].data.cmd.exec = 0x9A;
+                                                tx[i].data.cmd.enable = 0xC3;
+                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                                semGive(sem_can[cable[i]]);
+                                        } else {
+                                                tx[i].src = J1939_ADDR_MAIN;
+                                                tx[i].dest = addr[i];
+                                                tx[i].form = 0x5C;
+                                                tx[i].prio = 0x0C;
+                                                tx[i].data.query[0] = 0x00;
+                                                tx[i].data.query[1] = 0x11;
+                                                tx[i].data.query[2] = 0x22;
+                                                tx[i].data.query[3] = 0x33;
+                                                tx[i].data.query[4] = 0x44;
+                                                tx[i].data.query[5] = 0x55;
+                                                tx[i].data.query[6] = 0x66;
+                                                tx[i].data.query[7] = 0x77;
+                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                                semGive(sem_can[cable[i]]);
+                                        }
+                                }
                                 period = PERIOD_FAST;
                                 break;
                         default:
-                                tx.src = J1939_ADDR_MAIN;
-                                tx.dest = J1939_ADDR_TOP;
-                                tx.form = J1939_FORM_QUERY;
-                                tx.prio = J1939_PRIO_QUERY;
-                                tx.data.query[0] = 0x00;
-                                tx.data.query[1] = 0x11;
-                                tx.data.query[2] = 0x22;
-                                tx.data.query[3] = 0x33;
-                                tx.data.query[4] = 0x44;
-                                tx.data.query[5] = 0x55;
-                                tx.data.query[6] = 0x66;
-                                tx.data.query[7] = 0x77;
-                                semTake(sem_can[1], WAIT_FOREVER);
-                                rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
-                                semGive(sem_can[1]);
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0x5C;
+                                        tx[i].prio = 0x0C;
+                                        tx[i].data.query[0] = 0x00;
+                                        tx[i].data.query[1] = 0x11;
+                                        tx[i].data.query[2] = 0x22;
+                                        tx[i].data.query[3] = 0x33;
+                                        tx[i].data.query[4] = 0x44;
+                                        tx[i].data.query[5] = 0x55;
+                                        tx[i].data.query[6] = 0x66;
+                                        tx[i].data.query[7] = 0x77;
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
+                                }
                                 period = PERIOD_SLOW;
                                 break;
                         }

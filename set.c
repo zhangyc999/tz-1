@@ -24,8 +24,8 @@ void input_passwd(u8 addr)
 {
         tx.src = J1939_ADDR_GW;
         tx.dest = addr;
-        tx.form = J1939_FORM_PASSWD;
-        tx.prio = J1939_PRIO_PASSWD;
+        tx.form = 0x40;
+        tx.prio = 0x08;
         tx.data[0] = 'X';
         tx.data[1] = 'I';
         tx.data[2] = 'N';
@@ -42,8 +42,8 @@ void save_config(u8 addr)
 {
         tx.src = J1939_ADDR_GW;
         tx.dest = addr;
-        tx.form = J1939_FORM_PASSWD;
-        tx.prio = J1939_PRIO_PASSWD;
+        tx.form = 0x40;
+        tx.prio = 0x08;
         tx.data[0] = 0x00;
         tx.data[1] = 0x11;
         tx.data[2] = 0x22;
@@ -60,8 +60,8 @@ void set_addr(u8 old, u8 addr)
 {
         tx.src = J1939_ADDR_GW;
         tx.dest = old;
-        tx.form = J1939_FORM_SET_ADDR;
-        tx.prio = J1939_PRIO_SET_ADDR;
+        tx.form = 0x46;
+        tx.prio = 0x08;
         tx.data[0] = 0x00;
         tx.data[1] = old;
         tx.data[2] = 0x00;
@@ -78,8 +78,8 @@ void set_ratio(u8 addr, u16 ratio)
 {
         tx.src = J1939_ADDR_GW;
         tx.dest = addr;
-        tx.form = J1939_FORM_SET_ADDR;
-        tx.prio = J1939_PRIO_SET_ADDR;
+        tx.form = 0x46;
+        tx.prio = 0x08;
         memcpy(&tx.data[0], &ratio, sizeof(u16));
         tx.data[2] = 0x00;
         tx.data[3] = 0x00;
@@ -95,8 +95,8 @@ void set_zero(u8 addr)
 {
         tx.src = J1939_ADDR_MAIN;
         tx.dest = addr;
-        tx.form = J1939_FORM_SERVO_ZERO;
-        tx.prio = J1939_PRIO_SERVO_ZERO;
+        tx.form = 0xA9;
+        tx.prio = 0x08;
         tx.data[0] = 0xCA;
         tx.data[1] = 0xCA;
         tx.data[2] = 0xCA;
@@ -113,8 +113,8 @@ void query_fault(u8 addr)
 {
         tx.src = J1939_ADDR_MAIN;
         tx.dest = addr;
-        tx.form = J1939_FORM_FAULT;
-        tx.prio = J1939_PRIO_FAULT;
+        tx.form = 0x5F;
+        tx.prio = 0x0C;
         tx.data[0] = 0x00;
         tx.data[1] = 0x11;
         tx.data[2] = 0x22;

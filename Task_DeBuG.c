@@ -96,16 +96,16 @@ void t_dbg(void)
                                         printf("\033[18;9H%04X", ++total[17]);
                                         break;
                                 case J1939_ADDR_FY0:
-                                        printf("\033[19;50H%04X", ++total[18]);
+                                        printf("\033[19;9H%04X", ++total[18]);
                                         break;
                                 case J1939_ADDR_FY1:
-                                        printf("\033[20;50H%04X", ++total[19]);
+                                        printf("\033[20;9H%04X", ++total[19]);
                                         break;
                                 case J1939_ADDR_BY0:
-                                        printf("\033[21;50H%04X", ++total[20]);
+                                        printf("\033[21;9H%04X", ++total[20]);
                                         break;
                                 case J1939_ADDR_BY1:
-                                        printf("\033[22;50H%04X", ++total[21]);
+                                        printf("\033[22;9H%04X", ++total[21]);
                                         break;
                                 case J1939_ADDR_PSU:
                                         printf("\033[23;9H%04X", ++total[22]);

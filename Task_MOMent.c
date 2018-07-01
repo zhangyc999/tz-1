@@ -4,11 +4,15 @@
 #include "type.h"
 #include "vx.h"
 
+#define MSG    msg_mom
+#define CMD    CMD_ACT_MOM
+#define NOTIFY TASK_NOTIFY_MOM
+
 #define PERIOD_SLOW 200
 #define PERIOD_FAST 20
 
 #define MAX_NUM_DEV   4
-#define MAX_NUM_FORM  3
+#define MAX_NUM_FORM  1
 #define MAX_LEN_CLLST 16
 
 #define UNMASK_RESULT_IO     0x000000FF
@@ -20,29 +24,40 @@
 #define RESULT_FAULT_POS     0x00000800
 #define RESULT_FAULT_VEL     0x00001000
 #define RESULT_FAULT_AMPR    0x00002000
+#define RESULT_FAULT_SYNC    0x00004000
 #define RESULT_FAULT_COMM    0x00008000
-#define RESULT_STOP          0x00040000
-#define RESULT_LOAD          0x00100000
+#define RESULT_STOP          0x01000000
+#define RESULT_ZERO          0x02000000
+#define RESULT_DEST          0x04000000
+#define RESULT_LOAD          0x08000000
+#define RESULT_SAFE          0x10000000
+#define RESULT_PART_POSI(x)  (0x00010000 << x)
+#define RESULT_PART_NEGA(x)  (0x00100000 << x)
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
 
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
-int remap_form_index(u8 form);
-int judge_filter(int *ok, int *err, int value, int min, int max, int ctr);
+int filter_judge(int *ok, int *err, int value, int min, int max, int ctr);
+void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 
 extern MSG_Q_ID msg_main;
-extern MSG_Q_ID msg_mom;
+extern MSG_Q_ID MSG;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
 
-const static int addr[MAX_NUM_DEV] = {J1939_ADDR_MOM0, J1939_ADDR_MOM1, J1939_ADDR_MOM2, J1939_ADDR_MOM3};
-const static int cable[MAX_NUM_DEV] = {1, 1, 1, 1};
+const static int addr[MAX_NUM_DEV] = {
+        J1939_ADDR_MOM0, J1939_ADDR_MOM1, J1939_ADDR_MOM2, J1939_ADDR_MOM3
+};
+const static int cable[MAX_NUM_DEV] = {0, 0, 0, 0};
+const static int sign[MAX_NUM_DEV] = {1, 1, 1, 1};
 const static int min_vel[MAX_NUM_DEV] = {-1500, -1500, -1500, -1500};
 const static int max_vel[MAX_NUM_DEV] = {1500, 1500, 1500, 1500};
 const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int ampr_load[MAX_NUM_DEV] = {50, 50, 50, 50};
+const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100};
+const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000};
 const static int plan_vel_medium[MAX_NUM_DEV] = {500, 500, 500, 500};
 
 static int period = PERIOD_SLOW;
@@ -65,7 +80,6 @@ static int sum_ampr[MAX_NUM_DEV];
 static int avg_vel[MAX_NUM_DEV];
 static int avg_ampr[MAX_NUM_DEV];
 static int old_fault[MAX_NUM_DEV];
-static int old_io[MAX_NUM_DEV];
 static int ctr_ok_vel[MAX_NUM_DEV];
 static int ctr_ok_ampr[MAX_NUM_DEV];
 static int ctr_ok_stop[MAX_NUM_DEV];
@@ -75,13 +89,12 @@ static int ctr_err_ampr[MAX_NUM_DEV];
 static int ctr_err_stop[MAX_NUM_DEV];
 static int ctr_err_load[MAX_NUM_DEV];
 static int ctr_fault[MAX_NUM_DEV];
-static int ctr_io[MAX_NUM_DEV];
 static int ctr_comm[MAX_NUM_DEV];
+static int tmp_vel[MAX_NUM_DEV];
+static int tmp_ampr[MAX_NUM_DEV];
+static int tmp_stop[MAX_NUM_DEV];
+static int tmp_load[MAX_NUM_DEV];
 static int result[MAX_NUM_DEV];
-static int tmp_vel;
-static int tmp_ampr;
-static int tmp_stop;
-static int tmp_load;
 static int num_load;
 static int any_fault;
 static int i;
@@ -97,66 +110,66 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                 prev = tickGet();
                 if (period < 0 || period > PERIOD_SLOW)
                         period = 0;
-                len = msgQReceive(msg_mom, (char *)&tmp, sizeof(tmp), period);
+                len = msgQReceive(MSG, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
                 case sizeof(struct main):
                         cmd = *(struct main *)tmp;
                         switch (verify.type) {
                         case CMD_IDLE:
-                        case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
                                 switch (cmd.type) {
                                 case CMD_IDLE:
-                                case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                 switch (cmd.type) {
-                                case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_POSI:
-                                case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_NEGA:
+                        case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                 switch (cmd.type) {
-                                case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                 switch (cmd.type) {
-                                case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_POSI:
-                                case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
                                 default:
                                         break;
                                 }
                                 break;
-                        case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                 switch (cmd.type) {
-                                case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_STOP:
-                                case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_NEGA:
-                                case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
                                 default:
@@ -170,38 +183,21 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                         break;
                 case sizeof(struct frame_can):
                         can = *(struct frame_can *)tmp;
-                        switch (can.src) {
-                        case J1939_ADDR_MOM0:
-                                i = 0;
-                                break;
-                        case J1939_ADDR_MOM1:
-                                i = 1;
-                                break;
-                        case J1939_ADDR_MOM2:
-                                i = 2;
-                                break;
-                        case J1939_ADDR_MOM3:
-                                i = 3;
-                                break;
-                        default:
-                                break;
+                        for (i = 0; i < MAX_NUM_DEV; i++) {
+                                if (can.src == addr[i])
+                                        break;
                         }
                         has_received[i] = 1;
-                        j = remap_form_index(can.form);
-                        switch (j) {
-                        case 0:
-                        case 1:
-                                break;
-                        case 2:
+                        switch (can.form) {
+                        case 0xC6:
+                                j = 0;
                                 p[i][j] = p[i][j]->next;
                                 sum_vel[i] -= p[i][j]->data.state.vel;
                                 sum_ampr[i] -= abs(p[i][j]->data.state.ampr);
                                 old_fault[i] = p[i][j]->data.state.fault;
-                                old_io[i] = p[i][j]->data.state.io;
-                                p[i][j]->data.state.vel = ((FRAME_RX *)&can)->data.state.vel;
+                                p[i][j]->data.state.vel = sign[i] * ((FRAME_RX *)&can)->data.state.vel;
                                 p[i][j]->data.state.ampr = ((FRAME_RX *)&can)->data.state.ampr;
                                 p[i][j]->data.state.fault = ((FRAME_RX *)&can)->data.state.fault;
-                                p[i][j]->data.state.io = ((FRAME_RX *)&can)->data.state.io;
                                 cur_vel[i] = p[i][j]->data.state.vel;
                                 cur_ampr[i] = abs(p[i][j]->data.state.ampr);
                                 sum_vel[i] += p[i][j]->data.state.vel;
@@ -215,51 +211,43 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                         ctr_fault[i] = 0;
                                 }
                                 switch (p[i][j]->data.state.fault) {
-                                case J1939_FAULT_NORMAL:
-                                case J1939_FAULT_WARN:
+                                case 0x00:
+                                case 0x03:
                                         if (ctr_fault[i] < 5)
                                                 break;
                                         result[i] &= ~RESULT_FAULT_GENERAL;
                                         result[i] &= ~RESULT_FAULT_SERIOUS;
                                         break;
-                                case J1939_FAULT_GENERAL:
+                                case 0x0C:
                                         if (ctr_fault[i] < 3)
                                                 break;
                                         result[i] |= RESULT_FAULT_GENERAL;
                                         break;
-                                case J1939_FAULT_SERIOUS:
+                                case 0xF0:
                                         result[i] |= RESULT_FAULT_SERIOUS;
                                         break;
                                 default:
                                         break;
                                 }
-                                if (old_io[i] == p[i][j]->data.state.io) {
-                                        if (ctr_io[i] < MAX_LEN_CLLST)
-                                                ctr_io[i]++;
-                                } else {
-                                        ctr_io[i] = 0;
-                                }
-                                if (ctr_io[i] > 5)
-                                        result[i] = result[i] & ~UNMASK_RESULT_IO | p[i][j]->data.state.io;
-                                tmp_vel = judge_filter(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
-                                tmp_ampr = judge_filter(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
-                                tmp_stop = judge_filter(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
-                                tmp_load = judge_filter(&ctr_ok_load[i], &ctr_err_load[i], avg_ampr[i], ampr_load[i], max_ampr[i], MAX_LEN_CLLST);
-                                if (tmp_vel == -1)
+                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
+                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
+                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
+                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], avg_ampr[i], ampr_load[i], max_ampr[i], MAX_LEN_CLLST);
+                                if (tmp_vel[i] == -1)
                                         result[i] |= RESULT_FAULT_VEL;
-                                else if (tmp_vel == 1)
+                                else if (tmp_vel[i] == 1)
                                         result[i] &= ~RESULT_FAULT_VEL;
-                                if (tmp_ampr == -1)
+                                if (tmp_ampr[i] == -1)
                                         result[i] |= RESULT_FAULT_AMPR;
-                                else if (tmp_ampr == 1)
+                                else if (tmp_ampr[i] == 1)
                                         result[i] &= ~RESULT_FAULT_AMPR;
-                                if (tmp_stop == 1)
+                                if (tmp_stop[i] == 1)
                                         result[i] |= RESULT_STOP;
-                                else if (tmp_stop == -1)
+                                else if (tmp_stop[i] == -1)
                                         result[i] &= ~RESULT_STOP;
-                                if (tmp_load == 1)
+                                if (tmp_load[i] == 1)
                                         result[i] |= RESULT_LOAD;
-                                else if (tmp_load == -1)
+                                else if (tmp_load[i] == -1)
                                         result[i] &= ~RESULT_LOAD;
                                 break;
                         default:
@@ -291,7 +279,10 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                                 result[i] |= RESULT_FAULT_COMM;
                                 }
                         }
-                        any_fault = (result[0] | result[1] | result[2] | result[3]) & UNMASK_RESULT_FAULT;
+                        any_fault = 0;
+                        for (i = 0; i < MAX_NUM_DEV; i++)
+                                any_fault |= result[i];
+                        any_fault &= UNMASK_RESULT_FAULT;
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
                                 verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
@@ -300,31 +291,31 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 if (num_load > 3)
                                         state.type = TASK_STATE_DEST;
                         }
-                        state.type |= TASK_NOTIFY_MOM;
+                        state.type |= NOTIFY;
                         state.data = 0;
                         if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         old_state = state;
                         switch (verify.type) {
-                        case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_STOP:
-                        case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_STOP:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
-                                        tx[i].form = J1939_FORM_SERVO_VEL;
-                                        tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                        tx[i].form = 0xA5;
+                                        tx[i].prio = 0x08;
                                         tx[i].data.cmd.pos = 0x1100;
                                         tx[i].data.cmd.vel = 0;
                                         tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
+                                        tx[i].data.cmd.exec = 0x9A;
                                         if (result[i] & RESULT_STOP)
-                                                tx[i].data.cmd.enable = J1939_SERVO_DISABLE;
+                                                tx[i].data.cmd.enable = 0x3C;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        if (tx[i].data.cmd.enable != J1939_SERVO_DISABLE)
+                                        if (tx[i].data.cmd.enable != 0x3C)
                                                 break;
                                 }
                                 if (i == MAX_NUM_DEV)
@@ -332,44 +323,45 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 else
                                         period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_POSI:
+                        case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
-                                        tx[i].form = J1939_FORM_SERVO_AMPR;
-                                        tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                        tx[i].form = 0xA3;
+                                        tx[i].prio = 0x08;
                                         tx[i].data.cmd.pos = 0x1100;
                                         tx[i].data.cmd.vel = 0x3322;
                                         if (avg_ampr[i] < ampr_load[i] - 5)
                                                 tx[i].data.cmd.ampr = -(s16)(avg_ampr[i] + 5);
-                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
+                                        tx[i].data.cmd.exec = 0x9A;
+                                        tx[i].data.cmd.enable = 0xC3;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
                                 period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_POSI:
+                        case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         if (verify.data & 1 << i) {
                                                 tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
-                                                tx[i].form = J1939_FORM_SERVO_VEL;
-                                                tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                                tx[i].form = 0xA5;
+                                                tx[i].prio = 0x08;
                                                 tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel = (s16)plan_vel_medium[i];
+                                                tx[i].data.cmd.vel = sign[i] * (s16)plan_vel_low[i];
                                                 tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                                tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
+                                                tx[i].data.cmd.exec = 0x9A;
+                                                tx[i].data.cmd.enable = 0xC3;
                                                 semTake(sem_can[cable[i]], WAIT_FOREVER);
                                                 rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                                 semGive(sem_can[cable[i]]);
                                         } else {
                                                 tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
-                                                tx[i].form = J1939_FORM_QUERY;
-                                                tx[i].prio = J1939_PRIO_QUERY;
+                                                tx[i].form = 0x5C;
+                                                tx[i].prio = 0x0C;
                                                 tx[i].data.query[0] = 0x00;
                                                 tx[i].data.query[1] = 0x11;
                                                 tx[i].data.query[2] = 0x22;
@@ -385,44 +377,26 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 }
                                 period = PERIOD_FAST;
                                 break;
-                        case CMD_ACT_MOM | CMD_MODE_AUTO | CMD_DIR_NEGA:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = J1939_FORM_SERVO_AMPR;
-                                        tx[i].prio = J1939_PRIO_SERVO_CTRL;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        tx[i].data.cmd.vel = 0x3322;
-                                        if (avg_ampr[i] < ampr_load[i] - 5)
-                                                tx[i].data.cmd.ampr = -(s16)(avg_ampr[i] + 5);
-                                        tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                        tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
-                                period = PERIOD_FAST;
-                                break;
-                        case CMD_ACT_MOM | CMD_MODE_MANUAL | CMD_DIR_NEGA:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         if (verify.data & 1 << i) {
                                                 tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
-                                                tx[i].form = J1939_FORM_SERVO_VEL;
-                                                tx[i].prio = J1939_PRIO_SERVO_CTRL;
+                                                tx[i].form = 0xA5;
+                                                tx[i].prio = 0x08;
                                                 tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel = -(s16)plan_vel_medium[i];
+                                                tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel_low[i];
                                                 tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = J1939_SERVO_ASYNC;
-                                                tx[i].data.cmd.enable = J1939_SERVO_ENABLE;
+                                                tx[i].data.cmd.exec = 0x9A;
+                                                tx[i].data.cmd.enable = 0xC3;
                                                 semTake(sem_can[cable[i]], WAIT_FOREVER);
                                                 rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                                 semGive(sem_can[cable[i]]);
                                         } else {
                                                 tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
-                                                tx[i].form = J1939_FORM_QUERY;
-                                                tx[i].prio = J1939_PRIO_QUERY;
+                                                tx[i].form = 0x5C;
+                                                tx[i].prio = 0x0C;
                                                 tx[i].data.query[0] = 0x00;
                                                 tx[i].data.query[1] = 0x11;
                                                 tx[i].data.query[2] = 0x22;
@@ -442,8 +416,8 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
-                                        tx[i].form = J1939_FORM_QUERY;
-                                        tx[i].prio = J1939_PRIO_QUERY;
+                                        tx[i].form = 0x5C;
+                                        tx[i].prio = 0x0C;
                                         tx[i].data.query[0] = 0x00;
                                         tx[i].data.query[1] = 0x11;
                                         tx[i].data.query[2] = 0x22;

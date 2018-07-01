@@ -4,14 +4,14 @@
 #include "type.h"
 #include "vx.h"
 
-#define MSG    msg_swv
-#define CMD    CMD_ACT_SWV
-#define NOTIFY TASK_NOTIFY_SWV
+#define MSG    msg_z
+#define CMD    CMD_ACT_X
+#define NOTIFY TASK_NOTIFY_Z
 
 #define PERIOD_SLOW 200
 #define PERIOD_FAST 20
 
-#define MAX_NUM_DEV   4
+#define MAX_NUM_DEV   2
 #define MAX_NUM_FORM  1
 #define MAX_LEN_CLLST 16
 
@@ -49,31 +49,28 @@ extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
 
 const static int addr[MAX_NUM_DEV] = {
-        J1939_ADDR_SWV0, J1939_ADDR_SWV1, J1939_ADDR_SWV2, J1939_ADDR_SWV3
+        J1939_ADDR_FZ, J1939_ADDR_BZ
 };
-const static int cable[MAX_NUM_DEV] = {0, 0, 1, 1};
-const static int sign[MAX_NUM_DEV] = {1, 1, 1, 1};
-const static int io_pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
-const static int io_pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
-const static int min_pos[MAX_NUM_DEV] = {-1000, -1000, -1000, -1000};
-const static int max_pos[MAX_NUM_DEV] = {52000, 52000, 52000, 52000};
-const static int min_vel[MAX_NUM_DEV] = {-1500, -1500, -1500, -1500};
-const static int max_vel[MAX_NUM_DEV] = {1500, 1500, 1500, 1500};
-const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
-const static int max_ampr[MAX_NUM_DEV] = {250, 250, 250, 250};
-const static int pos_zero[MAX_NUM_DEV] = {500, 500, 500, 500};
-const static int pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
-const static int ampr_load[MAX_NUM_DEV] = {200, 200, 200, 200};
+const static int cable[MAX_NUM_DEV] = {0, 1};
+const static int sign[MAX_NUM_DEV] = {-1, -1};
+const static int io_pos_zero[MAX_NUM_DEV] = {500, 500};
+const static int io_pos_dest[MAX_NUM_DEV] = {20000, 20000};
+const static int min_pos[MAX_NUM_DEV] = {-1000, -1000};
+const static int max_pos[MAX_NUM_DEV] = {36000, 36000};
+const static int min_vel[MAX_NUM_DEV] = {-1500, -1500};
+const static int max_vel[MAX_NUM_DEV] = {1500, 1500};
+const static int min_ampr[MAX_NUM_DEV] = {0, 0};
+const static int max_ampr[MAX_NUM_DEV] = {200, 200};
+const static int pos_zero[MAX_NUM_DEV] = {500, 500};
+const static int pos_dest[MAX_NUM_DEV] = {20000, 20000};
 const static int err_sync = 1000;
 const static struct plan max_plan_len[MAX_NUM_DEV] = {
-        {22000, 4000, 40000},
-        {22000, 4000, 40000},
-        {22000, 4000, 40000},
-        {22000, 4000, 40000}
+        {1000, 4000, 10000},
+        {1000, 4000, 10000},
 };
-const static int plan_vel_low[MAX_NUM_DEV] = {50, 50, 50, 50};
-const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000};
-const static int plan_vel_medium[MAX_NUM_DEV] = {500, 500, 500, 500};
+const static int plan_vel_low[MAX_NUM_DEV] = {100, 100};
+const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000};
+const static int plan_vel_medium[MAX_NUM_DEV] = {500, 500};
 
 static int period = PERIOD_SLOW;
 static u32 prev;
@@ -105,7 +102,6 @@ static int ctr_ok_ampr[MAX_NUM_DEV];
 static int ctr_ok_stop[MAX_NUM_DEV];
 static int ctr_ok_zero[MAX_NUM_DEV];
 static int ctr_ok_dest[MAX_NUM_DEV];
-static int ctr_ok_load[MAX_NUM_DEV];
 static int ctr_ok_sync;
 static int ctr_err_pos[MAX_NUM_DEV];
 static int ctr_err_vel[MAX_NUM_DEV];
@@ -113,7 +109,6 @@ static int ctr_err_ampr[MAX_NUM_DEV];
 static int ctr_err_stop[MAX_NUM_DEV];
 static int ctr_err_zero[MAX_NUM_DEV];
 static int ctr_err_dest[MAX_NUM_DEV];
-static int ctr_err_load[MAX_NUM_DEV];
 static int ctr_err_sync;
 static int ctr_fault[MAX_NUM_DEV];
 static int ctr_io[MAX_NUM_DEV];
@@ -124,7 +119,6 @@ static int tmp_ampr[MAX_NUM_DEV];
 static int tmp_stop[MAX_NUM_DEV];
 static int tmp_zero[MAX_NUM_DEV];
 static int tmp_dest[MAX_NUM_DEV];
-static int tmp_load[MAX_NUM_DEV];
 static int sub;
 static int tmp_sync;
 static int result[MAX_NUM_DEV];
@@ -138,7 +132,7 @@ static int plan_len_nega[MAX_NUM_DEV];
 static int i;
 static int j;
 
-void t_swv(void) /* Task: SWing leg of Vertical */
+void t_z(void) /* Task: PRoP */
 {
         for (i = 0; i < MAX_NUM_DEV; i++) {
                 for (j = 0; j < MAX_NUM_FORM; j++)
@@ -288,7 +282,6 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
                                 tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
                                 tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], avg_ampr[i], ampr_load[i], max_ampr[i], MAX_LEN_CLLST);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
                                     || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
@@ -323,10 +316,6 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         result[i] |= RESULT_DEST;
                                 else if (tmp_dest[i] == -1)
                                         result[i] &= ~RESULT_DEST;
-                                if (tmp_load[i] == 1)
-                                        result[i] |= RESULT_LOAD;
-                                else if (tmp_load[i] == -1)
-                                        result[i] &= ~RESULT_LOAD;
                                 break;
                         default:
                                 break;
@@ -425,51 +414,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         period = PERIOD_FAST;
                                 break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA5;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        if (result[i] & RESULT_DEST && result[i] & RESULT_LOAD) {
-                                                tx[i].data.cmd.vel = 0;
-                                                plan_len_posi[i] = 0;
-                                        } else {
-                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
-                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
-                                        }
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = 0x9A;
-                                        tx[i].data.cmd.enable = 0xC3;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
-                                period = PERIOD_FAST;
-                                break;
                         case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA5;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        if (result[i] & RESULT_ZERO && result[i] & RESULT_LOAD) {
-                                                tx[i].data.cmd.vel = 0;
-                                                plan_len_nega[i] = 0;
-                                        } else {
-                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
-                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel[i];
-                                        }
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = 0x9A;
-                                        tx[i].data.cmd.enable = 0xC3;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
                                 period = PERIOD_FAST;
                                 break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
@@ -480,7 +425,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                                 tx[i].form = 0xA5;
                                                 tx[i].prio = 0x08;
                                                 tx[i].data.cmd.pos = 0x1100;
-                                                if (result[i] & RESULT_DEST && result[i] & RESULT_LOAD) {
+                                                if (result[i] & RESULT_DEST) {
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len_posi[i] = 0;
                                                 } else {
@@ -522,7 +467,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                                 tx[i].form = 0xA5;
                                                 tx[i].prio = 0x08;
                                                 tx[i].data.cmd.pos = 0x1100;
-                                                if (result[i] & RESULT_ZERO && result[i] & RESULT_LOAD) {
+                                                if (result[i] & RESULT_ZERO) {
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len_nega[i] = 0;
                                                 } else {

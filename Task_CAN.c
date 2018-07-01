@@ -77,18 +77,18 @@ IMPORT u8 sysInumTbl[];
 #define GPIO_LED2_OUT  0x20
 #define GPIO_LED3_OUT  0x40
 
-#define write_byte(addr, data) \
+#define WRITE_BYTE(addr, data) \
 {                              \
         *(u8 *)addr = data;    \
 }
 
-#define write_reg_byte(addr, reg, data)    \
+#define WRITE_REG_BYTE(addr, reg, data)    \
 {                                          \
         *(u8 *)addr = (u8)reg;             \
         *(u8 *)(addr + 0x1000) = (u8)data; \
 }
 
-#define read_reg_byte(addr, reg) \
+#define READ_REG_BYTE(addr, reg) \
 ({                               \
         *(u8 *)addr = (u8)reg;   \
         *(u8 *)(addr + 0x1000);  \
@@ -118,38 +118,36 @@ void t_can(void)
         for (;;) {
                 taskDelay(1);
                 for (i = 0; i < 2; i++) {
-                        if (read_reg_byte(addr_can[i], PELI_SR) & 0x80) {
+                        if (READ_REG_BYTE(addr_can[i], PELI_SR) & 0x80) {
                                 init_can(i);
                                 continue;
                         }
                         if (sizeof(buf) != rngBufGet(rng_can[i], (char *)&buf, sizeof(buf)))
                                 continue;
-#if 0
                         if (i == 0)
                                 printf("\033[25;1HCAN0:%8d", rngNBytes(rng_can[0]));
                         if (i == 1)
                                 printf("\033[25;16HCAN1:%8d", rngNBytes(rng_can[1]));
-#endif
                         buf.tsc = tickGet();
                         id[0] = buf.src;
                         id[1] = buf.dest;
                         id[2] = buf.form;
                         id[3] = buf.prio;
                         *(int *)id <<= 3;
-                        write_reg_byte(addr_can[i], PELI_TXB0, 0x88);
-                        write_reg_byte(addr_can[i], PELI_TXB1, id[3]);
-                        write_reg_byte(addr_can[i], PELI_TXB2, id[2]);
-                        write_reg_byte(addr_can[i], PELI_TXB3, id[1]);
-                        write_reg_byte(addr_can[i], PELI_TXB4, id[0]);
-                        write_reg_byte(addr_can[i], PELI_TXB5, buf.data[0]);
-                        write_reg_byte(addr_can[i], PELI_TXB6, buf.data[1]);
-                        write_reg_byte(addr_can[i], PELI_TXB7, buf.data[2]);
-                        write_reg_byte(addr_can[i], PELI_TXB8, buf.data[3]);
-                        write_reg_byte(addr_can[i], PELI_TXB9, buf.data[4]);
-                        write_reg_byte(addr_can[i], PELI_TXB10, buf.data[5]);
-                        write_reg_byte(addr_can[i], PELI_TXB11, buf.data[6]);
-                        write_reg_byte(addr_can[i], PELI_TXB12, buf.data[7]);
-                        write_reg_byte(addr_can[i], PELI_CMR, 0x01);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB0, 0x88);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB1, id[3]);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB2, id[2]);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB3, id[1]);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB4, id[0]);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB5, buf.data[0]);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB6, buf.data[1]);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB7, buf.data[2]);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB8, buf.data[3]);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB9, buf.data[4]);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB10, buf.data[5]);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB11, buf.data[6]);
+                        WRITE_REG_BYTE(addr_can[i], PELI_TXB12, buf.data[7]);
+                        WRITE_REG_BYTE(addr_can[i], PELI_CMR, 0x01);
                 }
         }
 }
@@ -159,40 +157,40 @@ static void isr_can_rx0(void)
         struct frame_can can;
         u8 id[4];
         MSG_Q_ID msg;
-        if (read_reg_byte(ADDR_CAN0, PELI_IR) != 0x01) {
-                write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
+        if (READ_REG_BYTE(ADDR_CAN0, PELI_IR) != 0x01) {
+                WRITE_REG_BYTE(ADDR_CAN0, PELI_CMR, 0x04);
                 return;
         }
-        if ((read_reg_byte(ADDR_CAN0, PELI_SR) & 0x03) != 0x01) {
-                write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
+        if ((READ_REG_BYTE(ADDR_CAN0, PELI_SR) & 0x03) != 0x01) {
+                WRITE_REG_BYTE(ADDR_CAN0, PELI_CMR, 0x04);
                 return;
         }
-        if (read_reg_byte(ADDR_CAN0, PELI_RXB0) != 0x88) {
-                write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
+        if (READ_REG_BYTE(ADDR_CAN0, PELI_RXB0) != 0x88) {
+                WRITE_REG_BYTE(ADDR_CAN0, PELI_CMR, 0x04);
                 return;
         }
-        id[3] = read_reg_byte(ADDR_CAN0, PELI_RXB1);
-        id[2] = read_reg_byte(ADDR_CAN0, PELI_RXB2);
-        id[1] = read_reg_byte(ADDR_CAN0, PELI_RXB3);
-        id[0] = read_reg_byte(ADDR_CAN0, PELI_RXB4);
+        id[3] = READ_REG_BYTE(ADDR_CAN0, PELI_RXB1);
+        id[2] = READ_REG_BYTE(ADDR_CAN0, PELI_RXB2);
+        id[1] = READ_REG_BYTE(ADDR_CAN0, PELI_RXB3);
+        id[0] = READ_REG_BYTE(ADDR_CAN0, PELI_RXB4);
         *(int *)id >>= 3;
         can.src = id[0];
         can.dest = id[1];
         if (can.dest != J1939_ADDR_MAIN) {
-                write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
+                WRITE_REG_BYTE(ADDR_CAN0, PELI_CMR, 0x04);
                 return;
         }
         can.form = id[2];
         can.prio = id[3];
-        can.data[0] = read_reg_byte(ADDR_CAN0, PELI_RXB5);
-        can.data[1] = read_reg_byte(ADDR_CAN0, PELI_RXB6);
-        can.data[2] = read_reg_byte(ADDR_CAN0, PELI_RXB7);
-        can.data[3] = read_reg_byte(ADDR_CAN0, PELI_RXB8);
-        can.data[4] = read_reg_byte(ADDR_CAN0, PELI_RXB9);
-        can.data[5] = read_reg_byte(ADDR_CAN0, PELI_RXB10);
-        can.data[6] = read_reg_byte(ADDR_CAN0, PELI_RXB11);
-        can.data[7] = read_reg_byte(ADDR_CAN0, PELI_RXB12);
-        write_reg_byte(ADDR_CAN0, PELI_CMR, 0x04);
+        can.data[0] = READ_REG_BYTE(ADDR_CAN0, PELI_RXB5);
+        can.data[1] = READ_REG_BYTE(ADDR_CAN0, PELI_RXB6);
+        can.data[2] = READ_REG_BYTE(ADDR_CAN0, PELI_RXB7);
+        can.data[3] = READ_REG_BYTE(ADDR_CAN0, PELI_RXB8);
+        can.data[4] = READ_REG_BYTE(ADDR_CAN0, PELI_RXB9);
+        can.data[5] = READ_REG_BYTE(ADDR_CAN0, PELI_RXB10);
+        can.data[6] = READ_REG_BYTE(ADDR_CAN0, PELI_RXB11);
+        can.data[7] = READ_REG_BYTE(ADDR_CAN0, PELI_RXB12);
+        WRITE_REG_BYTE(ADDR_CAN0, PELI_CMR, 0x04);
         can.tsc = tickGet();
         msg = remap_addr_msg(can.src);
         if (!msg)
@@ -207,40 +205,40 @@ static void isr_can_rx1(void)
         struct frame_can can;
         u8 id[4];
         MSG_Q_ID msg;
-        if (read_reg_byte(ADDR_CAN1, PELI_IR) != 0x01) {
-                write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
+        if (READ_REG_BYTE(ADDR_CAN1, PELI_IR) != 0x01) {
+                WRITE_REG_BYTE(ADDR_CAN1, PELI_CMR, 0x04);
                 return;
         }
-        if ((read_reg_byte(ADDR_CAN1, PELI_SR) & 0x03) != 0x01) {
-                write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
+        if ((READ_REG_BYTE(ADDR_CAN1, PELI_SR) & 0x03) != 0x01) {
+                WRITE_REG_BYTE(ADDR_CAN1, PELI_CMR, 0x04);
                 return;
         }
-        if (read_reg_byte(ADDR_CAN1, PELI_RXB0) != 0x88) {
-                write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
+        if (READ_REG_BYTE(ADDR_CAN1, PELI_RXB0) != 0x88) {
+                WRITE_REG_BYTE(ADDR_CAN1, PELI_CMR, 0x04);
                 return;
         }
-        id[3] = read_reg_byte(ADDR_CAN1, PELI_RXB1);
-        id[2] = read_reg_byte(ADDR_CAN1, PELI_RXB2);
-        id[1] = read_reg_byte(ADDR_CAN1, PELI_RXB3);
-        id[0] = read_reg_byte(ADDR_CAN1, PELI_RXB4);
+        id[3] = READ_REG_BYTE(ADDR_CAN1, PELI_RXB1);
+        id[2] = READ_REG_BYTE(ADDR_CAN1, PELI_RXB2);
+        id[1] = READ_REG_BYTE(ADDR_CAN1, PELI_RXB3);
+        id[0] = READ_REG_BYTE(ADDR_CAN1, PELI_RXB4);
         *(int *)id >>= 3;
         can.src = id[0];
         can.dest = id[1];
         if (can.dest != J1939_ADDR_MAIN) {
-                write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
+                WRITE_REG_BYTE(ADDR_CAN1, PELI_CMR, 0x04);
                 return;
         }
         can.form = id[2];
         can.prio = id[3];
-        can.data[0] = read_reg_byte(ADDR_CAN1, PELI_RXB5);
-        can.data[1] = read_reg_byte(ADDR_CAN1, PELI_RXB6);
-        can.data[2] = read_reg_byte(ADDR_CAN1, PELI_RXB7);
-        can.data[3] = read_reg_byte(ADDR_CAN1, PELI_RXB8);
-        can.data[4] = read_reg_byte(ADDR_CAN1, PELI_RXB9);
-        can.data[5] = read_reg_byte(ADDR_CAN1, PELI_RXB10);
-        can.data[6] = read_reg_byte(ADDR_CAN1, PELI_RXB11);
-        can.data[7] = read_reg_byte(ADDR_CAN1, PELI_RXB12);
-        write_reg_byte(ADDR_CAN1, PELI_CMR, 0x04);
+        can.data[0] = READ_REG_BYTE(ADDR_CAN1, PELI_RXB5);
+        can.data[1] = READ_REG_BYTE(ADDR_CAN1, PELI_RXB6);
+        can.data[2] = READ_REG_BYTE(ADDR_CAN1, PELI_RXB7);
+        can.data[3] = READ_REG_BYTE(ADDR_CAN1, PELI_RXB8);
+        can.data[4] = READ_REG_BYTE(ADDR_CAN1, PELI_RXB9);
+        can.data[5] = READ_REG_BYTE(ADDR_CAN1, PELI_RXB10);
+        can.data[6] = READ_REG_BYTE(ADDR_CAN1, PELI_RXB11);
+        can.data[7] = READ_REG_BYTE(ADDR_CAN1, PELI_RXB12);
+        WRITE_REG_BYTE(ADDR_CAN1, PELI_CMR, 0x04);
         can.tsc = tickGet();
         msg = remap_addr_msg(can.src);
         if (!msg)
@@ -274,23 +272,23 @@ static void init_can(int i)
           +---------+------+------+
         */
         sysIntDisablePIC(irq_can[i]);
-        write_reg_byte(addr_can[i], PELI_MODE, 0x09);
-        write_reg_byte(addr_can[i], PELI_CMR, 0x0C);
-        write_reg_byte(addr_can[i], PELI_CDR, 0x88);
-        write_reg_byte(addr_can[i], PELI_IER, 0x09);
-        write_reg_byte(addr_can[i], PELI_ACR0, 0xFF);
-        write_reg_byte(addr_can[i], PELI_ACR1, 0xFF);
-        write_reg_byte(addr_can[i], PELI_ACR2, 0xFF);
-        write_reg_byte(addr_can[i], PELI_ACR3, 0xFF);
-        write_reg_byte(addr_can[i], PELI_AMR0, 0xFF);
-        write_reg_byte(addr_can[i], PELI_AMR1, 0xFF);
-        write_reg_byte(addr_can[i], PELI_AMR2, 0xFF);
-        write_reg_byte(addr_can[i], PELI_AMR3, 0xFF);
-        write_reg_byte(addr_can[i], PELI_BTR0, 0x04);
-        write_reg_byte(addr_can[i], PELI_BTR1, 0x1C);
-        write_reg_byte(addr_can[i], PELI_EWLR, 0x60);
-        write_reg_byte(addr_can[i], PELI_OCR, 0x1A);
-        write_reg_byte(addr_can[i], PELI_MODE, 0x08);
+        WRITE_REG_BYTE(addr_can[i], PELI_MODE, 0x09);
+        WRITE_REG_BYTE(addr_can[i], PELI_CMR, 0x0C);
+        WRITE_REG_BYTE(addr_can[i], PELI_CDR, 0x88);
+        WRITE_REG_BYTE(addr_can[i], PELI_IER, 0x09);
+        WRITE_REG_BYTE(addr_can[i], PELI_ACR0, 0xFF);
+        WRITE_REG_BYTE(addr_can[i], PELI_ACR1, 0xFF);
+        WRITE_REG_BYTE(addr_can[i], PELI_ACR2, 0xFF);
+        WRITE_REG_BYTE(addr_can[i], PELI_ACR3, 0xFF);
+        WRITE_REG_BYTE(addr_can[i], PELI_AMR0, 0xFF);
+        WRITE_REG_BYTE(addr_can[i], PELI_AMR1, 0xFF);
+        WRITE_REG_BYTE(addr_can[i], PELI_AMR2, 0xFF);
+        WRITE_REG_BYTE(addr_can[i], PELI_AMR3, 0xFF);
+        WRITE_REG_BYTE(addr_can[i], PELI_BTR0, 0x04);
+        WRITE_REG_BYTE(addr_can[i], PELI_BTR1, 0x1C);
+        WRITE_REG_BYTE(addr_can[i], PELI_EWLR, 0x60);
+        WRITE_REG_BYTE(addr_can[i], PELI_OCR, 0x1A);
+        WRITE_REG_BYTE(addr_can[i], PELI_MODE, 0x08);
         intConnect(INUM_TO_IVEC(sysInumTbl[irq_can[i]]), (VOIDFUNCPTR)isr_can[i], 0);
         sysIntEnablePIC(irq_can[i]);
 }
