@@ -25,7 +25,7 @@ void input_passwd(u8 addr)
         tx.src = J1939_ADDR_GW;
         tx.dest = addr;
         tx.form = 0x40;
-        tx.prio = 0x08;
+        tx.prio = 0x04;
         tx.data[0] = 'X';
         tx.data[1] = 'I';
         tx.data[2] = 'N';
@@ -42,16 +42,16 @@ void save_config(u8 addr)
 {
         tx.src = J1939_ADDR_GW;
         tx.dest = addr;
-        tx.form = 0x40;
-        tx.prio = 0x08;
+        tx.form = 0x4F;
+        tx.prio = 0x04;
         tx.data[0] = 0x00;
-        tx.data[1] = 0x11;
-        tx.data[2] = 0x22;
-        tx.data[3] = 0x33;
-        tx.data[4] = 0x44;
-        tx.data[5] = 0x55;
-        tx.data[6] = 0x66;
-        tx.data[7] = 0x77;
+        tx.data[1] = 0x00;
+        tx.data[2] = 0x00;
+        tx.data[3] = 0x00;
+        tx.data[4] = 0x00;
+        tx.data[5] = 0x00;
+        tx.data[6] = 0x00;
+        tx.data[7] = 0x00;
         rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
         rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
 }
@@ -61,7 +61,7 @@ void set_addr(u8 old, u8 addr)
         tx.src = J1939_ADDR_GW;
         tx.dest = old;
         tx.form = 0x46;
-        tx.prio = 0x08;
+        tx.prio = 0x04;
         tx.data[0] = 0x00;
         tx.data[1] = old;
         tx.data[2] = 0x00;
@@ -79,7 +79,7 @@ void set_ratio(u8 addr, u16 ratio)
         tx.src = J1939_ADDR_GW;
         tx.dest = addr;
         tx.form = 0x46;
-        tx.prio = 0x08;
+        tx.prio = 0x04;
         memcpy(&tx.data[0], &ratio, sizeof(u16));
         tx.data[2] = 0x00;
         tx.data[3] = 0x00;
@@ -93,18 +93,18 @@ void set_ratio(u8 addr, u16 ratio)
 
 void set_zero(u8 addr)
 {
-        tx.src = J1939_ADDR_MAIN;
+        tx.src = J1939_ADDR_GW;
         tx.dest = addr;
         tx.form = 0xA9;
-        tx.prio = 0x08;
+        tx.prio = 0x04;
         tx.data[0] = 0xCA;
         tx.data[1] = 0xCA;
         tx.data[2] = 0xCA;
         tx.data[3] = 0xCA;
-        tx.data[4] = 0x35;
-        tx.data[5] = 0x35;
-        tx.data[6] = 0x35;
-        tx.data[7] = 0x35;
+        tx.data[4] = 0x00;
+        tx.data[5] = 0x00;
+        tx.data[6] = 0x00;
+        tx.data[7] = 0x00;
         rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
         rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
 }

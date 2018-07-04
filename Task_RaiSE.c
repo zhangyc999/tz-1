@@ -426,7 +426,8 @@ void t_rse(void) /* Task: RaiSE arm */
                                 any_fault = any_fault & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
-                                verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
+                                if (verify.type & UNMASK_CMD_ACT == CMD)
+                                        verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
                         } else {
                                 state.type = TASK_STATE_RUNNING;
                                 if (all_zero)
@@ -543,16 +544,12 @@ void t_rse(void) /* Task: RaiSE arm */
                                         } else {
                                                 tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
-                                                tx[i].form = 0x5C;
-                                                tx[i].prio = 0x0C;
-                                                tx[i].data.query[0] = 0x00;
-                                                tx[i].data.query[1] = 0x11;
-                                                tx[i].data.query[2] = 0x22;
-                                                tx[i].data.query[3] = 0x33;
-                                                tx[i].data.query[4] = 0x44;
-                                                tx[i].data.query[5] = 0x55;
-                                                tx[i].data.query[6] = 0x66;
-                                                tx[i].data.query[7] = 0x77;
+                                                tx[i].form = 0xA5;
+                                                tx[i].prio = 0x08;
+                                                tx[i].data.cmd.pos = 0x1100;
+                                                tx[i].data.cmd.vel = 0;
+                                                tx[i].data.cmd.ampr = 1000;
+                                                tx[i].data.cmd.exec = 0x9A;
                                                 semTake(sem_can[cable[i]], WAIT_FOREVER);
                                                 rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                                 semGive(sem_can[cable[i]]);
@@ -585,16 +582,12 @@ void t_rse(void) /* Task: RaiSE arm */
                                         } else {
                                                 tx[i].src = J1939_ADDR_MAIN;
                                                 tx[i].dest = addr[i];
-                                                tx[i].form = 0x5C;
-                                                tx[i].prio = 0x0C;
-                                                tx[i].data.query[0] = 0x00;
-                                                tx[i].data.query[1] = 0x11;
-                                                tx[i].data.query[2] = 0x22;
-                                                tx[i].data.query[3] = 0x33;
-                                                tx[i].data.query[4] = 0x44;
-                                                tx[i].data.query[5] = 0x55;
-                                                tx[i].data.query[6] = 0x66;
-                                                tx[i].data.query[7] = 0x77;
+                                                tx[i].form = 0xA5;
+                                                tx[i].prio = 0x08;
+                                                tx[i].data.cmd.pos = 0x1100;
+                                                tx[i].data.cmd.vel = 0;
+                                                tx[i].data.cmd.ampr = 1000;
+                                                tx[i].data.cmd.exec = 0x9A;
                                                 semTake(sem_can[cable[i]], WAIT_FOREVER);
                                                 rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                                 semGive(sem_can[cable[i]]);
@@ -606,16 +599,14 @@ void t_rse(void) /* Task: RaiSE arm */
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
-                                        tx[i].form = 0x5C;
-                                        tx[i].prio = 0x0C;
-                                        tx[i].data.query[0] = 0x00;
-                                        tx[i].data.query[1] = 0x11;
-                                        tx[i].data.query[2] = 0x22;
-                                        tx[i].data.query[3] = 0x33;
-                                        tx[i].data.query[4] = 0x44;
-                                        tx[i].data.query[5] = 0x55;
-                                        tx[i].data.query[6] = 0x66;
-                                        tx[i].data.query[7] = 0x77;
+                                        tx[i].form = 0xA5;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.cmd.pos = 0x1100;
+                                        tx[i].data.cmd.vel = 0;
+                                        tx[i].data.cmd.ampr = 1000;
+                                        tx[i].data.cmd.exec = 0x9A;
+                                        if (result[i] & RESULT_STOP)
+                                                tx[i].data.cmd.enable = 0x3C;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);

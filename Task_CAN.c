@@ -65,17 +65,17 @@ IMPORT u8 sysInumTbl[];
 #define PELI_RBSA  0x1E
 #define PELI_CDR   0x1F
 
-#define GPIO_IN1       0x01
-#define GPIO_IN2       0x02
-#define GPIO_IN3       0x04
-#define GPIO_IN4       0x08
-#define GPIO_OUT1      0x01
-#define GPIO_OUT2      0x02
-#define GPIO_OUT3      0x04
-#define GPIO_OUT4      0x08
-#define GPIO_LED1_OUT  0x10
-#define GPIO_LED2_OUT  0x20
-#define GPIO_LED3_OUT  0x40
+#define GPIO_IN1      0x01
+#define GPIO_IN2      0x02
+#define GPIO_IN3      0x04
+#define GPIO_IN4      0x08
+#define GPIO_OUT1     0x01
+#define GPIO_OUT2     0x02
+#define GPIO_OUT3     0x04
+#define GPIO_OUT4     0x08
+#define GPIO_LED1_OUT 0x10
+#define GPIO_LED2_OUT 0x20
+#define GPIO_LED3_OUT 0x40
 
 #define WRITE_BYTE(addr, data) \
 {                              \
@@ -124,7 +124,7 @@ void t_can(void)
                         }
                         if (sizeof(buf) != rngBufGet(rng_can[i], (char *)&buf, sizeof(buf)))
                                 continue;
-#if 0
+#if 1
                         if (i == 0)
                                 printf("\033[25;1HCAN0:%8d", rngNBytes(rng_can[0]));
                         if (i == 1)

@@ -25,23 +25,23 @@
 #define J1939_ADDR_PRP1 0x33 /* PRoP on the back left                                 */
 #define J1939_ADDR_PRP2 0x36 /* PRoP on the back right                                */
 #define J1939_ADDR_PRP3 0x35 /* PRoP on the front right                               */
-#define J1939_ADDR_FX   0x2C /* crane on the Front for X-axis                         */
-#define J1939_ADDR_FY0  0x25 /* crane on the Front for Y-axis inside                  */
-#define J1939_ADDR_FY1  0x26 /* crane on the Front for Y-axis outside                 */
-#define J1939_ADDR_FZ   0x20 /* crane on the Front for Z-axis                         */
-#define J1939_ADDR_BX   0x2F /* crane on the Back for X-axis                          */
-#define J1939_ADDR_BY0  0x29 /* crane on the Back for Y-axis inside                   */
-#define J1939_ADDR_BY1  0x2A /* crane on the Back for Y-axis outside                  */
-#define J1939_ADDR_BZ   0x23 /* crane on the Back for Z-axis                          */
+#define J1939_ADDR_FX   0x2F /* crane on the Front for X-axis                         */
+#define J1939_ADDR_BX   0x2C /* crane on the Back for X-axis                          */
+#define J1939_ADDR_FY0  0x2A /* crane on the Front for Y-axis outside                 */
+#define J1939_ADDR_FY1  0x29 /* crane on the Front for Y-axis inside                  */
+#define J1939_ADDR_BY0  0x25 /* crane on the Back for Y-axis inside                   */
+#define J1939_ADDR_BY1  0x26 /* crane on the Back for Y-axis outside                  */
+#define J1939_ADDR_FZ   0x23 /* crane on the Front for Z-axis                         */
+#define J1939_ADDR_BZ   0x20 /* crane on the Back for Z-axis                          */
 #define J1939_ADDR_MOM0 0x83 /* constant MOMent electric machinery on the front left  */
 #define J1939_ADDR_MOM1 0x85 /* constant MOMent electric machinery on the back left   */
 #define J1939_ADDR_MOM2 0x89 /* constant MOMent electric machinery on the back right  */
 #define J1939_ADDR_MOM3 0x86 /* constant MOMent electric machinery on the front right */
 #define J1939_ADDR_TOP  0x93 /* TOP lengthwise electric machinery                     */
-#define J1939_ADDR_SDS0 0xA3 /* ShielD of Side on the front left                      */
-#define J1939_ADDR_SDS1 0xA5 /* ShielD of Side on the back left                       */
-#define J1939_ADDR_SDS2 0xA9 /* ShielD of Side on the back right                      */
-#define J1939_ADDR_SDS3 0xA6 /* ShielD of Side on the front right                     */
+#define J1939_ADDR_SDS0 0xA3 /* ShielD of Side outside on the left                    */
+#define J1939_ADDR_SDS1 0xA5 /* ShielD of Side inside on the left                     */
+#define J1939_ADDR_SDS2 0xA9 /* ShielD of Side inside on the right                    */
+#define J1939_ADDR_SDS3 0xA6 /* ShielD of Side outside on the right                   */
 #define J1939_ADDR_SDF0 0xB0 /* ShielD of Front on the far left                       */
 #define J1939_ADDR_SDF1 0xB3 /* ShielD of Front on the left                           */
 #define J1939_ADDR_SDF2 0xB5 /* ShielD of Front on the right                          */
