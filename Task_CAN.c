@@ -124,10 +124,12 @@ void t_can(void)
                         }
                         if (sizeof(buf) != rngBufGet(rng_can[i], (char *)&buf, sizeof(buf)))
                                 continue;
+#if 0
                         if (i == 0)
                                 printf("\033[25;1HCAN0:%8d", rngNBytes(rng_can[0]));
                         if (i == 1)
                                 printf("\033[25;16HCAN1:%8d", rngNBytes(rng_can[1]));
+#endif
                         buf.tsc = tickGet();
                         id[0] = buf.src;
                         id[1] = buf.dest;

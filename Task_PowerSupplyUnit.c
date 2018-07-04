@@ -4,8 +4,7 @@
 #include "type.h"
 #include "vx.h"
 
-#define PERIOD_SLOW 200
-#define PERIOD_FAST 20
+#define PERIOD 20
 
 #define MAX_NUM_DEV   1
 #define MAX_NUM_FORM  2
@@ -47,7 +46,7 @@ const static int max_volt_500[MAX_NUM_DEV] = {5400};
 const static int min_ampr_500[MAX_NUM_DEV] = {0};
 const static int max_ampr_500[MAX_NUM_DEV] = {1000};
 
-static int period = PERIOD_SLOW;
+static int period = PERIOD;
 static u32 prev;
 static int len;
 static u8 tmp[sizeof(struct frame_can)];
@@ -101,7 +100,7 @@ void t_psu(void) /* Task: Power Supply Unit */
         }
         for (;;) {
                 prev = tickGet();
-                if (period < 0 || period > PERIOD_SLOW)
+                if (period < 0 || period > PERIOD)
                         period = 0;
                 len = msgQReceive(msg_psu, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
@@ -247,102 +246,116 @@ void t_psu(void) /* Task: Power Supply Unit */
                         switch (verify.type) {
                         case CMD_ACT_PSU | CMD_DIR_POSI | CMD_PSU_BRAKE:
                         case CMD_ACT_PSU | CMD_DIR_NEGA | CMD_PSU_BRAKE:
-                                tx[i].src = J1939_ADDR_MAIN;
-                                tx[i].dest = addr[i];
-                                tx[i].form = 0xA0;
-                                tx[i].data.io.brake = (u8)verify.data;
-                                tx[i].data.io.res = 0x66;
-                                tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                semGive(sem_can[cable[i]]);
-                                period = PERIOD_SLOW;
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA0;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.io.brake = (u8)verify.data;
+                                        tx[i].data.io.res = 0x66;
+                                        tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
+                                        semTake(sem_can[i], WAIT_FOREVER);
+                                        rngBufPut(rng_can[i], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[i]);
+                                }
+                                period = PERIOD;
                                 break;
                         case CMD_ACT_PSU | CMD_DIR_POSI | CMD_PSU_LIGHT:
                         case CMD_ACT_PSU | CMD_DIR_NEGA | CMD_PSU_LIGHT:
-                                tx[i].src = J1939_ADDR_MAIN;
-                                tx[i].dest = addr[i];
-                                tx[i].form = 0xA0;
-                                tx[i].data.io.light = (u8)verify.data;
-                                tx[i].data.io.res = 0x66;
-                                tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                semGive(sem_can[cable[i]]);
-                                period = PERIOD_SLOW;
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA0;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.io.light = (u8)verify.data;
+                                        tx[i].data.io.res = 0x66;
+                                        tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
+                                }
+                                period = PERIOD;
                                 break;
                         case CMD_ACT_PSU | CMD_DIR_POSI | CMD_PSU_24:
-                                tx[i].src = J1939_ADDR_MAIN;
-                                tx[i].dest = addr[i];
-                                tx[i].form = 0xA0;
-                                tx[i].prio = 0x08;
-                                tx[i].data.io.v24 = (u16)psu_delay(verify.data, old_cmd[i]);
-                                old_cmd[i] = tx[i].data.io.v24;
-                                tx[i].data.io.res = 0x66;
-                                tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                semGive(sem_can[cable[i]]);
-                                period = PERIOD_SLOW;
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA0;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.io.v24 = (u16)psu_delay(verify.data, old_cmd[i]);
+                                        old_cmd[i] = tx[i].data.io.v24;
+                                        tx[i].data.io.res = 0x66;
+                                        tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
+                                }
+                                period = PERIOD;
                                 break;
                         case CMD_ACT_PSU | CMD_DIR_NEGA | CMD_PSU_24:
-                                tx[i].src = J1939_ADDR_MAIN;
-                                tx[i].dest = addr[i];
-                                tx[i].form = 0xA0;
-                                tx[i].prio = 0x08;
-                                tx[i].data.io.v24 = 0;
-                                tx[i].data.io.res = 0x66;
-                                tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                semGive(sem_can[cable[i]]);
-                                period = PERIOD_SLOW;
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA0;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.io.v24 = 0;
+                                        tx[i].data.io.res = 0x66;
+                                        tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
+                                }
+                                period = PERIOD;
                                 break;
                         case CMD_ACT_PSU | CMD_DIR_POSI | CMD_PSU_500:
-                                tx[i].src = J1939_ADDR_MAIN;
-                                tx[i].dest = addr[i];
-                                tx[i].form = 0xA0;
-                                tx[i].prio = 0x08;
-                                tx[i].data.io.v500 = (u16)verify.data;
-                                tx[i].data.io.res = 0x66;
-                                tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                semGive(sem_can[cable[i]]);
-                                period = PERIOD_SLOW;
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA0;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.io.v500 = (u16)verify.data;
+                                        tx[i].data.io.res = 0x66;
+                                        tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
+                                }
+                                period = PERIOD;
                                 break;
                         case CMD_ACT_PSU | CMD_DIR_NEGA | CMD_PSU_500:
-                                tx[i].src = J1939_ADDR_MAIN;
-                                tx[i].dest = addr[i];
-                                tx[i].form = 0xA0;
-                                tx[i].prio = 0x08;
-                                tx[i].data.io.v500 = 0;
-                                tx[i].data.io.res = 0x66;
-                                tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                semGive(sem_can[cable[i]]);
-                                period = PERIOD_SLOW;
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA0;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.io.v500 = 0;
+                                        tx[i].data.io.res = 0x66;
+                                        tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
+                                }
+                                period = PERIOD;
                                 break;
                         default:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
-                                        tx[i].form = 0x5C;
-                                        tx[i].prio = 0x0C;
+                                        tx[i].form = 0xA0;
+                                        tx[i].prio = 0x08;
                                         tx[i].data.query[0] = 0x00;
-                                        tx[i].data.query[1] = 0x11;
-                                        tx[i].data.query[2] = 0x22;
-                                        tx[i].data.query[3] = 0x33;
-                                        tx[i].data.query[4] = 0x44;
-                                        tx[i].data.query[5] = 0x55;
+                                        tx[i].data.query[1] = 0x00;
+                                        tx[i].data.query[2] = 0x00;
+                                        tx[i].data.query[3] = 0x00;
+                                        tx[i].data.query[4] = 0x00;
+                                        tx[i].data.query[5] = 0x00;
                                         tx[i].data.query[6] = 0x66;
-                                        tx[i].data.query[7] = 0x77;
+                                        tx[i].data.query[7] = check_xor((u8 *)&tx[i].data.io.brake, 7);
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
-                                period = PERIOD_SLOW;
+                                period = PERIOD;
                                 break;
                         }
                         break;
