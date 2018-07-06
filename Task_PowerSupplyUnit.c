@@ -10,6 +10,7 @@
 #define MAX_NUM_FORM  2
 #define MAX_LEN_CLLST 16
 
+#define UNMASK_RESULT_IO      0x000000FF
 #define UNMASK_RESULT_FAULT   0x0000FF00
 #define UNMASK_RESULT_MISC    0xFFFF0000
 #define RESULT_FAULT_GENERAL  0x00000100
@@ -19,6 +20,10 @@
 #define RESULT_FAULT_VOLT_500 0x00001000
 #define RESULT_FAULT_AMPR_500 0x00002000
 #define RESULT_FAULT_COMM     0x00008000
+#define RESULT_IO_BRAKE       0x00000001
+#define RESULT_IO_LIGHT       0x00000002
+#define RESULT_IO_24          0x00000004
+#define RESULT_IO_500         0x00000008
 
 typedef struct frame_psu_rx FRAME_RX;
 typedef struct frame_psu_tx FRAME_TX;
@@ -33,18 +38,16 @@ extern MSG_Q_ID msg_psu;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
 
-const static int addr[MAX_NUM_DEV] = {
-        J1939_ADDR_PSU
-};
-const static int cable[MAX_NUM_DEV] = {0};
-const static int min_volt_24[MAX_NUM_DEV] = {2000};
-const static int max_volt_24[MAX_NUM_DEV] = {2800};
-const static int min_ampr_24[MAX_NUM_DEV] = {0};
-const static int max_ampr_24[MAX_NUM_DEV] = {2000};
-const static int min_volt_500[MAX_NUM_DEV] = {4600};
-const static int max_volt_500[MAX_NUM_DEV] = {5400};
-const static int min_ampr_500[MAX_NUM_DEV] = {0};
-const static int max_ampr_500[MAX_NUM_DEV] = {1000};
+const static int addr = J1939_ADDR_PSU;
+const static int cable = 0;
+const static int min_volt_24 = 2000;
+const static int max_volt_24 = 2800;
+const static int min_ampr_24 = 0;
+const static int max_ampr_24 = 2000;
+const static int min_volt_500 = 4600;
+const static int max_volt_500 = 5400;
+const static int min_ampr_500 = 0;
+const static int max_ampr_500 = 1000;
 
 static int period = PERIOD;
 static u32 prev;
@@ -55,49 +58,54 @@ static struct main verify = {CMD_IDLE, 0};
 static struct main state;
 static struct main old_state;
 static struct frame_can can;
-static struct frame_can rx[MAX_NUM_DEV][MAX_NUM_FORM][MAX_LEN_CLLST];
-static FRAME_RX *p[MAX_NUM_DEV][MAX_NUM_FORM];
-static FRAME_TX tx[MAX_NUM_DEV];
-static int has_received[MAX_NUM_DEV];
-static int cur_volt_24[MAX_NUM_DEV];
-static int cur_ampr_24[MAX_NUM_DEV];
-static int cur_volt_500[MAX_NUM_DEV];
-static int cur_ampr_500[MAX_NUM_DEV];
-static int sum_volt_24[MAX_NUM_DEV];
-static int sum_ampr_24[MAX_NUM_DEV];
-static int sum_volt_500[MAX_NUM_DEV];
-static int sum_ampr_500[MAX_NUM_DEV];
-static int avg_volt_24[MAX_NUM_DEV];
-static int avg_ampr_24[MAX_NUM_DEV];
-static int avg_volt_500[MAX_NUM_DEV];
-static int avg_ampr_500[MAX_NUM_DEV];
-static int old_fault[MAX_NUM_DEV];
-static int old_cmd[MAX_NUM_DEV];
-static int ctr_ok_volt_24[MAX_NUM_DEV];
-static int ctr_ok_ampr_24[MAX_NUM_DEV];
-static int ctr_ok_volt_500[MAX_NUM_DEV];
-static int ctr_ok_ampr_500[MAX_NUM_DEV];
-static int ctr_err_volt_24[MAX_NUM_DEV];
-static int ctr_err_ampr_24[MAX_NUM_DEV];
-static int ctr_err_volt_500[MAX_NUM_DEV];
-static int ctr_err_ampr_500[MAX_NUM_DEV];
-static int ctr_fault[MAX_NUM_DEV];
-static int ctr_comm[MAX_NUM_DEV];
-static int tmp_volt_24[MAX_NUM_DEV];
-static int tmp_ampr_24[MAX_NUM_DEV];
-static int tmp_volt_500[MAX_NUM_DEV];
-static int tmp_ampr_500[MAX_NUM_DEV];
-static int result[MAX_NUM_DEV];
+static struct frame_can rx[MAX_NUM_FORM][MAX_LEN_CLLST];
+static FRAME_RX *p[MAX_NUM_FORM];
+static FRAME_TX tx;
+static int has_received;
+static int cur_volt_24;
+static int cur_ampr_24;
+static int cur_volt_500;
+static int cur_ampr_500;
+static int sum_volt_24;
+static int sum_ampr_24;
+static int sum_volt_500;
+static int sum_ampr_500;
+static int avg_volt_24;
+static int avg_ampr_24;
+static int avg_volt_500;
+static int avg_ampr_500;
+static int old_io_brake;
+static int old_io_light;
+static int old_io_24;
+static int old_io_500;
+static int old_fault;
+static int old_cmd;
+static int ctr_ok_volt_24;
+static int ctr_ok_ampr_24;
+static int ctr_ok_volt_500;
+static int ctr_ok_ampr_500;
+static int ctr_err_volt_24;
+static int ctr_err_ampr_24;
+static int ctr_err_volt_500;
+static int ctr_err_ampr_500;
+static int ctr_io_brake;
+static int ctr_io_light;
+static int ctr_io_24;
+static int ctr_io_500;
+static int ctr_fault;
+static int ctr_comm;
+static int tmp_volt_24;
+static int tmp_ampr_24;
+static int tmp_volt_500;
+static int tmp_ampr_500;
+static int result;
 static int any_fault;
-static int i;
 static int j;
 
 void t_psu(void) /* Task: Power Supply Unit */
 {
-        for (i = 0; i < MAX_NUM_DEV; i++) {
-                for (j = 0; j < MAX_NUM_FORM; j++)
-                        p[i][j] = (FRAME_RX *)can_cllst_init(rx[i][j], MAX_LEN_CLLST);
-        }
+        for (j = 0; j < MAX_NUM_FORM; j++)
+                p[j] = (FRAME_RX *)can_cllst_init(rx[j], MAX_LEN_CLLST);
         for (;;) {
                 prev = tickGet();
                 if (period < 0 || period > PERIOD)
@@ -125,38 +133,82 @@ void t_psu(void) /* Task: Power Supply Unit */
                         break;
                 case sizeof(struct frame_can):
                         can = *(struct frame_can *)tmp;
-                        for (i = 0; i < MAX_NUM_DEV; i++) {
-                                if (can.src == addr[i])
-                                        break;
-                        }
-                        has_received[i] = 1;
+                        has_received = 1;
                         switch (can.form) {
                         case 0xC0:
                                 j = 0;
-                                p[i][j] = p[i][j]->next;
-                                old_fault[i] = p[i][j]->data.io.fault;
-                                p[i][j]->data.io.fault = ((FRAME_RX *)&can)->data.io.fault;
-                                if (old_fault[i] == p[i][j]->data.io.fault) {
-                                        if (ctr_fault[i] < MAX_LEN_CLLST)
-                                                ctr_fault[i]++;
+                                p[j] = p[j]->next;
+                                old_io_brake = p[j]->data.io.brake;
+                                old_io_light = p[j]->data.io.light;
+                                old_io_24 = p[j]->data.io.v24;
+                                old_io_500 = p[j]->data.io.v500;
+                                old_fault = p[j]->data.io.fault;
+                                p[j]->data.io.brake = ((FRAME_RX *)&can)->data.io.brake;
+                                p[j]->data.io.light = ((FRAME_RX *)&can)->data.io.light;
+                                p[j]->data.io.v24 = ((FRAME_RX *)&can)->data.io.v24;
+                                p[j]->data.io.v500 = ((FRAME_RX *)&can)->data.io.v500;
+                                p[j]->data.io.fault = ((FRAME_RX *)&can)->data.io.fault;
+                                if (old_io_brake == p[j]->data.io.brake && old_io_brake == cmd.data && (cmd.type & UNMASK_CMD_PSU) == CMD_PSU_BRAKE) {
+                                        if (ctr_io_brake < MAX_LEN_CLLST)
+                                                ctr_io_brake++;
                                 } else {
-                                        ctr_fault[i] = 0;
+                                        ctr_io_brake = 0;
                                 }
-                                switch (p[i][j]->data.io.fault) {
+                                if (old_io_light == p[j]->data.io.light && old_io_light == cmd.data && (cmd.type & UNMASK_CMD_PSU) == CMD_PSU_LIGHT) {
+                                        if (ctr_io_light < MAX_LEN_CLLST)
+                                                ctr_io_light++;
+                                } else {
+                                        ctr_io_light = 0;
+                                }
+                                if (old_io_24 == p[j]->data.io.v24 && old_io_24 == cmd.data && (cmd.type & UNMASK_CMD_PSU) == CMD_PSU_24) {
+                                        if (ctr_io_24 < MAX_LEN_CLLST)
+                                                ctr_io_24++;
+                                } else {
+                                        ctr_io_24 = 0;
+                                }
+                                if (old_io_500 == p[j]->data.io.v500 && old_io_500 == cmd.data && (cmd.type & UNMASK_CMD_PSU) == CMD_PSU_500) {
+                                        if (ctr_io_500 < MAX_LEN_CLLST)
+                                                ctr_io_500++;
+                                } else {
+                                        ctr_io_500 = 0;
+                                }
+                                if (ctr_io_brake > 3)
+                                        result &= ~RESULT_IO_BRAKE;
+                                else
+                                        result |= RESULT_IO_BRAKE;
+                                if (ctr_io_light > 3)
+                                        result &= ~RESULT_IO_LIGHT;
+                                else
+                                        result |= RESULT_IO_LIGHT;
+                                if (ctr_io_24 > 3)
+                                        result &= ~RESULT_IO_24;
+                                else
+                                        result |= RESULT_IO_24;
+                                if (ctr_io_500 > 3)
+                                        result &= ~RESULT_IO_500;
+                                else
+                                        result |= RESULT_IO_500;
+                                if (old_fault == p[j]->data.io.fault) {
+                                        if (ctr_fault < MAX_LEN_CLLST)
+                                                ctr_fault++;
+                                } else {
+                                        ctr_fault = 0;
+                                }
+                                switch (p[j]->data.io.fault) {
                                 case 0x00:
                                 case 0x03:
-                                        if (ctr_fault[i] < 5)
+                                        if (ctr_fault < 5)
                                                 break;
-                                        result[i] &= ~RESULT_FAULT_GENERAL;
-                                        result[i] &= ~RESULT_FAULT_SERIOUS;
+                                        result &= ~RESULT_FAULT_GENERAL;
+                                        result &= ~RESULT_FAULT_SERIOUS;
                                         break;
                                 case 0x0C:
-                                        if (ctr_fault[i] < 3)
+                                        if (ctr_fault < 3)
                                                 break;
-                                        result[i] |= RESULT_FAULT_GENERAL;
+                                        result |= RESULT_FAULT_GENERAL;
                                         break;
                                 case 0xF0:
-                                        result[i] |= RESULT_FAULT_SERIOUS;
+                                        result |= RESULT_FAULT_SERIOUS;
                                         break;
                                 default:
                                         break;
@@ -164,47 +216,47 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 break;
                         case 0xC3:
                                 j = 1;
-                                p[i][j] = p[i][j]->next;
-                                sum_volt_24[i] -= p[i][j]->data.state.volt_24;
-                                sum_ampr_24[i] -= p[i][j]->data.state.ampr_24;
-                                sum_volt_500[i] -= p[i][j]->data.state.volt_500;
-                                sum_ampr_500[i] -= p[i][j]->data.state.ampr_500;
-                                p[i][j]->data.state.volt_24 = ((FRAME_RX *)&can)->data.state.volt_24;
-                                p[i][j]->data.state.ampr_24 = ((FRAME_RX *)&can)->data.state.ampr_24;
-                                p[i][j]->data.state.volt_500 = ((FRAME_RX *)&can)->data.state.volt_500;
-                                p[i][j]->data.state.ampr_500 = ((FRAME_RX *)&can)->data.state.ampr_500;
-                                cur_volt_24[i] = p[i][j]->data.state.volt_24;
-                                cur_ampr_24[i] = p[i][j]->data.state.ampr_24;
-                                cur_volt_500[i] = p[i][j]->data.state.volt_500;
-                                cur_ampr_500[i] = p[i][j]->data.state.ampr_500;
-                                sum_volt_24[i] += p[i][j]->data.state.volt_24;
-                                sum_ampr_24[i] += p[i][j]->data.state.ampr_24;
-                                sum_volt_500[i] += p[i][j]->data.state.volt_500;
-                                sum_ampr_500[i] += p[i][j]->data.state.ampr_500;
-                                avg_volt_24[i] = sum_volt_24[i] / MAX_LEN_CLLST;
-                                avg_ampr_24[i] = sum_ampr_24[i] / MAX_LEN_CLLST;
-                                avg_volt_500[i] = sum_volt_500[i] / MAX_LEN_CLLST;
-                                avg_ampr_500[i] = sum_ampr_500[i] / MAX_LEN_CLLST;
-                                tmp_volt_24[i] = filter_judge(&ctr_ok_volt_24[i], &ctr_err_volt_24[i], avg_volt_24[i], min_volt_24[i], max_volt_24[i], MAX_LEN_CLLST);
-                                tmp_ampr_24[i] = filter_judge(&ctr_ok_ampr_24[i], &ctr_err_ampr_24[i], avg_ampr_24[i], min_ampr_24[i], max_ampr_24[i], MAX_LEN_CLLST);
-                                tmp_volt_500[i] = filter_judge(&ctr_ok_volt_500[i], &ctr_err_volt_500[i], avg_volt_500[i], min_volt_500[i], max_volt_500[i], MAX_LEN_CLLST);
-                                tmp_ampr_500[i] = filter_judge(&ctr_ok_ampr_500[i], &ctr_err_ampr_500[i], avg_ampr_500[i], min_ampr_500[i], max_ampr_500[i], MAX_LEN_CLLST);
-                                if (tmp_volt_24[i] == -1)
-                                        result[i] |= RESULT_FAULT_VOLT_24;
-                                else if (tmp_volt_24[i] == 1)
-                                        result[i] &= ~RESULT_FAULT_VOLT_24;
-                                if (tmp_ampr_24[i] == -1)
-                                        result[i] |= RESULT_FAULT_AMPR_24;
-                                else if (tmp_ampr_24[i] == -1)
-                                        result[i] &= ~RESULT_FAULT_AMPR_24;
-                                if (tmp_volt_500[i] == -1)
-                                        result[i] |= RESULT_FAULT_VOLT_500;
-                                else if (tmp_volt_500[i] == 1)
-                                        result[i] &= ~RESULT_FAULT_VOLT_500;
-                                if (tmp_ampr_500[i] == -1)
-                                        result[i] |= RESULT_FAULT_AMPR_500;
-                                else if (tmp_ampr_500[i] == -1)
-                                        result[i] &= ~RESULT_FAULT_AMPR_500;
+                                p[j] = p[j]->next;
+                                sum_volt_24 -= p[j]->data.state.volt_24;
+                                sum_ampr_24 -= p[j]->data.state.ampr_24;
+                                sum_volt_500 -= p[j]->data.state.volt_500;
+                                sum_ampr_500 -= p[j]->data.state.ampr_500;
+                                p[j]->data.state.volt_24 = ((FRAME_RX *)&can)->data.state.volt_24;
+                                p[j]->data.state.ampr_24 = ((FRAME_RX *)&can)->data.state.ampr_24;
+                                p[j]->data.state.volt_500 = ((FRAME_RX *)&can)->data.state.volt_500;
+                                p[j]->data.state.ampr_500 = ((FRAME_RX *)&can)->data.state.ampr_500;
+                                cur_volt_24 = p[j]->data.state.volt_24;
+                                cur_ampr_24 = p[j]->data.state.ampr_24;
+                                cur_volt_500 = p[j]->data.state.volt_500;
+                                cur_ampr_500 = p[j]->data.state.ampr_500;
+                                sum_volt_24 += p[j]->data.state.volt_24;
+                                sum_ampr_24 += p[j]->data.state.ampr_24;
+                                sum_volt_500 += p[j]->data.state.volt_500;
+                                sum_ampr_500 += p[j]->data.state.ampr_500;
+                                avg_volt_24 = sum_volt_24 / MAX_LEN_CLLST;
+                                avg_ampr_24 = sum_ampr_24 / MAX_LEN_CLLST;
+                                avg_volt_500 = sum_volt_500 / MAX_LEN_CLLST;
+                                avg_ampr_500 = sum_ampr_500 / MAX_LEN_CLLST;
+                                tmp_volt_24 = filter_judge(&ctr_ok_volt_24, &ctr_err_volt_24, avg_volt_24, min_volt_24, max_volt_24, MAX_LEN_CLLST);
+                                tmp_ampr_24 = filter_judge(&ctr_ok_ampr_24, &ctr_err_ampr_24, avg_ampr_24, min_ampr_24, max_ampr_24, MAX_LEN_CLLST);
+                                tmp_volt_500 = filter_judge(&ctr_ok_volt_500, &ctr_err_volt_500, avg_volt_500, min_volt_500, max_volt_500, MAX_LEN_CLLST);
+                                tmp_ampr_500 = filter_judge(&ctr_ok_ampr_500, &ctr_err_ampr_500, avg_ampr_500, min_ampr_500, max_ampr_500, MAX_LEN_CLLST);
+                                if (tmp_volt_24 == -1)
+                                        result |= RESULT_FAULT_VOLT_24;
+                                else if (tmp_volt_24 == 1)
+                                        result &= ~RESULT_FAULT_VOLT_24;
+                                if (tmp_ampr_24 == -1)
+                                        result |= RESULT_FAULT_AMPR_24;
+                                else if (tmp_ampr_24 == -1)
+                                        result &= ~RESULT_FAULT_AMPR_24;
+                                if (tmp_volt_500 == -1)
+                                        result |= RESULT_FAULT_VOLT_500;
+                                else if (tmp_volt_500 == 1)
+                                        result &= ~RESULT_FAULT_VOLT_500;
+                                if (tmp_ampr_500 == -1)
+                                        result |= RESULT_FAULT_AMPR_500;
+                                else if (tmp_ampr_500 == -1)
+                                        result &= ~RESULT_FAULT_AMPR_500;
                                 break;
                         default:
                                 break;
@@ -212,32 +264,30 @@ void t_psu(void) /* Task: Power Supply Unit */
                         period -= tickGet() - prev;
                         break;
                 default:
-                        for (i = 0; i < MAX_NUM_DEV; i++) {
-                                if (has_received[i]) {
-                                        has_received[i] = 0;
-                                        if (ctr_comm[i] < 0)
-                                                ctr_comm[i] = 0;
-                                        if (ctr_comm[i] < MAX_LEN_CLLST)
-                                                ctr_comm[i]++;
-                                        if (ctr_comm[i] == MAX_LEN_CLLST)
-                                                result[i] &= ~RESULT_FAULT_COMM;
-                                } else {
-                                        if (ctr_comm[i] > 0)
-                                                ctr_comm[i] = 0;
-                                        if (ctr_comm[i] > -MAX_LEN_CLLST)
-                                                ctr_comm[i]--;
-                                        if (ctr_comm[i] == -MAX_LEN_CLLST)
-                                                result[i] |= RESULT_FAULT_COMM;
-                                }
+                        if (has_received) {
+                                has_received = 0;
+                                if (ctr_comm < 0)
+                                        ctr_comm = 0;
+                                if (ctr_comm < MAX_LEN_CLLST)
+                                        ctr_comm++;
+                                if (ctr_comm == MAX_LEN_CLLST)
+                                        result &= ~RESULT_FAULT_COMM;
+                        } else {
+                                if (ctr_comm > 0)
+                                        ctr_comm = 0;
+                                if (ctr_comm > -MAX_LEN_CLLST)
+                                        ctr_comm--;
+                                if (ctr_comm == -MAX_LEN_CLLST)
+                                        result |= RESULT_FAULT_COMM;
                         }
-                        any_fault = 0;
-                        for (i = 0; i < MAX_NUM_DEV; i++)
-                                any_fault |= result[i];
-                        any_fault &= UNMASK_RESULT_FAULT;
-                        if (any_fault)
+                        any_fault = result & UNMASK_RESULT_FAULT;
+                        if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
-                        else
+                        } else {
                                 state.type = TASK_STATE_RUNNING;
+                                if ((result & UNMASK_RESULT_IO) == 0)
+                                        state.type = TASK_STATE_DEST;
+                        }
                         state.type |= TASK_NOTIFY_PSU;
                         state.data = 0;
                         if (old_state.type != state.type)
@@ -246,115 +296,101 @@ void t_psu(void) /* Task: Power Supply Unit */
                         switch (verify.type) {
                         case CMD_ACT_PSU | CMD_DIR_POSI | CMD_PSU_BRAKE:
                         case CMD_ACT_PSU | CMD_DIR_NEGA | CMD_PSU_BRAKE:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA0;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.io.brake = (u8)verify.data;
-                                        tx[i].data.io.res = 0x66;
-                                        tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                        semTake(sem_can[i], WAIT_FOREVER);
-                                        rngBufPut(rng_can[i], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[i]);
-                                }
+                                tx.src = J1939_ADDR_MAIN;
+                                tx.dest = addr;
+                                tx.form = 0xA0;
+                                tx.prio = 0x08;
+                                tx.data.io.brake = (u8)verify.data;
+                                tx.data.io.res = 0x66;
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
+                                semTake(sem_can[cable], WAIT_FOREVER);
+                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
                         case CMD_ACT_PSU | CMD_DIR_POSI | CMD_PSU_LIGHT:
                         case CMD_ACT_PSU | CMD_DIR_NEGA | CMD_PSU_LIGHT:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA0;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.io.light = (u8)verify.data;
-                                        tx[i].data.io.res = 0x66;
-                                        tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
+                                tx.src = J1939_ADDR_MAIN;
+                                tx.dest = addr;
+                                tx.form = 0xA0;
+                                tx.prio = 0x08;
+                                tx.data.io.light = (u8)verify.data;
+                                tx.data.io.res = 0x66;
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
+                                semTake(sem_can[cable], WAIT_FOREVER);
+                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
                         case CMD_ACT_PSU | CMD_DIR_POSI | CMD_PSU_24:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA0;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.io.v24 = (u16)psu_delay(verify.data, old_cmd[i]);
-                                        old_cmd[i] = tx[i].data.io.v24;
-                                        tx[i].data.io.res = 0x66;
-                                        tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
+                                tx.src = J1939_ADDR_MAIN;
+                                tx.dest = addr;
+                                tx.form = 0xA0;
+                                tx.prio = 0x08;
+                                tx.data.io.v24 = (u16)psu_delay(verify.data, old_cmd);
+                                old_cmd = tx.data.io.v24;
+                                tx.data.io.res = 0x66;
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
+                                semTake(sem_can[cable], WAIT_FOREVER);
+                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
                         case CMD_ACT_PSU | CMD_DIR_NEGA | CMD_PSU_24:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA0;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.io.v24 = 0;
-                                        tx[i].data.io.res = 0x66;
-                                        tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
+                                tx.src = J1939_ADDR_MAIN;
+                                tx.dest = addr;
+                                tx.form = 0xA0;
+                                tx.prio = 0x08;
+                                tx.data.io.v24 = 0;
+                                tx.data.io.res = 0x66;
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
+                                semTake(sem_can[cable], WAIT_FOREVER);
+                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
                         case CMD_ACT_PSU | CMD_DIR_POSI | CMD_PSU_500:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA0;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.io.v500 = (u16)verify.data;
-                                        tx[i].data.io.res = 0x66;
-                                        tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
+                                tx.src = J1939_ADDR_MAIN;
+                                tx.dest = addr;
+                                tx.form = 0xA0;
+                                tx.prio = 0x08;
+                                tx.data.io.v500 = (u16)verify.data;
+                                tx.data.io.res = 0x66;
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
+                                semTake(sem_can[cable], WAIT_FOREVER);
+                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
                         case CMD_ACT_PSU | CMD_DIR_NEGA | CMD_PSU_500:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA0;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.io.v500 = 0;
-                                        tx[i].data.io.res = 0x66;
-                                        tx[i].data.io.xor = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
+                                tx.src = J1939_ADDR_MAIN;
+                                tx.dest = addr;
+                                tx.form = 0xA0;
+                                tx.prio = 0x08;
+                                tx.data.io.v500 = 0;
+                                tx.data.io.res = 0x66;
+                                tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
+                                semTake(sem_can[cable], WAIT_FOREVER);
+                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
                         default:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA0;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.query[0] = 0x00;
-                                        tx[i].data.query[1] = 0x00;
-                                        tx[i].data.query[2] = 0x00;
-                                        tx[i].data.query[3] = 0x00;
-                                        tx[i].data.query[4] = 0x00;
-                                        tx[i].data.query[5] = 0x00;
-                                        tx[i].data.query[6] = 0x66;
-                                        tx[i].data.query[7] = check_xor((u8 *)&tx[i].data.io.brake, 7);
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
+                                tx.src = J1939_ADDR_MAIN;
+                                tx.dest = addr;
+                                tx.form = 0xA0;
+                                tx.prio = 0x08;
+                                tx.data.query[0] = 0x00;
+                                tx.data.query[1] = 0x00;
+                                tx.data.query[2] = 0x00;
+                                tx.data.query[3] = 0x00;
+                                tx.data.query[4] = 0x00;
+                                tx.data.query[5] = 0x00;
+                                tx.data.query[6] = 0x66;
+                                tx.data.query[7] = check_xor((u8 *)&tx.data.io.brake, 7);
+                                semTake(sem_can[cable], WAIT_FOREVER);
+                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
                         }

@@ -43,7 +43,6 @@ void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_v
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID MSG;
-extern MSG_Q_ID msg_psu;
 extern RING_ID rng_can[];
 extern SEM_ID sem_can[];
 
@@ -64,8 +63,6 @@ const static int pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int pos_dest[MAX_NUM_DEV] = {40000, 40000, 40000, 40000}; /* 42000 */
 const static int ampr_load[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int pos_safe[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
-const static int pos_part_posi_0[MAX_NUM_DEV] = {20000, 20000, 20000, 20000}; /* 24900 */
-const static int pos_part_nega_0[MAX_NUM_DEV] = {30000, 30000, 30000, 30000};
 const static int err_sync_01 = 500;
 const static int err_sync_23 = 500;
 const static int err_sync = 1000;
@@ -76,7 +73,7 @@ const static struct plan max_plan_len[MAX_NUM_DEV] = {
         {1000, 4000, 30000}
 };
 const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100};
-const static int plan_vel_high[MAX_NUM_DEV] = {500, 500, 500, 500};
+const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000};
 const static int plan_vel_medium[MAX_NUM_DEV] = {500, 500, 500, 500};
 
 static int period = PERIOD_SLOW;
@@ -112,8 +109,6 @@ static int ctr_ok_zero[MAX_NUM_DEV];
 static int ctr_ok_dest[MAX_NUM_DEV];
 static int ctr_ok_load[MAX_NUM_DEV];
 static int ctr_ok_safe[MAX_NUM_DEV];
-static int ctr_ok_part_posi_0[MAX_NUM_DEV];
-static int ctr_ok_part_nega_0[MAX_NUM_DEV];
 static int ctr_ok_sync_01;
 static int ctr_ok_sync_23;
 static int ctr_ok_sync;
@@ -125,8 +120,6 @@ static int ctr_err_zero[MAX_NUM_DEV];
 static int ctr_err_dest[MAX_NUM_DEV];
 static int ctr_err_load[MAX_NUM_DEV];
 static int ctr_err_safe[MAX_NUM_DEV];
-static int ctr_err_part_posi_0[MAX_NUM_DEV];
-static int ctr_err_part_nega_0[MAX_NUM_DEV];
 static int ctr_err_sync_01;
 static int ctr_err_sync_23;
 static int ctr_err_sync;
@@ -141,8 +134,6 @@ static int tmp_zero[MAX_NUM_DEV];
 static int tmp_dest[MAX_NUM_DEV];
 static int tmp_load[MAX_NUM_DEV];
 static int tmp_safe[MAX_NUM_DEV];
-static int tmp_part_posi_0[MAX_NUM_DEV];
-static int tmp_part_nega_0[MAX_NUM_DEV];
 static int sub_01;
 static int sub_23;
 static int sub;
@@ -313,8 +304,6 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
                                 tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], avg_ampr[i], ampr_load[i], max_ampr[i], MAX_LEN_CLLST);
                                 tmp_safe[i] = filter_judge(&ctr_ok_safe[i], &ctr_err_safe[i], avg_pos[i], pos_safe[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_part_posi_0[0] = filter_judge(&ctr_ok_part_posi_0[i], &ctr_err_part_posi_0[i], avg_pos[i], pos_part_posi_0[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_part_nega_0[0] = filter_judge(&ctr_ok_part_nega_0[i], &ctr_err_part_nega_0[i], avg_pos[i], min_pos[i], pos_part_nega_0[i], MAX_LEN_CLLST);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
                                     || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
@@ -357,14 +346,6 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         result[i] |= RESULT_SAFE;
                                 else if (tmp_safe[i] == -1)
                                         result[i] &= ~RESULT_SAFE;
-                                if (tmp_part_posi_0[i] == 1)
-                                        result[i] |= RESULT_PART_POSI(0);
-                                else if (tmp_part_posi_0[i] == -1)
-                                        result[i] &= ~RESULT_PART_POSI(0);
-                                if (tmp_part_nega_0[i] == 1)
-                                        result[i] |= RESULT_PART_NEGA(0);
-                                else if (tmp_part_nega_0[i] == -1)
-                                        result[i] &= ~RESULT_PART_NEGA(0);
                                 break;
                         default:
                                 break;
@@ -484,14 +465,6 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        if ((result[i] & RESULT_PART_POSI(0)) == 0)
-                                                break;
-                                }
-                                if (i == MAX_NUM_DEV) {
-                                        brake.data = 0x90;
-                                        msgQSend(msg_psu, (char *)&brake, sizeof(brake), NO_WAIT, MSG_PRI_NORMAL);
-                                }
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
                                         tx[i].form = 0xA5;
@@ -515,14 +488,6 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 period = PERIOD_FAST;
                                 break;
                         case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        if ((result[i] & RESULT_PART_NEGA(0)) == 0)
-                                                break;
-                                }
-                                if (i == MAX_NUM_DEV) {
-                                        brake.data = 0x60;
-                                        msgQSend(msg_psu, (char *)&brake, sizeof(brake), NO_WAIT, MSG_PRI_NORMAL);
-                                }
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
