@@ -26,13 +26,11 @@
 #define RESULT_FAULT_AMPR    0x00002000
 #define RESULT_FAULT_SYNC    0x00004000
 #define RESULT_FAULT_COMM    0x00008000
-#define RESULT_STOP          0x01000000
-#define RESULT_ZERO          0x02000000
-#define RESULT_DEST          0x04000000
-#define RESULT_LOAD          0x08000000
-#define RESULT_SAFE          0x10000000
-#define RESULT_PART_POSI(x)  (0x00010000 << x)
-#define RESULT_PART_NEGA(x)  (0x00100000 << x)
+#define RESULT_STOP          0x00010000
+#define RESULT_ZERO          0x00020000
+#define RESULT_DEST          0x00040000
+#define RESULT_LOAD          0x00080000
+#define RESULT_MID           0x00100000
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;

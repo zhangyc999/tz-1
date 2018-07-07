@@ -26,13 +26,11 @@
 #define RESULT_FAULT_AMPR    0x00002000
 #define RESULT_FAULT_SYNC    0x00004000
 #define RESULT_FAULT_COMM    0x00008000
-#define RESULT_STOP          0x01000000
-#define RESULT_ZERO          0x02000000
-#define RESULT_DEST          0x04000000
-#define RESULT_LOAD          0x08000000
-#define RESULT_SAFE          0x10000000
-#define RESULT_PART_POSI(x)  (0x00010000 << x)
-#define RESULT_PART_NEGA(x)  (0x00100000 << x)
+#define RESULT_STOP          0x00010000
+#define RESULT_ZERO          0x00020000
+#define RESULT_DEST          0x00040000
+#define RESULT_MID           0x00080000
+#define RESULT_LOAD          0x00100000
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
@@ -62,7 +60,7 @@ const static int max_ampr[MAX_NUM_DEV] = {200, 200, 200, 200};
 const static int pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int pos_dest[MAX_NUM_DEV] = {40000, 40000, 40000, 40000}; /* 42000 */
 const static int ampr_load[MAX_NUM_DEV] = {100, 100, 100, 100};
-const static int pos_safe[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
+const static int pos_mid[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
 const static int err_sync_01 = 500;
 const static int err_sync_23 = 500;
 const static int err_sync = 1000;
@@ -108,7 +106,6 @@ static int ctr_ok_stop[MAX_NUM_DEV];
 static int ctr_ok_zero[MAX_NUM_DEV];
 static int ctr_ok_dest[MAX_NUM_DEV];
 static int ctr_ok_load[MAX_NUM_DEV];
-static int ctr_ok_safe[MAX_NUM_DEV];
 static int ctr_ok_sync_01;
 static int ctr_ok_sync_23;
 static int ctr_ok_sync;
@@ -119,7 +116,6 @@ static int ctr_err_stop[MAX_NUM_DEV];
 static int ctr_err_zero[MAX_NUM_DEV];
 static int ctr_err_dest[MAX_NUM_DEV];
 static int ctr_err_load[MAX_NUM_DEV];
-static int ctr_err_safe[MAX_NUM_DEV];
 static int ctr_err_sync_01;
 static int ctr_err_sync_23;
 static int ctr_err_sync;
@@ -133,7 +129,6 @@ static int tmp_stop[MAX_NUM_DEV];
 static int tmp_zero[MAX_NUM_DEV];
 static int tmp_dest[MAX_NUM_DEV];
 static int tmp_load[MAX_NUM_DEV];
-static int tmp_safe[MAX_NUM_DEV];
 static int sub_01;
 static int sub_23;
 static int sub;
@@ -143,7 +138,6 @@ static int tmp_sync;
 static int result[MAX_NUM_DEV];
 static int all_zero;
 static int all_dest;
-static int all_safe;
 static int any_fault;
 static int plan_vel[MAX_NUM_DEV];
 static int plan_len_pass[MAX_NUM_DEV];
@@ -303,7 +297,6 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
                                 tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
                                 tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], avg_ampr[i], ampr_load[i], max_ampr[i], MAX_LEN_CLLST);
-                                tmp_safe[i] = filter_judge(&ctr_ok_safe[i], &ctr_err_safe[i], avg_pos[i], pos_safe[i], max_pos[i], MAX_LEN_CLLST);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
                                     || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
@@ -342,25 +335,18 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         result[i] |= RESULT_LOAD;
                                 else if (tmp_load[i] == -1)
                                         result[i] &= ~RESULT_LOAD;
-                                if (tmp_safe[i] == 1)
-                                        result[i] |= RESULT_SAFE;
-                                else if (tmp_safe[i] == -1)
-                                        result[i] &= ~RESULT_SAFE;
                                 break;
                         default:
                                 break;
                         }
                         all_zero = 0;
                         all_dest = 0;
-                        all_safe = 0;
                         for (i = 0; i < MAX_NUM_DEV; i++) {
                                 all_zero &= result[i];
                                 all_dest &= result[i];
-                                all_safe &= result[i];
                         }
                         all_zero &= RESULT_ZERO;
                         all_dest &= RESULT_DEST;
-                        all_safe &= RESULT_SAFE;
                         sub_01 = avg_pos[0] - avg_pos[1];
                         sub_23 = avg_pos[2] - avg_pos[3];
                         sub = (avg_pos[0] - avg_pos[3] + avg_pos[1] - avg_pos[2]) / 2;
@@ -424,7 +410,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 state.type = TASK_STATE_RUNNING;
                                 if (all_zero)
                                         state.type = TASK_STATE_ZERO;
-                                else if (all_safe)
+                                else if (all_dest)
                                         state.type = TASK_STATE_DEST;
                         }
                         state.type |= NOTIFY;

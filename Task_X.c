@@ -26,13 +26,11 @@
 #define RESULT_FAULT_AMPR    0x00002000
 #define RESULT_FAULT_SYNC    0x00004000
 #define RESULT_FAULT_COMM    0x00008000
-#define RESULT_STOP          0x01000000
-#define RESULT_ZERO          0x02000000
-#define RESULT_DEST          0x04000000
-#define RESULT_LOAD          0x08000000
-#define RESULT_SAFE          0x10000000
-#define RESULT_PART_POSI(x)  (0x00010000 << x)
-#define RESULT_PART_NEGA(x)  (0x00100000 << x)
+#define RESULT_STOP          0x00010000
+#define RESULT_ZERO          0x00020000
+#define RESULT_DEST          0x00040000
+#define RESULT_MID           0x00080000
+#define RESULT_LOAD          0x00100000
 
 #define GET_SIGN_BIT(x) (((char *)&x)[sizeof(x) - 1] >> 7 | 1)
 
@@ -65,8 +63,7 @@ const static int min_ampr[MAX_NUM_DEV] = {0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200};
 const static int pos_zero[MAX_NUM_DEV] = {500, 500};
 const static int pos_dest[MAX_NUM_DEV] = {20000, 20000};
-const static int pos_part_posi_0[MAX_NUM_DEV] = {10000, 10000};
-const static int pos_part_nega_0[MAX_NUM_DEV] = {10000, 10000};
+const static int pos_mid[MAX_NUM_DEV] = {10000, 10000};
 const static int err_sync = 1000;
 const static struct plan max_plan_len[MAX_NUM_DEV] = {
         {1000, 4000, 10000},
@@ -106,6 +103,7 @@ static int ctr_ok_ampr[MAX_NUM_DEV];
 static int ctr_ok_stop[MAX_NUM_DEV];
 static int ctr_ok_zero[MAX_NUM_DEV];
 static int ctr_ok_dest[MAX_NUM_DEV];
+static int ctr_ok_mid [MAX_NUM_DEV];
 static int ctr_ok_sync;
 static int ctr_err_pos[MAX_NUM_DEV];
 static int ctr_err_vel[MAX_NUM_DEV];
@@ -113,6 +111,7 @@ static int ctr_err_ampr[MAX_NUM_DEV];
 static int ctr_err_stop[MAX_NUM_DEV];
 static int ctr_err_zero[MAX_NUM_DEV];
 static int ctr_err_dest[MAX_NUM_DEV];
+static int ctr_err_mid [MAX_NUM_DEV];
 static int ctr_err_sync;
 static int ctr_fault[MAX_NUM_DEV];
 static int ctr_io[MAX_NUM_DEV];
@@ -123,6 +122,7 @@ static int tmp_ampr[MAX_NUM_DEV];
 static int tmp_stop[MAX_NUM_DEV];
 static int tmp_zero[MAX_NUM_DEV];
 static int tmp_dest[MAX_NUM_DEV];
+static int tmp_mid[MAX_NUM_DEV];
 static int sub;
 static int tmp_sync;
 static int result[MAX_NUM_DEV];
@@ -301,6 +301,7 @@ void t_x(void) /* Task: crane on the front for X-axis */
                                 tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
                                 tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
                                 tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
+                                tmp_mid[i] = filter_judge(&ctr_ok_mid[i], &ctr_err_mid[i], avg_pos[i], pos_mid[i] - 40, pos_mid[i] + 40, MAX_LEN_CLLST);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
                                     || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
@@ -335,6 +336,10 @@ void t_x(void) /* Task: crane on the front for X-axis */
                                         result[i] |= RESULT_DEST;
                                 else if (tmp_dest[i] == -1)
                                         result[i] &= ~RESULT_DEST;
+                                if (tmp_mid[i] == 1)
+                                        result[i] |= RESULT_MID;
+                                else if (tmp_mid[i] == -1)
+                                        result[i] &= ~RESULT_MID;
                                 break;
                         default:
                                 break;
@@ -409,9 +414,9 @@ void t_x(void) /* Task: crane on the front for X-axis */
                                         plan_vel[i] = 0;
                                         plan_len_pass[i] = 0;
                                         plan_len_posi_auto[i] = abs(delta[i]);
-                                        plan_len_nega_auto[i] = abs(pos_part_nega_0[i] - cur_pos[i]);
+                                        plan_len_nega_auto[i] = abs(pos_mid[i] - cur_pos[i]);
                                         sign_posi[i] = GET_SIGN_BIT(delta[i]);
-                                        sign_nega[i] = GET_SIGN_BIT(pos_part_nega_0[i] - cur_pos[i]);
+                                        sign_nega[i] = GET_SIGN_BIT(pos_mid[i] - cur_pos[i]);
                                         plan_len_posi_manual[i] = pos_dest[i] - cur_pos[i];
                                         plan_len_nega_manual[i] = cur_pos[i] - pos_zero[i];
                                         tx[i].src = J1939_ADDR_MAIN;
@@ -468,7 +473,7 @@ void t_x(void) /* Task: crane on the front for X-axis */
                                         tx[i].form = 0xA5;
                                         tx[i].prio = 0x08;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        if (plan_len_pass[i] > plan_len_nega_auto[i]) {
+                                        if (result[i] & RESULT_MID) {
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len_nega_auto[i] = 0;
                                         } else {

@@ -32,13 +32,11 @@
 #define RESULT_FAULT_AMPR    0x00002000
 #define RESULT_FAULT_SYNC    0x00004000
 #define RESULT_FAULT_COMM    0x00008000
-#define RESULT_STOP          0x01000000
-#define RESULT_ZERO          0x02000000
-#define RESULT_DEST          0x04000000
-#define RESULT_LOAD          0x08000000
-#define RESULT_SAFE          0x10000000
-#define RESULT_PART_POSI(x)  (0x00010000 << x)
-#define RESULT_PART_NEGA(x)  (0x00100000 << x)
+#define RESULT_STOP          0x00010000
+#define RESULT_ZERO          0x00020000
+#define RESULT_DEST          0x00040000
+#define RESULT_MID           0x00080000
+#define RESULT_LOAD          0x00100000
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
@@ -71,9 +69,9 @@ const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200, 200, 200};
 const static int pos_zero[MAX_NUM_DEV] = {500, 500, 500, 500};
 const static int pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
+const static int pos_mid_posi[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
+const static int pos_mid_nega[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
 const static int ampr_load[MAX_NUM_DEV] = {150, 150, 150, 150};
-const static int pos_part_posi_0[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
-const static int pos_part_nega_0[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
 const static int err_sync = 1000;
 const static struct plan max_plan_len[MAX_NUM_DEV] = {
         {1000, 4000, 10000},
@@ -442,9 +440,9 @@ void t_prp(void) /* Task: PRoP */
                                         plan_len_pass[i] = 0;
                                         if (segement == 1) {
                                                 plan_len_posi[i] = pos_dest[i] - cur_pos[i];
-                                                plan_len_nega[i] = cur_pos[i] - pos_part_nega_0[i];
+                                                plan_len_nega[i] = cur_pos[i] - pos_mid_nega[i];
                                         } else {
-                                                plan_len_posi[i] = pos_part_posi_0[i] - cur_pos[i];
+                                                plan_len_posi[i] = pos_mid_posi[i] - cur_pos[i];
                                                 plan_len_nega[i] = cur_pos[i] - pos_zero[i];
                                         }
                                         tx[i].src = J1939_ADDR_MAIN;
@@ -476,7 +474,7 @@ void t_prp(void) /* Task: PRoP */
                                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                                         plan_len_pass[i] = 0;
                                                         plan_len_posi[i] = pos_dest[i] - cur_pos[i];
-                                                        plan_len_nega[i] = cur_pos[i] - pos_part_nega_0[i];
+                                                        plan_len_nega[i] = cur_pos[i] - pos_mid_nega[i];
                                                 }
                                                 segement = 1;
                                         }
@@ -510,7 +508,7 @@ void t_prp(void) /* Task: PRoP */
                                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                                         plan_len_pass[i] = 0;
                                                         plan_len_posi[i] = pos_dest[i] - cur_pos[i];
-                                                        plan_len_nega[i] = cur_pos[i] - pos_part_nega_0[i];
+                                                        plan_len_nega[i] = cur_pos[i] - pos_mid_nega[i];
                                                 }
                                                 segement = 0;
                                         }

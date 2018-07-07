@@ -4,7 +4,7 @@
 #include "type.h"
 #include "vx.h"
 
-#define PERIOD 20
+#define PERIOD 200
 
 #define MAX_NUM_DEV   1
 #define MAX_NUM_FORM  2

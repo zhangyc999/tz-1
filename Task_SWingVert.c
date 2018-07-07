@@ -26,13 +26,11 @@
 #define RESULT_FAULT_AMPR    0x00002000
 #define RESULT_FAULT_SYNC    0x00004000
 #define RESULT_FAULT_COMM    0x00008000
-#define RESULT_STOP          0x01000000
-#define RESULT_ZERO          0x02000000
-#define RESULT_DEST          0x04000000
-#define RESULT_LOAD          0x08000000
-#define RESULT_SAFE          0x10000000
-#define RESULT_PART_POSI(x)  (0x00010000 << x)
-#define RESULT_PART_NEGA(x)  (0x00100000 << x)
+#define RESULT_STOP          0x00010000
+#define RESULT_ZERO          0x00020000
+#define RESULT_DEST          0x00040000
+#define RESULT_MID           0x00080000
+#define RESULT_LOAD          0x00100000
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
@@ -54,15 +52,15 @@ const static int addr[MAX_NUM_DEV] = {
 const static int cable[MAX_NUM_DEV] = {0, 0, 1, 1};
 const static int sign[MAX_NUM_DEV] = {1, 1, 1, 1};
 const static int io_pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
-const static int io_pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
-const static int min_pos[MAX_NUM_DEV] = {-1000, -1000, -1000, -1000};
-const static int max_pos[MAX_NUM_DEV] = {52000, 52000, 52000, 52000};
+const static int io_pos_dest[MAX_NUM_DEV] = {3000, 3000, 3000, 3000};
+const static int min_pos[MAX_NUM_DEV] = {100, 100, 100, 100};
+const static int max_pos[MAX_NUM_DEV] = {3500, 3500, 3500, 3500};
 const static int min_vel[MAX_NUM_DEV] = {-1500, -1500, -1500, -1500};
 const static int max_vel[MAX_NUM_DEV] = {1500, 1500, 1500, 1500};
 const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {250, 250, 250, 250};
-const static int pos_zero[MAX_NUM_DEV] = {500, 500, 500, 500};
-const static int pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
+const static int pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
+const static int pos_dest[MAX_NUM_DEV] = {3000, 3000, 3000, 3000};
 const static int ampr_load[MAX_NUM_DEV] = {200, 200, 200, 200};
 const static int err_sync = 1000;
 const static struct plan max_plan_len[MAX_NUM_DEV] = {
@@ -71,7 +69,7 @@ const static struct plan max_plan_len[MAX_NUM_DEV] = {
         {2000, 4000, 40000},
         {2000, 4000, 40000}
 };
-const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100};
+const static int plan_vel_low[MAX_NUM_DEV] = {50, 50, 50, 50};
 const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000};
 const static int plan_vel_medium[MAX_NUM_DEV] = {500, 500, 500, 500};
 
@@ -429,18 +427,25 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
-                                        tx[i].form = 0xA5;
                                         tx[i].prio = 0x08;
                                         tx[i].data.cmd.pos = 0x1100;
                                         if (result[i] & RESULT_DEST && result[i] & RESULT_LOAD) {
+                                                tx[i].form = 0xA5;
                                                 tx[i].data.cmd.vel = 0;
+                                                tx[i].data.cmd.ampr = 1000;
+#if 0
+                                                tx[i].form = 0xA3;
+                                                tx[i].data.cmd.vel = 0x3322;
+                                                tx[i].data.cmd.ampr = avg_ampr[i];
+#endif
                                                 plan_len_posi[i] = 0;
                                         } else {
+                                                tx[i].form = 0xA5;
                                                 plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
                                                      max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                 tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
+                                                tx[i].data.cmd.ampr = 1000;
                                         }
-                                        tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;
                                         tx[i].data.cmd.enable = 0xC3;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
