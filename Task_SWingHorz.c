@@ -59,8 +59,8 @@ const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200, 200, 200};
 const static int pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int pos_dest[MAX_NUM_DEV] = {40000, 40000, 40000, 40000}; /* 42000 */
-const static int ampr_load[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int pos_mid[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
+const static int ampr_load[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int err_sync_01 = 500;
 const static int err_sync_23 = 500;
 const static int err_sync = 1000;
@@ -82,7 +82,6 @@ static struct main cmd;
 static struct main verify = {CMD_IDLE, 0};
 static struct main state;
 static struct main old_state;
-static struct main brake = {CMD_ACT_PSU | CMD_DIR_POSI | CMD_PSU_LIGHT, 0};
 static struct frame_can can;
 static struct frame_can rx[MAX_NUM_DEV][MAX_NUM_FORM][MAX_LEN_CLLST];
 static FRAME_RX *p[MAX_NUM_DEV][MAX_NUM_FORM];
@@ -105,6 +104,7 @@ static int ctr_ok_ampr[MAX_NUM_DEV];
 static int ctr_ok_stop[MAX_NUM_DEV];
 static int ctr_ok_zero[MAX_NUM_DEV];
 static int ctr_ok_dest[MAX_NUM_DEV];
+static int ctr_ok_mid [MAX_NUM_DEV];
 static int ctr_ok_load[MAX_NUM_DEV];
 static int ctr_ok_sync_01;
 static int ctr_ok_sync_23;
@@ -115,6 +115,7 @@ static int ctr_err_ampr[MAX_NUM_DEV];
 static int ctr_err_stop[MAX_NUM_DEV];
 static int ctr_err_zero[MAX_NUM_DEV];
 static int ctr_err_dest[MAX_NUM_DEV];
+static int ctr_err_mid [MAX_NUM_DEV];
 static int ctr_err_load[MAX_NUM_DEV];
 static int ctr_err_sync_01;
 static int ctr_err_sync_23;
@@ -128,6 +129,7 @@ static int tmp_ampr[MAX_NUM_DEV];
 static int tmp_stop[MAX_NUM_DEV];
 static int tmp_zero[MAX_NUM_DEV];
 static int tmp_dest[MAX_NUM_DEV];
+static int tmp_mid[MAX_NUM_DEV];
 static int tmp_load[MAX_NUM_DEV];
 static int sub_01;
 static int sub_23;
@@ -138,10 +140,12 @@ static int tmp_sync;
 static int result[MAX_NUM_DEV];
 static int all_zero;
 static int all_dest;
+static int all_mid;
 static int any_fault;
 static int plan_vel[MAX_NUM_DEV];
 static int plan_len_pass[MAX_NUM_DEV];
-static int plan_len_posi[MAX_NUM_DEV];
+static int plan_len_posi_5m[MAX_NUM_DEV];
+static int plan_len_posi_7m[MAX_NUM_DEV];
 static int plan_len_nega[MAX_NUM_DEV];
 static int i;
 static int j;
@@ -296,6 +300,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
                                 tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
                                 tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
+                                tmp_mid[i] = filter_judge(&ctr_ok_mid[i], &ctr_err_mid[i], avg_pos[i], pos_mid[i] - 40, pos_mid[i] + 40, MAX_LEN_CLLST);
                                 tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], avg_ampr[i], ampr_load[i], max_ampr[i], MAX_LEN_CLLST);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
@@ -331,6 +336,10 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         result[i] |= RESULT_DEST;
                                 else if (tmp_dest[i] == -1)
                                         result[i] &= ~RESULT_DEST;
+                                if (tmp_mid[i] == 1)
+                                        result[i] |= RESULT_MID;
+                                else if (tmp_mid[i] == -1)
+                                        result[i] &= ~RESULT_MID;
                                 if (tmp_load[i] == 1)
                                         result[i] |= RESULT_LOAD;
                                 else if (tmp_load[i] == -1)
@@ -341,12 +350,15 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         }
                         all_zero = 0;
                         all_dest = 0;
+                        all_mid = 0;
                         for (i = 0; i < MAX_NUM_DEV; i++) {
                                 all_zero &= result[i];
                                 all_dest &= result[i];
+                                all_mid &= result[i];
                         }
                         all_zero &= RESULT_ZERO;
                         all_dest &= RESULT_DEST;
+                        all_mid &= RESULT_MID;
                         sub_01 = avg_pos[0] - avg_pos[1];
                         sub_23 = avg_pos[2] - avg_pos[3];
                         sub = (avg_pos[0] - avg_pos[3] + avg_pos[1] - avg_pos[2]) / 2;
@@ -410,7 +422,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 state.type = TASK_STATE_RUNNING;
                                 if (all_zero)
                                         state.type = TASK_STATE_ZERO;
-                                else if (all_dest)
+                                else if (verify.data >> 16 == 5 && all_mid || verify.data >> 16 == 7 && all_dest || verify.data >> 16 == -2 && all_mid)
                                         state.type = TASK_STATE_DEST;
                         }
                         state.type |= NOTIFY;
@@ -424,7 +436,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         plan_vel[i] = 0;
                                         plan_len_pass[i] = 0;
-                                        plan_len_posi[i] = pos_dest[i] - cur_pos[i];
+                                        plan_len_posi_5m[i] = pos_mid[i] - cur_pos[i];
+                                        plan_len_posi_7m[i] = pos_dest[i] - cur_pos[i];
                                         plan_len_nega[i] = cur_pos[i] - pos_zero[i];
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
@@ -450,26 +463,81 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         period = PERIOD_FAST;
                                 break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA5;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        if (result[i] & RESULT_DEST) {
-                                                tx[i].data.cmd.vel = 0;
-                                                plan_len_posi[i] = 0;
-                                        } else {
-                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
-                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
+                                switch (verify.data >> 16) {
+                                case 5:
+                                        for (i = 0; i < MAX_NUM_DEV; i++) {
+                                                tx[i].src = J1939_ADDR_MAIN;
+                                                tx[i].dest = addr[i];
+                                                tx[i].form = 0xA5;
+                                                tx[i].prio = 0x08;
+                                                tx[i].data.cmd.pos = 0x1100;
+                                                if (result[i] & RESULT_MID) {
+                                                        tx[i].data.cmd.vel = 0;
+                                                        plan_len_posi_5m[i] = 0;
+                                                        plan_len_posi_7m[i] = 0;
+                                                } else {
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi_5m[i],
+                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                        tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
+                                                }
+                                                tx[i].data.cmd.ampr = 1000;
+                                                tx[i].data.cmd.exec = 0x9A;
+                                                tx[i].data.cmd.enable = 0xC3;
+                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                                semGive(sem_can[cable[i]]);
                                         }
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = 0x9A;
-                                        tx[i].data.cmd.enable = 0xC3;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
+                                        break;
+                                case 7:
+                                        for (i = 0; i < MAX_NUM_DEV; i++) {
+                                                tx[i].src = J1939_ADDR_MAIN;
+                                                tx[i].dest = addr[i];
+                                                tx[i].form = 0xA5;
+                                                tx[i].prio = 0x08;
+                                                tx[i].data.cmd.pos = 0x1100;
+                                                if (result[i] & RESULT_DEST) {
+                                                        tx[i].data.cmd.vel = 0;
+                                                        plan_len_posi_5m[i] = 0;
+                                                        plan_len_posi_7m[i] = 0;
+                                                } else {
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi_7m[i],
+                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                        tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
+                                                }
+                                                tx[i].data.cmd.ampr = 1000;
+                                                tx[i].data.cmd.exec = 0x9A;
+                                                tx[i].data.cmd.enable = 0xC3;
+                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                                semGive(sem_can[cable[i]]);
+                                        }
+                                        break;
+                                case -2:
+                                        for (i = 0; i < MAX_NUM_DEV; i++) {
+                                                tx[i].src = J1939_ADDR_MAIN;
+                                                tx[i].dest = addr[i];
+                                                tx[i].form = 0xA5;
+                                                tx[i].prio = 0x08;
+                                                tx[i].data.cmd.pos = 0x1100;
+                                                if (result[i] & RESULT_MID) {
+                                                        tx[i].data.cmd.vel = 0;
+                                                        plan_len_posi_5m[i] = 0;
+                                                        plan_len_posi_7m[i] = 0;
+                                                } else {
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi_7m[i] - plan_len_posi_5m[i],
+                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                        tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel[i];
+                                                }
+                                                tx[i].data.cmd.ampr = 1000;
+                                                tx[i].data.cmd.exec = 0x9A;
+                                                tx[i].data.cmd.enable = 0xC3;
+                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                                semGive(sem_can[cable[i]]);
+                                        }
+                                        break;
+                                default:
+                                        break;
                                 }
                                 period = PERIOD_FAST;
                                 break;
@@ -507,9 +575,10 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                 tx[i].data.cmd.pos = 0x1100;
                                                 if (result[i] & RESULT_DEST) {
                                                         tx[i].data.cmd.vel = 0;
-                                                        plan_len_posi[i] = 0;
+                                                        plan_len_posi_5m[i] = 0;
+                                                        plan_len_posi_7m[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi_7m[i],
                                                              max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                         tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
                                                 }

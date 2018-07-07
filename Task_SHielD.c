@@ -63,6 +63,7 @@ const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200};
 const static int pos_zero[MAX_NUM_DEV] = {500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500};
 const static int pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000};
+const static int pos_mid[MAX_NUM_DEV] = {10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000};
 const static int err_sync = 1000;
 const static struct plan max_plan_len[MAX_NUM_DEV] = {
         {1000, 4000, 10000}, {1000, 4000, 10000}, {1000, 4000, 10000}, {1000, 4000, 10000},
