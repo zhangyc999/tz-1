@@ -65,14 +65,24 @@ const static int pos_zero[MAX_NUM_DEV] = {500, 500, 500, 500, 500, 500, 500, 500
 const static int pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000, 20000};
 const static int pos_mid[MAX_NUM_DEV] = {10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000};
 const static int err_sync = 1000;
-const static struct plan max_plan_len[MAX_NUM_DEV] = {
+const static struct plan plan_len_auto[MAX_NUM_DEV] = {
         {1000, 4000, 10000}, {1000, 4000, 10000}, {1000, 4000, 10000}, {1000, 4000, 10000},
         {1000, 4000, 10000}, {1000, 4000, 10000}, {1000, 4000, 10000}, {1000, 4000, 10000},
         {1000, 4000, 10000}, {1000, 4000, 10000}, {1000, 4000, 10000}, {1000, 4000, 10000}
 };
-const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100};
-const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000};
-const static int plan_vel_medium[MAX_NUM_DEV] = {500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500};
+const static struct plan plan_len_manual[MAX_NUM_DEV] = {
+        {1000, 8000, 2000}, {1000, 8000, 2000}, {1000, 8000, 2000}, {1000, 8000, 2000},
+        {1000, 8000, 2000}, {1000, 8000, 2000}, {1000, 8000, 2000}, {1000, 8000, 2000},
+        {1000, 8000, 2000}, {1000, 8000, 2000}, {1000, 8000, 2000}, {1000, 8000, 2000}
+};
+const static struct plan plan_len_repair[MAX_NUM_DEV] = {
+        {1000, 8000, 40000}, {1000, 8000, 40000}, {1000, 8000, 40000}, {1000, 8000, 40000},
+        {1000, 8000, 40000}, {1000, 8000, 40000}, {1000, 8000, 40000}, {1000, 8000, 40000},
+        {1000, 8000, 40000}, {1000, 8000, 40000}, {1000, 8000, 40000}, {1000, 8000, 40000}
+};
+const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100};
+const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000};
+const static int plan_vel_medium[MAX_NUM_DEV] = {500, 500, 500, 500};
 
 static int period = PERIOD_SLOW;
 static u32 prev;
@@ -104,6 +114,7 @@ static int ctr_ok_ampr[MAX_NUM_DEV];
 static int ctr_ok_stop[MAX_NUM_DEV];
 static int ctr_ok_zero[MAX_NUM_DEV];
 static int ctr_ok_dest[MAX_NUM_DEV];
+static int ctr_ok_mid [MAX_NUM_DEV];
 static int ctr_ok_sync;
 static int ctr_err_pos[MAX_NUM_DEV];
 static int ctr_err_vel[MAX_NUM_DEV];
@@ -111,6 +122,7 @@ static int ctr_err_ampr[MAX_NUM_DEV];
 static int ctr_err_stop[MAX_NUM_DEV];
 static int ctr_err_zero[MAX_NUM_DEV];
 static int ctr_err_dest[MAX_NUM_DEV];
+static int ctr_err_mid [MAX_NUM_DEV];
 static int ctr_err_sync;
 static int ctr_fault[MAX_NUM_DEV];
 static int ctr_io[MAX_NUM_DEV];
@@ -121,20 +133,26 @@ static int tmp_ampr[MAX_NUM_DEV];
 static int tmp_stop[MAX_NUM_DEV];
 static int tmp_zero[MAX_NUM_DEV];
 static int tmp_dest[MAX_NUM_DEV];
+static int tmp_mid[MAX_NUM_DEV];
 static int sub;
 static int tmp_sync;
 static int result[MAX_NUM_DEV];
 static int all_zero;
 static int all_dest;
+static int all_mid;
 static int any_fault;
 static int plan_vel[MAX_NUM_DEV];
 static int plan_len_pass[MAX_NUM_DEV];
-static int plan_len_posi[MAX_NUM_DEV];
+static int plan_len_posi_1st[MAX_NUM_DEV];
+static int plan_len_posi_2nd[MAX_NUM_DEV];
 static int plan_len_nega[MAX_NUM_DEV];
+static int plan_len[MAX_NUM_DEV];
+static struct plan max_plan_len[MAX_NUM_DEV];
+static int dir[MAX_NUM_DEV];
 static int i;
 static int j;
 
-void t_shd(void) /* Task: ShielD of Side/Front/Back */
+void t_shd(void) /* Task: SHielDs of side / front / back */
 {
         for (i = 0; i < MAX_NUM_DEV; i++) {
                 for (j = 0; j < MAX_NUM_FORM; j++)
@@ -152,14 +170,18 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                         case CMD_IDLE:
                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 switch (cmd.type) {
                                 case CMD_IDLE:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
                                         verify = cmd;
                                         break;
                                 default:
@@ -170,6 +192,7 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                 switch (cmd.type) {
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
@@ -181,6 +204,7 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                 switch (cmd.type) {
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
@@ -188,10 +212,22 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                         break;
                                 }
                                 break;
+                        case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                                switch (cmd.type) {
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
                         case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                 switch (cmd.type) {
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
@@ -203,6 +239,7 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                 switch (cmd.type) {
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
@@ -210,6 +247,17 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                         break;
                                 }
                                 break;
+                        case CMD | CMD_DIR_NEGA| CMD_MODE_REPAIR:
+                                switch (cmd.type) {
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
                         default:
                                 break;
                         }
@@ -284,6 +332,7 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                 tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
                                 tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
                                 tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
+                                tmp_mid[i] = filter_judge(&ctr_ok_mid[i], &ctr_err_mid[i], avg_pos[i], pos_mid[i] - 40, pos_mid[i] + 40, MAX_LEN_CLLST);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
                                     || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
@@ -318,18 +367,25 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                         result[i] |= RESULT_DEST;
                                 else if (tmp_dest[i] == -1)
                                         result[i] &= ~RESULT_DEST;
+                                if (tmp_mid[i] == 1)
+                                        result[i] |= RESULT_MID;
+                                else if (tmp_mid[i] == -1)
+                                        result[i] &= ~RESULT_MID;
                                 break;
                         default:
                                 break;
                         }
                         all_zero = 0;
                         all_dest = 0;
+                        all_mid = 0;
                         for (i = 0; i < MAX_NUM_DEV; i++) {
                                 all_zero &= result[i];
                                 all_dest &= result[i];
+                                all_mid &= result[i];
                         }
                         all_zero &= RESULT_ZERO;
                         all_dest &= RESULT_DEST;
+                        all_mid &= RESULT_MID;
 #if 0
                         sub = max_of_n(avg_pos, MAX_NUM_DEV) - min_of_n(avg_pos, MAX_NUM_DEV);
                         tmp_sync = filter_judge(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
@@ -377,7 +433,7 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                 state.type = TASK_STATE_RUNNING;
                                 if (all_zero)
                                         state.type = TASK_STATE_ZERO;
-                                else if (all_dest)
+                                else if (verify.data >> 16 == 2 && all_mid || verify.data >> 16 == 7 && all_dest)
                                         state.type = TASK_STATE_DEST;
                         }
                         state.type |= NOTIFY;
@@ -388,10 +444,12 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                         switch (verify.type) {
                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         plan_vel[i] = 0;
                                         plan_len_pass[i] = 0;
-                                        plan_len_posi[i] = pos_dest[i] - cur_pos[i];
+                                        plan_len_posi_1st[i] = pos_mid[i] - cur_pos[i];
+                                        plan_len_posi_2nd[i] = pos_dest[i] - cur_pos[i];
                                         plan_len_nega[i] = cur_pos[i] - pos_zero[i];
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
@@ -417,126 +475,83 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                         period = PERIOD_FAST;
                                 break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA5;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        if (result[i] & RESULT_DEST) {
-                                                tx[i].data.cmd.vel = 0;
-                                                plan_len_posi[i] = 0;
-                                        } else {
-                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
-                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
-                                        }
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = 0x9A;
-                                        tx[i].data.cmd.enable = 0xC3;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
-                                period = PERIOD_FAST;
-                                break;
-                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA5;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        if (result[i] & RESULT_ZERO) {
-                                                tx[i].data.cmd.vel = 0;
-                                                plan_len_nega[i] = 0;
-                                        } else {
-                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
-                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel[i];
-                                        }
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = 0x9A;
-                                        tx[i].data.cmd.enable = 0xC3;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
-                                period = PERIOD_FAST;
-                                break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        if (verify.data & 1 << i) {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                if (result[i] & RESULT_DEST) {
-                                                        tx[i].data.cmd.vel = 0;
-                                                        plan_len_posi[i] = 0;
-                                                } else {
-                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
-                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                        tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
-                                                }
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                tx[i].data.cmd.enable = 0xC3;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
-                                        } else {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel = 0;
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
-                                        }
-                                }
-                                period = PERIOD_FAST;
-                                break;
+                        case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        switch (verify.type & UNMASK_CMD_DIR) {
+                                        case CMD_DIR_POSI:
+                                                dir[i] = 1;
+                                                switch (verify.data >> 16) {
+                                                case 2:
+                                                        plan_len[i] = plan_len_posi_1st[i];
+                                                        break;
+                                                default:
+                                                        plan_len[i] = plan_len_posi_2nd[i];
+                                                        break;
+                                                }
+                                                break;
+                                        case CMD_DIR_NEGA:
+                                                dir[i] = -1;
+                                                switch (verify.data >> 16) {
+                                                case 2:
+                                                        plan_len[i] = plan_len_posi_2nd[i] - plan_len_posi_1st[i];
+                                                        break;
+                                                default:
+                                                        plan_len[i] = plan_len_nega[i];
+                                                        break;
+                                                }
+                                                break;
+                                        default:
+                                                dir[i] = 0;
+                                                plan_len[i] = 0;
+                                                break;
+                                        }
+                                        switch (verify.type & UNMASK_CMD_MODE) {
+                                        case CMD_MODE_AUTO:
+                                                max_plan_len[i] = plan_len_auto[i];
+                                                break;
+                                        case CMD_MODE_MANUAL:
+                                                max_plan_len[i] = plan_len_manual[i];
+                                                break;
+                                        case CMD_MODE_REPAIR:
+                                                max_plan_len[i] = plan_len_repair[i];
+                                                plan_len[i] = max_plan_len[i].low * 2 + max_plan_len[i].acc * 2 + max_plan_len[i].high;
+                                                break;
+                                        default:
+                                                break;
+                                        }
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA5;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.cmd.pos = 0x1100;
                                         if (verify.data & 1 << i) {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                if (result[i] & RESULT_ZERO) {
+                                                if ((verify.type & UNMASK_CMD_DIR) == CMD_DIR_POSI && result[i] & RESULT_DEST ||
+                                                    (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO) {
                                                         tx[i].data.cmd.vel = 0;
+                                                        plan_len_posi_1st[i] = 0;
+                                                        plan_len_posi_2nd[i] = 0;
                                                         plan_len_nega[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len[i],
                                                              max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                        tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel[i];
+                                                        tx[i].data.cmd.vel = dir[i] * sign[i] * (s16)plan_vel[i];
                                                 }
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                tx[i].data.cmd.enable = 0xC3;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
                                         } else {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
                                                 tx[i].data.cmd.vel = 0;
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
+                                                plan_len_posi_1st[i] = 0;
+                                                plan_len_posi_2nd[i] = 0;
+                                                plan_len_nega[i] = 0;
                                         }
+                                        tx[i].data.cmd.ampr = 1000;
+                                        tx[i].data.cmd.exec = 0x9A;
+                                        tx[i].data.cmd.enable = 0xC3;
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
                                 }
                                 period = PERIOD_FAST;
                                 break;
@@ -550,8 +565,7 @@ void t_shd(void) /* Task: ShielD of Side/Front/Back */
                                         tx[i].data.cmd.vel = 0;
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;
-                                        if (result[i] & RESULT_STOP)
-                                                tx[i].data.cmd.enable = 0x3C;
+                                        tx[i].data.cmd.enable = 0x3C;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);

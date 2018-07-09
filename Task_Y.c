@@ -32,7 +32,7 @@
 #define RESULT_MID           0x00080000
 #define RESULT_LOAD          0x00100000
 
-#define GET_SIGN_BIT(x) (((char *)&x)[sizeof(x) - 1] >> 7 | 1)
+#define BIT_GET_SIGN(x) (((char *)&x)[sizeof(x) - 1] >> 7 | 1)
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
@@ -67,11 +67,23 @@ const static int pos_mid[MAX_NUM_DEV] = {10000, 10000};
 const static int err_sync_f = 200;
 const static int err_sync_b = 200;
 const static int err_sync = 1000;
-const static struct plan max_plan_len[MAX_NUM_DEV] = {
+const static struct plan plan_len_auto[MAX_NUM_DEV] = {
         {1000, 4000, 2000},
         {1000, 4000, 2000},
         {1000, 4000, 2000},
         {1000, 4000, 2000}
+};
+const static struct plan plan_len_manual[MAX_NUM_DEV] = {
+        {1000, 4000, 2000},
+        {1000, 4000, 2000},
+        {1000, 4000, 2000},
+        {1000, 4000, 2000}
+};
+const static struct plan plan_len_repair[MAX_NUM_DEV] = {
+        {1000, 4000, 40000},
+        {1000, 4000, 40000},
+        {1000, 4000, 40000},
+        {1000, 4000, 40000}
 };
 const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000};
@@ -149,6 +161,9 @@ static int plan_len_posi_manual[MAX_NUM_DEV];
 static int plan_len_nega_manual[MAX_NUM_DEV];
 static int sign_posi[MAX_NUM_DEV];
 static int sign_nega[MAX_NUM_DEV];
+static int plan_len[MAX_NUM_DEV];
+static struct plan max_plan_len[MAX_NUM_DEV];
+static int dir[MAX_NUM_DEV];
 static int delta[MAX_NUM_DEV];
 static int i;
 static int j;
@@ -184,14 +199,18 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                                 case CMD_IDLE:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                         switch (cmd.type) {
                                         case CMD_IDLE:
                                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                         case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                         case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
+                                        case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
                                         case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                         case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                                        case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
                                                 verify = cmd;
                                                 break;
                                         default:
@@ -202,6 +221,7 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                                         switch (cmd.type) {
                                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                         case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                                 verify = cmd;
                                                 break;
@@ -213,6 +233,7 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                                         switch (cmd.type) {
                                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                         case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                                 verify = cmd;
                                                 break;
@@ -220,10 +241,22 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                                                 break;
                                         }
                                         break;
+                                case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                                        switch (cmd.type) {
+                                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                        case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                                                verify = cmd;
+                                                break;
+                                        default:
+                                                break;
+                                        }
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                         switch (cmd.type) {
                                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                         case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                                 verify = cmd;
                                                 break;
@@ -235,6 +268,7 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                                         switch (cmd.type) {
                                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                         case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                                 verify = cmd;
                                                 break;
@@ -242,6 +276,17 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                                                 break;
                                         }
                                         break;
+                                case CMD | CMD_DIR_NEGA| CMD_MODE_REPAIR:
+                                        switch (cmd.type) {
+                                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                        case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
+                                                verify = cmd;
+                                                break;
+                                        default:
+                                                break;
+                                        }
                                 default:
                                         break;
                                 }
@@ -442,13 +487,14 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                         switch (verify.type) {
                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         plan_vel[i] = 0;
                                         plan_len_pass[i] = 0;
                                         plan_len_posi_auto[i] = abs(delta[i]);
                                         plan_len_nega_auto[i] = abs(pos_mid[i] - cur_pos[i]);
-                                        sign_posi[i] = GET_SIGN_BIT(delta[i]);
-                                        sign_nega[i] = GET_SIGN_BIT(pos_mid[i] - cur_pos[i]);
+                                        sign_posi[i] = BIT_GET_SIGN(delta[i]);
+                                        sign_nega[i] = BIT_GET_SIGN(pos_mid[i] - cur_pos[i]);
                                         plan_len_posi_manual[i] = pos_dest[i] - cur_pos[i];
                                         plan_len_nega_manual[i] = cur_pos[i] - pos_zero[i];
                                         tx[i].src = J1939_ADDR_MAIN;
@@ -475,126 +521,92 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                                         period = PERIOD_FAST;
                                 break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA5;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        if (plan_len_pass[i] > plan_len_posi_auto[i]) {
-                                                tx[i].data.cmd.vel = 0;
-                                                plan_len_posi_auto[i] = 0;
-                                        } else {
-                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi_auto[i],
-                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                tx[i].data.cmd.vel = sign_posi[i] * sign[i] * (s16)plan_vel[i];
-                                        }
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = 0x9A;
-                                        tx[i].data.cmd.enable = 0xC3;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
-                                period = PERIOD_FAST;
-                                break;
-                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA5;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        if (result[i] & RESULT_MID) {
-                                                tx[i].data.cmd.vel = 0;
-                                                plan_len_nega_auto[i] = 0;
-                                        } else {
-                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega_auto[i],
-                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                tx[i].data.cmd.vel = sign_nega[i] * sign[i] * (s16)plan_vel[i];
-                                        }
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = 0x9A;
-                                        tx[i].data.cmd.enable = 0xC3;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
-                                period = PERIOD_FAST;
-                                break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        if (verify.data & 1 << i) {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                if (result[i] & RESULT_DEST) {
-                                                        tx[i].data.cmd.vel = 0;
-                                                        plan_len_posi_manual[i] = 0;
-                                                } else {
-                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi_manual[i],
-                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                        tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
-                                                }
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                tx[i].data.cmd.enable = 0xC3;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
-                                        } else {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel = 0;
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
-                                        }
-                                }
-                                period = PERIOD_FAST;
-                                break;
+                        case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        switch (verify.type & UNMASK_CMD_DIR) {
+                                        case CMD_DIR_POSI:
+                                                dir[i] = 1;
+                                                switch (verify.type & UNMASK_CMD_MODE) {
+                                                case CMD_MODE_AUTO:
+                                                        plan_len[i] = plan_len_posi_auto[i];
+                                                        break;
+                                                case CMD_MODE_MANUAL:
+                                                case CMD_MODE_REPAIR:
+                                                        plan_len[i] = plan_len_posi_manual[i];
+                                                        break;
+                                                default:
+                                                        plan_len[i] = 0;
+                                                }
+                                        case CMD_DIR_NEGA:
+                                                dir[i] = -1;
+                                                switch (verify.type & UNMASK_CMD_MODE) {
+                                                case CMD_MODE_AUTO:
+                                                        plan_len[i] = plan_len_nega_auto[i];
+                                                        break;
+                                                case CMD_MODE_MANUAL:
+                                                case CMD_MODE_REPAIR:
+                                                        plan_len[i] = plan_len_nega_manual[i];
+                                                        break;
+                                                default:
+                                                        plan_len[i] = 0;
+                                                }
+                                                break;
+                                        default:
+                                                dir[i] = 0;
+                                                plan_len[i] = 0;
+                                                break;
+                                        }
+                                        switch (verify.type & UNMASK_CMD_MODE) {
+                                        case CMD_MODE_AUTO:
+                                                max_plan_len[i] = plan_len_auto[i];
+                                                break;
+                                        case CMD_MODE_MANUAL:
+                                                max_plan_len[i] = plan_len_manual[i];
+                                                break;
+                                        case CMD_MODE_REPAIR:
+                                                max_plan_len[i] = plan_len_repair[i];
+                                                plan_len[i] = max_plan_len[i].low * 2 + max_plan_len[i].acc * 2 + max_plan_len[i].high;
+                                                break;
+                                        default:
+                                                break;
+                                        }
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].form = 0xA5;
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.cmd.pos = 0x1100;
                                         if (verify.data & 1 << i) {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                if (result[i] & RESULT_ZERO) {
+                                                if ((verify.type & UNMASK_CMD_DIR) == CMD_DIR_POSI && (verify.type & UNMASK_CMD_MODE) == CMD_MODE_AUTO && plan_len_pass[i] > plan_len[i] ||
+                                                    (verify.type & UNMASK_CMD_DIR) == CMD_DIR_POSI && (verify.type & UNMASK_CMD_MODE) == CMD_MODE_MANUAL && result[i] & RESULT_DEST ||
+                                                    (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && (verify.type & UNMASK_CMD_MODE) == CMD_MODE_AUTO && result[i] & RESULT_MID ||
+                                                    (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && (verify.type & UNMASK_CMD_MODE) == CMD_MODE_MANUAL && result[i] & RESULT_ZERO) {
                                                         tx[i].data.cmd.vel = 0;
+                                                        plan_len_posi_auto[i] = 0;
+                                                        plan_len_posi_manual[i] = 0;
+                                                        plan_len_nega_auto[i] = 0;
                                                         plan_len_nega_manual[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega_manual[i],
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len[i],
                                                              max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                        tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel[i];
+                                                        tx[i].data.cmd.vel = dir[i] * sign[i] * (s16)plan_vel[i];
                                                 }
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                tx[i].data.cmd.enable = 0xC3;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
                                         } else {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
                                                 tx[i].data.cmd.vel = 0;
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
+                                                plan_len_posi_auto[i] = 0;
+                                                plan_len_posi_manual[i] = 0;
+                                                plan_len_nega_auto[i] = 0;
+                                                plan_len_nega_manual[i] = 0;
                                         }
+                                        tx[i].data.cmd.ampr = 1000;
+                                        tx[i].data.cmd.exec = 0x9A;
+                                        tx[i].data.cmd.enable = 0xC3;
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
                                 }
                                 period = PERIOD_FAST;
                                 break;
@@ -608,8 +620,7 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                                         tx[i].data.cmd.vel = 0;
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;
-                                        if (result[i] & RESULT_STOP)
-                                                tx[i].data.cmd.enable = 0x3C;
+                                        tx[i].data.cmd.enable = 0x3C;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);

@@ -29,8 +29,8 @@
 #define RESULT_STOP          0x00010000
 #define RESULT_ZERO          0x00020000
 #define RESULT_DEST          0x00040000
-#define RESULT_LOAD          0x00080000
-#define RESULT_MID           0x00100000
+#define RESULT_MID           0x00080000
+#define RESULT_LOAD          0x00100000
 
 typedef struct frame_cyl_rx FRAME_RX;
 typedef struct frame_cyl_tx FRAME_TX;
@@ -95,6 +95,7 @@ static int tmp_load[MAX_NUM_DEV];
 static int result[MAX_NUM_DEV];
 static int num_load;
 static int any_fault;
+static int dir[MAX_NUM_DEV];
 static int i;
 static int j;
 
@@ -116,14 +117,18 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                         case CMD_IDLE:
                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 switch (cmd.type) {
                                 case CMD_IDLE:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
                                         verify = cmd;
                                         break;
                                 default:
@@ -134,6 +139,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 switch (cmd.type) {
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
@@ -145,6 +151,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 switch (cmd.type) {
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
@@ -152,10 +159,22 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                         break;
                                 }
                                 break;
+                        case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                                switch (cmd.type) {
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
                         case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                 switch (cmd.type) {
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
@@ -167,6 +186,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 switch (cmd.type) {
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
@@ -174,6 +194,17 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                         break;
                                 }
                                 break;
+                        case CMD | CMD_DIR_NEGA| CMD_MODE_REPAIR:
+                                switch (cmd.type) {
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
                         default:
                                 break;
                         }
@@ -283,7 +314,8 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                         any_fault &= UNMASK_RESULT_FAULT;
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
-                                verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
+                                if (verify.type & UNMASK_CMD_ACT == CMD)
+                                        verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
                         } else {
                                 state.type = TASK_STATE_RUNNING;
                                 if (num_load > 3)
@@ -297,6 +329,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                         switch (verify.type) {
                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
@@ -322,83 +355,51 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                         period = PERIOD_FAST;
                                 break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                        case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
                         case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        switch (verify.type & UNMASK_CMD_DIR) {
+                                        case CMD_DIR_POSI:
+                                                dir[i] = 1;
+                                                break;
+                                        case CMD_DIR_NEGA:
+                                                dir[i] = -1;
+                                                break;
+                                        default:
+                                                dir[i] = 0;
+                                                break;
+                                        }
+                                        switch (verify.type & UNMASK_CMD_MODE) {
+                                        case CMD_MODE_AUTO:
+                                                tx[i].form = 0xA3;
+                                                tx[i].data.cmd.vel = 0x3322;
+                                                if (avg_ampr[i] < ampr_load[i] - 5)
+                                                        tx[i].data.cmd.ampr = -(s16)(avg_ampr[i] + 5);
+                                                break;
+                                        case CMD_MODE_MANUAL:
+                                        case CMD_MODE_REPAIR:
+                                                tx[i].form = 0xA5;
+                                                if (verify.data & 1 << i)
+                                                        tx[i].data.cmd.vel = dir[i] * sign[i] * (s16)plan_vel_low[i];
+                                                else
+                                                        tx[i].data.cmd.vel = 0;
+                                                tx[i].data.cmd.ampr = 1000;
+                                                break;
+                                        default:
+                                                break;
+                                        }
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
-                                        tx[i].form = 0xA3;
                                         tx[i].prio = 0x08;
                                         tx[i].data.cmd.pos = 0x1100;
-                                        tx[i].data.cmd.vel = 0x3322;
-                                        if (avg_ampr[i] < ampr_load[i] - 5)
-                                                tx[i].data.cmd.ampr = -(s16)(avg_ampr[i] + 5);
                                         tx[i].data.cmd.exec = 0x9A;
                                         tx[i].data.cmd.enable = 0xC3;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
-                                }
-                                period = PERIOD_FAST;
-                                break;
-                        case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        if (verify.data & 1 << i) {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel = sign[i] * (s16)plan_vel_low[i];
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                tx[i].data.cmd.enable = 0xC3;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
-                                        } else {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel = 0;
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
-                                        }
-                                }
-                                period = PERIOD_FAST;
-                                break;
-                        case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        if (verify.data & 1 << i) {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel_low[i];
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                tx[i].data.cmd.enable = 0xC3;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
-                                        } else {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel = 0;
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
-                                        }
                                 }
                                 period = PERIOD_FAST;
                                 break;
@@ -412,8 +413,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                         tx[i].data.cmd.vel = 0;
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;
-                                        if (result[i] & RESULT_STOP)
-                                                tx[i].data.cmd.enable = 0x3C;
+                                        tx[i].data.cmd.enable = 0x3C;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);

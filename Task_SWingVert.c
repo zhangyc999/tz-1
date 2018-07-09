@@ -63,13 +63,25 @@ const static int pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int pos_dest[MAX_NUM_DEV] = {3000, 3000, 3000, 3000};
 const static int ampr_load[MAX_NUM_DEV] = {200, 200, 200, 200};
 const static int err_sync = 1000;
-const static struct plan max_plan_len[MAX_NUM_DEV] = {
+const static struct plan plan_len_auto[MAX_NUM_DEV] = {
         {2000, 4000, 40000},
         {2000, 4000, 40000},
         {2000, 4000, 40000},
         {2000, 4000, 40000}
 };
-const static int plan_vel_low[MAX_NUM_DEV] = {50, 50, 50, 50};
+const static struct plan plan_len_manual[MAX_NUM_DEV] = {
+        {2000, 8000, 32000},
+        {2000, 8000, 32000},
+        {2000, 8000, 32000},
+        {2000, 8000, 32000}
+};
+const static struct plan plan_len_repair[MAX_NUM_DEV] = {
+        {2000, 8000, 60000},
+        {2000, 8000, 60000},
+        {2000, 8000, 60000},
+        {2000, 8000, 60000}
+};
+const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000};
 const static int plan_vel_medium[MAX_NUM_DEV] = {500, 500, 500, 500};
 
@@ -133,6 +145,9 @@ static int plan_vel[MAX_NUM_DEV];
 static int plan_len_pass[MAX_NUM_DEV];
 static int plan_len_posi[MAX_NUM_DEV];
 static int plan_len_nega[MAX_NUM_DEV];
+static int plan_len[MAX_NUM_DEV];
+static struct plan max_plan_len[MAX_NUM_DEV];
+static int dir[MAX_NUM_DEV];
 static int i;
 static int j;
 
@@ -154,14 +169,18 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                         case CMD_IDLE:
                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 switch (cmd.type) {
                                 case CMD_IDLE:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
                                         verify = cmd;
                                         break;
                                 default:
@@ -172,6 +191,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 switch (cmd.type) {
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
@@ -183,6 +203,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 switch (cmd.type) {
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
@@ -190,10 +211,22 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         break;
                                 }
                                 break;
+                        case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                                switch (cmd.type) {
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
                         case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                 switch (cmd.type) {
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
@@ -205,6 +238,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 switch (cmd.type) {
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
@@ -212,6 +246,17 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         break;
                                 }
                                 break;
+                        case CMD | CMD_DIR_NEGA| CMD_MODE_REPAIR:
+                                switch (cmd.type) {
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
                         default:
                                 break;
                         }
@@ -395,6 +440,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                         switch (verify.type) {
                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         plan_vel[i] = 0;
                                         plan_len_pass[i] = 0;
@@ -424,133 +470,76 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         period = PERIOD_FAST;
                                 break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        if (result[i] & RESULT_DEST && result[i] & RESULT_LOAD) {
-                                                tx[i].form = 0xA5;
-                                                tx[i].data.cmd.vel = 0;
-                                                tx[i].data.cmd.ampr = 1000;
-#if 0
-                                                tx[i].form = 0xA3;
-                                                tx[i].data.cmd.vel = 0x3322;
-                                                tx[i].data.cmd.ampr = avg_ampr[i];
-#endif
-                                                plan_len_posi[i] = 0;
-                                        } else {
-                                                tx[i].form = 0xA5;
-                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
-                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
-                                                tx[i].data.cmd.ampr = 1000;
-                                        }
-                                        tx[i].data.cmd.exec = 0x9A;
-                                        tx[i].data.cmd.enable = 0xC3;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
-                                period = PERIOD_FAST;
-                                break;
-                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA5;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        if (result[i] & RESULT_ZERO && result[i] & RESULT_LOAD) {
-                                                tx[i].data.cmd.vel = 0;
-                                                plan_len_nega[i] = 0;
-                                        } else {
-                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
-                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel[i];
-                                        }
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = 0x9A;
-                                        tx[i].data.cmd.enable = 0xC3;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
-                                period = PERIOD_FAST;
-                                break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        if (verify.data & 1 << i) {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                if (result[i] & RESULT_DEST && result[i] & RESULT_LOAD) {
-                                                        tx[i].data.cmd.vel = 0;
-                                                        plan_len_posi[i] = 0;
-                                                } else {
-                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_posi[i],
-                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                        tx[i].data.cmd.vel = sign[i] * (s16)plan_vel[i];
-                                                }
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                tx[i].data.cmd.enable = 0xC3;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
-                                        } else {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                tx[i].data.cmd.vel = 0;
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
-                                        }
-                                }
-                                period = PERIOD_FAST;
-                                break;
+                        case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        switch (verify.type & UNMASK_CMD_DIR) {
+                                        case CMD_DIR_POSI:
+                                                dir[i] = 1;
+                                                plan_len[i] = plan_len_posi[i];
+                                                break;
+                                        case CMD_DIR_NEGA:
+                                                dir[i] = -1;
+                                                plan_len[i] = plan_len_nega[i];
+                                                break;
+                                        default:
+                                                dir[i] = 0;
+                                                plan_len[i] = 0;
+                                                break;
+                                        }
+                                        switch (verify.type & UNMASK_CMD_MODE) {
+                                        case CMD_MODE_AUTO:
+                                                max_plan_len[i] = plan_len_auto[i];
+                                                break;
+                                        case CMD_MODE_MANUAL:
+                                                max_plan_len[i] = plan_len_manual[i];
+                                                break;
+                                        case CMD_MODE_REPAIR:
+                                                max_plan_len[i] = plan_len_repair[i];
+                                                plan_len[i] = max_plan_len[i].low * 2 + max_plan_len[i].acc * 2 + max_plan_len[i].high;
+                                                break;
+                                        default:
+                                                break;
+                                        }
+                                        tx[i].src = J1939_ADDR_MAIN;
+                                        tx[i].dest = addr[i];
+                                        tx[i].prio = 0x08;
+                                        tx[i].data.cmd.pos = 0x1100;
                                         if (verify.data & 1 << i) {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
-                                                tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
-                                                if (result[i] & RESULT_ZERO && result[i] & RESULT_LOAD) {
+                                                if ((verify.type & UNMASK_CMD_DIR) == CMD_DIR_POSI && result[i] & RESULT_DEST && result[i] & RESULT_LOAD) {
+                                                        tx[i].form = 0xA3;
+                                                        tx[i].data.cmd.vel = 0x3322;
+                                                        tx[i].data.cmd.ampr = avg_ampr[i];
+                                                        plan_len_posi[i] = 0;
+                                                        plan_len_nega[i] = 0;
+                                                } else if ((verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO && result[i] & RESULT_LOAD) {
+                                                        tx[i].form = 0xA5;
                                                         tx[i].data.cmd.vel = 0;
+                                                        tx[i].data.cmd.ampr = 1000;
+                                                        plan_len_posi[i] = 0;
                                                         plan_len_nega[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len_nega[i],
+                                                        tx[i].form = 0xA5;
+                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len[i],
                                                              max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                        tx[i].data.cmd.vel = -sign[i] * (s16)plan_vel[i];
+                                                        tx[i].data.cmd.vel = dir[i] * sign[i] * (s16)plan_vel[i];
+                                                        tx[i].data.cmd.ampr = 1000;
                                                 }
-                                                tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                tx[i].data.cmd.enable = 0xC3;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
                                         } else {
-                                                tx[i].src = J1939_ADDR_MAIN;
-                                                tx[i].dest = addr[i];
                                                 tx[i].form = 0xA5;
-                                                tx[i].prio = 0x08;
-                                                tx[i].data.cmd.pos = 0x1100;
                                                 tx[i].data.cmd.vel = 0;
                                                 tx[i].data.cmd.ampr = 1000;
-                                                tx[i].data.cmd.exec = 0x9A;
-                                                semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                                semGive(sem_can[cable[i]]);
+                                                plan_len_posi[i] = 0;
+                                                plan_len_nega[i] = 0;
                                         }
+                                        tx[i].data.cmd.exec = 0x9A;
+                                        tx[i].data.cmd.enable = 0xC3;
+                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        semGive(sem_can[cable[i]]);
                                 }
                                 period = PERIOD_FAST;
                                 break;
@@ -564,8 +553,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         tx[i].data.cmd.vel = 0;
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;
-                                        if (result[i] & RESULT_STOP)
-                                                tx[i].data.cmd.enable = 0x3C;
+                                        tx[i].data.cmd.enable = 0x3C;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
