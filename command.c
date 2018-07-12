@@ -69,6 +69,36 @@ void psu_500(int data)
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
+void mom(void)
+{
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_MOM | CMD_DIR_STOP | CMD_MODE_AUTO;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void momp(int data)
+{
+        struct frame_udp_rx udp;
+        if (data == 0)
+                udp.cmd.type = CMD_ACT_MOM | CMD_DIR_POSI | CMD_MODE_AUTO;
+        else
+                udp.cmd.type = CMD_ACT_MOM | CMD_DIR_POSI | CMD_MODE_MANUAL;
+        udp.cmd.data = data;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void momn(int data)
+{
+        struct frame_udp_rx udp;
+        if (data == 0)
+                udp.cmd.type = CMD_ACT_MOM | CMD_DIR_NEGA | CMD_MODE_AUTO;
+        else
+                udp.cmd.type = CMD_ACT_MOM | CMD_DIR_NEGA | CMD_MODE_MANUAL;
+        udp.cmd.data = data;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
 void swh(void)
 {
         struct frame_udp_rx udp;
@@ -337,4 +367,50 @@ void zn(int data)
                 udp.cmd.type = CMD_ACT_Z | CMD_DIR_NEGA | CMD_MODE_MANUAL;
         udp.cmd.data = data;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void myswh(void)
+{
+        struct frame_udp_rx udp;
+        for (;;) {
+                udp.cmd.type = CMD_ACT_SWH | CMD_DIR_STOP | CMD_MODE_AUTO;
+                udp.cmd.data = 0;
+                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+                taskDelay(200);
+                udp.cmd.type = CMD_ACT_SWH | CMD_DIR_POSI | CMD_MODE_AUTO;
+                udp.cmd.data = 0x0000000F;
+                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+                taskDelay(200 * 100);
+                udp.cmd.type = CMD_ACT_SWH | CMD_DIR_STOP | CMD_MODE_AUTO;
+                udp.cmd.data = 0;
+                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+                taskDelay(200);
+                udp.cmd.type = CMD_ACT_SWH | CMD_DIR_NEGA | CMD_MODE_AUTO;
+                udp.cmd.data = 0x0000000F;
+                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+                taskDelay(200 * 100);
+        }
+}
+
+void myswv(void)
+{
+        struct frame_udp_rx udp;
+        for (;;) {
+                udp.cmd.type = CMD_ACT_SWV | CMD_DIR_STOP | CMD_MODE_AUTO;
+                udp.cmd.data = 0;
+                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+                taskDelay(200);
+                udp.cmd.type = CMD_ACT_SWV | CMD_DIR_POSI | CMD_MODE_AUTO;
+                udp.cmd.data = 0x0000000F;
+                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+                taskDelay(200 * 50);
+                udp.cmd.type = CMD_ACT_SWV | CMD_DIR_STOP | CMD_MODE_AUTO;
+                udp.cmd.data = 0;
+                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+                taskDelay(200);
+                udp.cmd.type = CMD_ACT_SWV | CMD_DIR_NEGA | CMD_MODE_AUTO;
+                udp.cmd.data = 0x0000000F;
+                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+                taskDelay(200 * 50);
+        }
 }

@@ -193,3 +193,8 @@ void t_dbg(void)
                 }
         }
 }
+
+void total_clear(void)
+{
+        bzero((char *)total, sizeof(total));
+}

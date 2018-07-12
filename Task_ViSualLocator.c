@@ -4,12 +4,11 @@
 #include "type.h"
 #include "vx.h"
 
-#define PERIOD_SLOW 200
-#define PERIOD_FAST 20
+#define PERIOD 200
 
 #define MAX_NUM_DEV   2
 #define MAX_NUM_FORM  1
-#define MAX_LEN_CLLST 16
+#define MAX_LEN_CLLST 3
 
 #define UNMASK_RESULT_FAULT  0x0000FF00
 #define UNMASK_RESULT_MISC   0xFFFF0000
@@ -45,7 +44,7 @@ const static int max_y[MAX_NUM_DEV] = {100, 100};
 const static int min_z[MAX_NUM_DEV] = {-100, -100};
 const static int max_z[MAX_NUM_DEV] = {100, 100};
 
-static int period = PERIOD_SLOW;
+static int period = PERIOD;
 static u32 prev;
 static int len;
 static u8 tmp[sizeof(struct frame_can)];
@@ -96,7 +95,7 @@ void t_vsl(void) /* Task: ViSual Locator */
         }
         for (;;) {
                 prev = tickGet();
-                if (period < 0 || period > PERIOD_SLOW)
+                if (period < 0 || period > PERIOD)
                         period = 0;
                 len = msgQReceive(msg_vsl, (char *)&tmp, sizeof(tmp), period);
                 switch (len) {
@@ -245,7 +244,7 @@ void t_vsl(void) /* Task: ViSual Locator */
                                 rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                 semGive(sem_can[cable[i]]);
                         }
-                        period = PERIOD_SLOW;
+                        period = PERIOD;
                         break;
                 }
         }

@@ -4,11 +4,11 @@
 #include "type.h"
 #include "vx.h"
 
-#define PERIOD 200
+#define PERIOD 50
 
 #define MAX_NUM_DEV   1
 #define MAX_NUM_FORM  2
-#define MAX_LEN_CLLST 16
+#define MAX_LEN_CLLST 3
 
 #define UNMASK_RESULT_IO      0x000000FF
 #define UNMASK_RESULT_FAULT   0x0000FF00
@@ -172,22 +172,22 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 } else {
                                         ctr_io_500 = 0;
                                 }
-                                if (ctr_io_brake > 3)
-                                        result &= ~RESULT_IO_BRAKE;
-                                else
+                                if (ctr_io_brake < MAX_LEN_CLLST)
                                         result |= RESULT_IO_BRAKE;
-                                if (ctr_io_light > 3)
-                                        result &= ~RESULT_IO_LIGHT;
                                 else
+                                        result &= ~RESULT_IO_BRAKE;
+                                if (ctr_io_light < MAX_LEN_CLLST)
                                         result |= RESULT_IO_LIGHT;
-                                if (ctr_io_24 > 3)
-                                        result &= ~RESULT_IO_24;
                                 else
+                                        result &= ~RESULT_IO_LIGHT;
+                                if (ctr_io_24 < MAX_LEN_CLLST)
                                         result |= RESULT_IO_24;
-                                if (ctr_io_500 > 3)
-                                        result &= ~RESULT_IO_500;
                                 else
+                                        result &= ~RESULT_IO_24;
+                                if (ctr_io_500 < MAX_LEN_CLLST)
                                         result |= RESULT_IO_500;
+                                else
+                                        result &= ~RESULT_IO_500;
                                 if (old_fault == p[j]->data.io.fault) {
                                         if (ctr_fault < MAX_LEN_CLLST)
                                                 ctr_fault++;
@@ -197,13 +197,13 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 switch (p[j]->data.io.fault) {
                                 case 0x00:
                                 case 0x03:
-                                        if (ctr_fault < 5)
+                                        if (ctr_fault < 2)
                                                 break;
                                         result &= ~RESULT_FAULT_GENERAL;
                                         result &= ~RESULT_FAULT_SERIOUS;
                                         break;
                                 case 0x0C:
-                                        if (ctr_fault < 3)
+                                        if (ctr_fault < 1)
                                                 break;
                                         result |= RESULT_FAULT_GENERAL;
                                         break;

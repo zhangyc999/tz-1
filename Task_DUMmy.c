@@ -23,11 +23,19 @@ static int j;
 
 void t_dum(void)
 {
+        pos[11] = 2000;
+        pos[13] = 2000;
         for (;;) {
                 taskDelay(1);
                 for (i = 0; i < 2; i++) {
                         if (sizeof(rx) != rngBufGet(rng_can[i], (char *)&rx, sizeof(rx)))
                                 continue;
+#if 0
+                        if (i == 0)
+                                printf("\033[25;1HCAN0:%8d", rngNBytes(rng_can[0]));
+                        if (i == 1)
+                                printf("\033[25;16HCAN1:%8d", rngNBytes(rng_can[1]));
+#endif
                         j = remap_addr_index(rx.dest);
                         period[j] = remap_addr_period(rx.dest);
                         switch (rx.dest) {

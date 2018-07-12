@@ -124,7 +124,7 @@ void t_can(void)
                         }
                         if (sizeof(buf) != rngBufGet(rng_can[i], (char *)&buf, sizeof(buf)))
                                 continue;
-#if 1
+#if 0
                         if (i == 0)
                                 printf("\033[25;1HCAN0:%8d", rngNBytes(rng_can[0]));
                         if (i == 1)

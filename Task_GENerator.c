@@ -8,7 +8,7 @@
 
 #define MAX_NUM_DEV   2
 #define MAX_NUM_FORM  2
-#define MAX_LEN_CLLST 16
+#define MAX_LEN_CLLST 3
 
 #define UNMASK_RESULT_FAULT  0x0000FF00
 #define UNMASK_RESULT_MISC   0xFFFF0000
@@ -135,7 +135,7 @@ void t_gen(void) /* Task: GENerator */
                                 } else {
                                         ctr_fault[i] = 0;
                                 }
-                                if (ctr_fault[i] > 5) {
+                                if (ctr_fault[i] > 1) {
                                         if (p[i][j]->data.misc.fault) {
                                                 result[i] |= RESULT_FAULT_GENERAL;
                                                 result[i] |= RESULT_FAULT_SERIOUS;

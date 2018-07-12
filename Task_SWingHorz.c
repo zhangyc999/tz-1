@@ -9,11 +9,11 @@
 #define NOTIFY TASK_NOTIFY_SWH
 
 #define PERIOD_SLOW 200
-#define PERIOD_FAST 8
+#define PERIOD_FAST 4
 
 #define MAX_NUM_DEV   4
 #define MAX_NUM_FORM  1
-#define MAX_LEN_CLLST 16
+#define MAX_LEN_CLLST 3
 
 #define UNMASK_RESULT_IO     0x000000FF
 #define UNMASK_RESULT_FAULT  0x0000FF00
@@ -53,34 +53,34 @@ const static int io_pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int io_pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
 const static int min_pos[MAX_NUM_DEV] = {-1000, -1000, -1000, -1000};
 const static int max_pos[MAX_NUM_DEV] = {42000, 42000, 42000, 42000};
-const static int min_vel[MAX_NUM_DEV] = {-1500, -1500, -1500, -1500};
-const static int max_vel[MAX_NUM_DEV] = {1500, 1500, 1500, 1500};
+const static int min_vel[MAX_NUM_DEV] = {-1100, -1100, -1100, -1100};
+const static int max_vel[MAX_NUM_DEV] = {1100, 1100, 1100, 1100};
 const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200, 200, 200};
-const static int pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
-const static int pos_dest[MAX_NUM_DEV] = {40000, 40000, 40000, 40000};
-const static int pos_mid[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
+const static int pos_zero[MAX_NUM_DEV] = {200, 200, 200, 200};
+const static int pos_dest[MAX_NUM_DEV] = {41800, 41800, 41800, 41800};
+const static int pos_mid[MAX_NUM_DEV] = {24000, 24000, 24000, 24000};
 const static int ampr_load[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int err_sync_01 = 500;
 const static int err_sync_23 = 500;
 const static int err_sync = 1000;
 const static struct plan plan_len_auto[MAX_NUM_DEV] = {
-        {1000, 4000, 30000},
-        {1000, 4000, 30000},
-        {1000, 4000, 30000},
-        {1000, 4000, 30000}
+        {2000, 4000, 29800},
+        {2000, 4000, 29800},
+        {2000, 4000, 29800},
+        {2000, 4000, 29800}
 };
 const static struct plan plan_len_manual[MAX_NUM_DEV] = {
-        {1000, 8000, 22000},
-        {1000, 8000, 22000},
-        {1000, 8000, 22000},
-        {1000, 8000, 22000}
+        {2000, 8000, 21800},
+        {2000, 8000, 21800},
+        {2000, 8000, 21800},
+        {2000, 8000, 21800}
 };
 const static struct plan plan_len_repair[MAX_NUM_DEV] = {
-        {1000, 8000, 40000},
-        {1000, 8000, 40000},
-        {1000, 8000, 40000},
-        {1000, 8000, 40000}
+        {2000, 8000, 60000},
+        {2000, 8000, 60000},
+        {2000, 8000, 60000},
+        {2000, 8000, 60000}
 };
 const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000};
@@ -162,6 +162,7 @@ static int plan_len_nega[MAX_NUM_DEV];
 static int plan_len[MAX_NUM_DEV];
 static struct plan max_plan_len[MAX_NUM_DEV];
 static int dir[MAX_NUM_DEV];
+static int ampr[MAX_NUM_DEV];
 static int i;
 static int j;
 
@@ -315,13 +316,13 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 switch (p[i][j]->data.state.fault) {
                                 case 0x00:
                                 case 0x03:
-                                        if (ctr_fault[i] < 5)
+                                        if (ctr_fault[i] < 2)
                                                 break;
                                         result[i] &= ~RESULT_FAULT_GENERAL;
                                         result[i] &= ~RESULT_FAULT_SERIOUS;
                                         break;
                                 case 0x0C:
-                                        if (ctr_fault[i] < 3)
+                                        if (ctr_fault[i] < 1)
                                                 break;
                                         result[i] |= RESULT_FAULT_GENERAL;
                                         break;
@@ -339,14 +340,14 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 }
                                 if (ctr_io[i] > 5)
                                         result[i] = result[i] & ~UNMASK_RESULT_IO | p[i][j]->data.state.io;
-                                tmp_pos[i] = filter_judge(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
-                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
-                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
-                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
-                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_mid[i] = filter_judge(&ctr_ok_mid[i], &ctr_err_mid[i], avg_pos[i], pos_mid[i] - 40, pos_mid[i] + 40, MAX_LEN_CLLST);
-                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], avg_ampr[i], ampr_load[i], max_ampr[i], MAX_LEN_CLLST);
+                                tmp_pos[i] = filter_judge(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], 5);
+                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], 5);
+                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], 5);
+                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, 5);
+                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], cur_pos[i], min_pos[i], pos_zero[i], 3);
+                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], cur_pos[i], pos_dest[i], max_pos[i], 3);
+                                tmp_mid[i] = filter_judge(&ctr_ok_mid[i], &ctr_err_mid[i], cur_pos[i], pos_mid[i] - 100, pos_mid[i] + 100, 3);
+                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], cur_ampr[i], ampr_load[i], max_ampr[i], 3);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
                                     || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
@@ -410,26 +411,19 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         tmp_sync_01 = filter_judge(&ctr_ok_sync_01, &ctr_err_sync_01, sub_01, -err_sync_01, err_sync_01, MAX_LEN_CLLST);
                         tmp_sync_23 = filter_judge(&ctr_ok_sync_23, &ctr_err_sync_23, sub_23, -err_sync_23, err_sync_23, MAX_LEN_CLLST);
                         tmp_sync = filter_judge(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
-                        if (tmp_sync_01 == -1) {
+                        if (tmp_sync_01 == -1 || tmp_sync == -1) {
                                 result[0] |= RESULT_FAULT_SYNC;
                                 result[1] |= RESULT_FAULT_SYNC;
-                        } else if (tmp_sync_01 == 1) {
+                        } else if (tmp_sync_01 == 1 && tmp_sync == 1) {
                                 result[0] &= ~RESULT_FAULT_SYNC;
                                 result[1] &= ~RESULT_FAULT_SYNC;
                         }
-                        if (tmp_sync_23 == -1) {
+                        if (tmp_sync_23 == -1 || tmp_sync == -1) {
                                 result[2] |= RESULT_FAULT_SYNC;
                                 result[3] |= RESULT_FAULT_SYNC;
-                        } else if (tmp_sync_23 == 1) {
+                        } else if (tmp_sync_23 == 1 && tmp_sync == 1) {
                                 result[2] &= ~RESULT_FAULT_SYNC;
                                 result[3] &= ~RESULT_FAULT_SYNC;
-                        }
-                        if (tmp_sync == -1) {
-                                for (i = 0; i < MAX_NUM_DEV; i++)
-                                        result[i] |= RESULT_FAULT_SYNC;
-                        } else if (tmp_sync == 1) {
-                                for (i = 0; i < MAX_NUM_DEV; i++)
-                                        result[i] &= ~RESULT_FAULT_SYNC;
                         }
                         period -= tickGet() - prev;
                         break;
@@ -467,7 +461,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 state.type = TASK_STATE_RUNNING;
                                 if (all_zero)
                                         state.type = TASK_STATE_ZERO;
-                                else if (verify.data >> 16 == 5 && all_mid || verify.data >> 16 == 7 && all_dest)
+                                else if (verify.data >> 16 == 5 && all_mid || verify.data >> 16 != 5 && all_dest)
                                         state.type = TASK_STATE_DEST;
                         }
                         state.type |= NOTIFY;
@@ -493,8 +487,6 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         tx[i].data.cmd.vel = 0;
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;
-                                        if (result[i] & RESULT_STOP)
-                                                tx[i].data.cmd.enable = 0x3C;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
@@ -565,21 +557,18 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         if (verify.data & 1 << i) {
                                                 if (verify.data >> 16 == 5 && result[i] & RESULT_MID ||
                                                     (verify.type & UNMASK_CMD_DIR) == CMD_DIR_POSI && result[i] & RESULT_DEST ||
-                                                    (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO && result[i] & RESULT_LOAD) {
+                                                    (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO && cur_ampr[i] > ampr[i] + 20) {
                                                         tx[i].data.cmd.vel = 0;
-                                                        plan_len_posi_1st[i] = 0;
-                                                        plan_len_posi_2nd[i] = 0;
-                                                        plan_len_nega[i] = 0;
+                                                        plan_len[i] = 0;
                                                 } else {
                                                         plan(&plan_vel[i], &plan_len_pass[i], plan_len[i],
                                                              max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                         tx[i].data.cmd.vel = dir[i] * sign[i] * (s16)plan_vel[i];
+                                                        ampr[i] = avg_ampr[i];
                                                 }
                                         } else {
                                                 tx[i].data.cmd.vel = 0;
-                                                plan_len_posi_1st[i] = 0;
-                                                plan_len_posi_2nd[i] = 0;
-                                                plan_len_nega[i] = 0;
+                                                plan_len[i] = 0;
                                         }
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;

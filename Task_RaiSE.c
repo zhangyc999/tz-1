@@ -15,11 +15,11 @@
 #define NOTIFY TASK_NOTIFY_RSE
 
 #define PERIOD_SLOW 200
-#define PERIOD_FAST 20
+#define PERIOD_FAST 10
 
 #define MAX_NUM_DEV   4
 #define MAX_NUM_FORM  1
-#define MAX_LEN_CLLST 16
+#define MAX_LEN_CLLST 3
 
 #define UNMASK_RESULT_IO     0x000000FF
 #define UNMASK_RESULT_FAULT  0x0000FF00
@@ -62,32 +62,32 @@ const static int sign[MAX_NUM_DEV] = {1, 1, 1, 1};
 const static int io_pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int io_pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
 const static int min_pos[MAX_NUM_DEV] = {-1000, -1000, -1000, -1000};
-const static int max_pos[MAX_NUM_DEV] = {36000, 36000, 36000, 36000};
-const static int min_vel[MAX_NUM_DEV] = {-1500, -1500, -1500, -1500};
-const static int max_vel[MAX_NUM_DEV] = {1500, 1500, 1500, 1500};
+const static int max_pos[MAX_NUM_DEV] = {195000, 195000, 195000, 195000};
+const static int min_vel[MAX_NUM_DEV] = {-1100, -1100, -1100, -1100};
+const static int max_vel[MAX_NUM_DEV] = {1100, 1100, 1100, 1100};
 const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200, 200, 200};
 const static int pos_zero[MAX_NUM_DEV] = {500, 500, 500, 500};
-const static int pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
+const static int pos_dest[MAX_NUM_DEV] = {194500, 194500, 194500, 194500};
 const static int ampr_load[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int err_sync = 1000;
 const static struct plan plan_len_auto[MAX_NUM_DEV] = {
-        {1000, 4000, 10000},
-        {1000, 4000, 10000},
-        {1000, 4000, 10000},
-        {1000, 4000, 10000}
+        {2000, 4000, 182500},
+        {2000, 4000, 182500},
+        {2000, 4000, 182500},
+        {2000, 4000, 182500}
 };
 const static struct plan plan_len_manual[MAX_NUM_DEV] = {
-        {1000, 8000, 2000},
-        {1000, 8000, 2000},
-        {1000, 8000, 2000},
-        {1000, 8000, 2000}
+        {2000, 8000, 174500},
+        {2000, 8000, 174500},
+        {2000, 8000, 174500},
+        {2000, 8000, 174500}
 };
 const static struct plan plan_len_repair[MAX_NUM_DEV] = {
-        {1000, 8000, 40000},
-        {1000, 8000, 40000},
-        {1000, 8000, 40000},
-        {1000, 8000, 40000}
+        {2000, 8000, 600000},
+        {2000, 8000, 600000},
+        {2000, 8000, 600000},
+        {2000, 8000, 600000}
 };
 const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000};
@@ -324,13 +324,13 @@ void t_rse(void) /* Task: RaiSE arm */
                                 switch (p[i][j]->data.state.fault) {
                                 case 0x00:
                                 case 0x03:
-                                        if (ctr_fault[i] < 5)
+                                        if (ctr_fault[i] < 2)
                                                 break;
                                         result[i] &= ~RESULT_FAULT_GENERAL;
                                         result[i] &= ~RESULT_FAULT_SERIOUS;
                                         break;
                                 case 0x0C:
-                                        if (ctr_fault[i] < 3)
+                                        if (ctr_fault[i] < 1)
                                                 break;
                                         result[i] |= RESULT_FAULT_GENERAL;
                                         break;
@@ -348,13 +348,13 @@ void t_rse(void) /* Task: RaiSE arm */
                                 }
                                 if (ctr_io[i] > 5)
                                         result[i] = result[i] & ~UNMASK_RESULT_IO | p[i][j]->data.state.io;
-                                tmp_pos[i] = filter_judge(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
-                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
-                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
-                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i] + delta_nega[i], MAX_LEN_CLLST);
-                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i] + delta_posi[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], avg_ampr[i], ampr_load[i], max_ampr[i], MAX_LEN_CLLST);
+                                tmp_pos[i] = filter_judge(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], 5);
+                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], 5);
+                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], 5);
+                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, 5);
+                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], cur_pos[i], min_pos[i] - 600000, pos_zero[i] + delta_nega[i], 3);
+                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], cur_pos[i], pos_dest[i] + delta_posi[i], max_pos[i] + 600000, 3);
+                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], cur_ampr[i], ampr_load[i], max_ampr[i] + 600000, 3);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
                                     || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
@@ -480,8 +480,10 @@ void t_rse(void) /* Task: RaiSE arm */
                                         tx[i].data.cmd.vel = 0;
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;
+#if 0
                                         if (result[i] & RESULT_STOP)
                                                 tx[i].data.cmd.enable = 0x3C;
+#endif
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
@@ -539,17 +541,18 @@ void t_rse(void) /* Task: RaiSE arm */
                                                 if ((verify.type & UNMASK_CMD_DIR) == CMD_DIR_POSI && result[i] & RESULT_DEST ||
                                                     (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO) {
                                                         tx[i].data.cmd.vel = 0;
-                                                        plan_len_posi[i] = 0;
-                                                        plan_len_nega[i] = 0;
+                                                        plan_len[i] = 0;
                                                 } else {
-                                                        plan(&plan_vel[i], &plan_len_pass[i], plan_len[i],
-                                                             max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
-                                                        tx[i].data.cmd.vel = dir[i] * sign[i] * (s16)plan_vel[i];
+                                                        if ((verify.type & UNMASK_CMD_DIR) == CMD_DIR_POSI && (result[i] & RESULT_DEST) == 0 ||
+                                                            (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && (result[i] & RESULT_ZERO) == 0) {
+                                                                plan(&plan_vel[i], &plan_len_pass[i], plan_len[i],
+                                                                     max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
+                                                                tx[i].data.cmd.vel = dir[i] * sign[i] * (s16)plan_vel[i];
+                                                        }
                                                 }
                                         } else {
                                                 tx[i].data.cmd.vel = 0;
-                                                plan_len_posi[i] = 0;
-                                                plan_len_nega[i] = 0;
+                                                plan_len[i] = 0;
                                         }
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;

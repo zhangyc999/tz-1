@@ -9,11 +9,11 @@
 #define NOTIFY TASK_NOTIFY_X
 
 #define PERIOD_SLOW 200
-#define PERIOD_FAST 20
+#define PERIOD_FAST 4
 
 #define MAX_NUM_DEV   2
 #define MAX_NUM_FORM  1
-#define MAX_LEN_CLLST 16
+#define MAX_LEN_CLLST 3
 
 #define UNMASK_RESULT_IO     0x000000FF
 #define UNMASK_RESULT_FAULT  0x0000FF00
@@ -55,7 +55,7 @@ const static int cable[MAX_NUM_DEV] = {0, 1};
 const static int sign[MAX_NUM_DEV] = {1, -1};
 const static int io_pos_zero[MAX_NUM_DEV] = {500, 500};
 const static int io_pos_dest[MAX_NUM_DEV] = {20000, 20000};
-const static int min_pos[MAX_NUM_DEV] = {200, 200}; /* 0 */
+const static int min_pos[MAX_NUM_DEV] = {-1000, -1000};
 const static int max_pos[MAX_NUM_DEV] = {30000, 30000}; /* 117000 */
 const static int min_vel[MAX_NUM_DEV] = {-1500, -1500};
 const static int max_vel[MAX_NUM_DEV] = {1500, 1500};
@@ -312,13 +312,13 @@ void t_x(void) /* Task: crane on the front for X-axis */
                                 switch (p[i][j]->data.state.fault) {
                                 case 0x00:
                                 case 0x03:
-                                        if (ctr_fault[i] < 5)
+                                        if (ctr_fault[i] < 2)
                                                 break;
                                         result[i] &= ~RESULT_FAULT_GENERAL;
                                         result[i] &= ~RESULT_FAULT_SERIOUS;
                                         break;
                                 case 0x0C:
-                                        if (ctr_fault[i] < 3)
+                                        if (ctr_fault[i] < 1)
                                                 break;
                                         result[i] |= RESULT_FAULT_GENERAL;
                                         break;
@@ -547,10 +547,7 @@ void t_x(void) /* Task: crane on the front for X-axis */
                                                     (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && (verify.type & UNMASK_CMD_MODE) == CMD_MODE_AUTO && result[i] & RESULT_MID ||
                                                     (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && (verify.type & UNMASK_CMD_MODE) == CMD_MODE_MANUAL && result[i] & RESULT_ZERO) {
                                                         tx[i].data.cmd.vel = 0;
-                                                        plan_len_posi_auto[i] = 0;
-                                                        plan_len_posi_manual[i] = 0;
-                                                        plan_len_nega_auto[i] = 0;
-                                                        plan_len_nega_manual[i] = 0;
+                                                        plan_len[i] = 0;
                                                 } else {
                                                         plan(&plan_vel[i], &plan_len_pass[i], plan_len[i],
                                                              max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
@@ -558,10 +555,7 @@ void t_x(void) /* Task: crane on the front for X-axis */
                                                 }
                                         } else {
                                                 tx[i].data.cmd.vel = 0;
-                                                plan_len_posi_auto[i] = 0;
-                                                plan_len_posi_manual[i] = 0;
-                                                plan_len_nega_auto[i] = 0;
-                                                plan_len_nega_manual[i] = 0;
+                                                plan_len[i] = 0;
                                         }
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;

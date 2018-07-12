@@ -221,7 +221,7 @@ int remap_addr_period(u8 addr)
         case J1939_ADDR_SWV1:
         case J1939_ADDR_SWV2:
         case J1939_ADDR_SWV3:
-                return sysClkRateGet() / 10;
+                return sysClkRateGet() / 25;
         case J1939_ADDR_PRP0:
         case J1939_ADDR_PRP1:
         case J1939_ADDR_PRP2:
@@ -244,12 +244,11 @@ int remap_addr_period(u8 addr)
                 return sysClkRateGet() / 10;
         case J1939_ADDR_FX:
         case J1939_ADDR_BX:
-                return sysClkRateGet() / 25;
         case J1939_ADDR_FY0:
         case J1939_ADDR_FY1:
         case J1939_ADDR_BY0:
         case J1939_ADDR_BY1:
-                return sysClkRateGet() / 10;
+                return sysClkRateGet() / 25;
         case J1939_ADDR_FZ:
         case J1939_ADDR_BZ:
                 return sysClkRateGet() / 10;

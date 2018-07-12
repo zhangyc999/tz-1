@@ -8,7 +8,7 @@
 
 #define MAX_NUM_DEV   2
 #define MAX_NUM_FORM  1
-#define MAX_LEN_CLLST 16
+#define MAX_LEN_CLLST 3
 
 #define UNMASK_RESULT_FAULT  0x0000FF00
 #define UNMASK_RESULT_MISC   0xFFFF0000
@@ -122,13 +122,13 @@ void t_lvl(void) /* Task: LeVeL tilt sensor */
                                 switch (p[i][j]->data.state.fault) {
                                 case 0x00:
                                 case 0x03:
-                                        if (ctr_fault[i] < 5)
+                                        if (ctr_fault[i] < 2)
                                                 break;
                                         result[i] &= ~RESULT_FAULT_GENERAL;
                                         result[i] &= ~RESULT_FAULT_SERIOUS;
                                         break;
                                 case 0x0C:
-                                        if (ctr_fault[i] < 3)
+                                        if (ctr_fault[i] < 1)
                                                 break;
                                         result[i] |= RESULT_FAULT_GENERAL;
                                         break;

@@ -78,7 +78,7 @@ void set_ratio(u8 addr, u16 ratio)
 {
         tx.src = J1939_ADDR_GW;
         tx.dest = addr;
-        tx.form = 0x46;
+        tx.form = 0xB9;
         tx.prio = 0x04;
         memcpy(&tx.data[0], &ratio, sizeof(u16));
         tx.data[2] = 0x00;

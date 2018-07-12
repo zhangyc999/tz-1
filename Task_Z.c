@@ -9,11 +9,11 @@
 #define NOTIFY TASK_NOTIFY_Z
 
 #define PERIOD_SLOW 200
-#define PERIOD_FAST 20
+#define PERIOD_FAST 10
 
 #define MAX_NUM_DEV   2
 #define MAX_NUM_FORM  1
-#define MAX_LEN_CLLST 16
+#define MAX_LEN_CLLST 3
 
 #define UNMASK_RESULT_IO     0x000000FF
 #define UNMASK_RESULT_FAULT  0x0000FF00
@@ -312,13 +312,13 @@ void t_z(void) /* Task: PRoP */
                                 switch (p[i][j]->data.state.fault) {
                                 case 0x00:
                                 case 0x03:
-                                        if (ctr_fault[i] < 5)
+                                        if (ctr_fault[i] < 2)
                                                 break;
                                         result[i] &= ~RESULT_FAULT_GENERAL;
                                         result[i] &= ~RESULT_FAULT_SERIOUS;
                                         break;
                                 case 0x0C:
-                                        if (ctr_fault[i] < 3)
+                                        if (ctr_fault[i] < 1)
                                                 break;
                                         result[i] |= RESULT_FAULT_GENERAL;
                                         break;
@@ -548,10 +548,7 @@ void t_z(void) /* Task: PRoP */
                                                     (verify.type & UNMASK_CMD_DIR) == CMD_DIR_POSI && (verify.type & UNMASK_CMD_MODE) == CMD_MODE_MANUAL && result[i] & RESULT_DEST ||
                                                     (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO && result[i] & RESULT_LOAD) {
                                                         tx[i].data.cmd.vel = 0;
-                                                        plan_len_posi_auto[i] = 0;
-                                                        plan_len_posi_manual[i] = 0;
-                                                        plan_len_nega_auto[i] = 0;
-                                                        plan_len_nega_manual[i] = 0;
+                                                        plan_len[i] = 0;
                                                 } else {
                                                         plan(&plan_vel[i], &plan_len_pass[i], plan_len[i],
                                                              max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
@@ -559,10 +556,7 @@ void t_z(void) /* Task: PRoP */
                                                 }
                                         } else {
                                                 tx[i].data.cmd.vel = 0;
-                                                plan_len_posi_auto[i] = 0;
-                                                plan_len_posi_manual[i] = 0;
-                                                plan_len_nega_auto[i] = 0;
-                                                plan_len_nega_manual[i] = 0;
+                                                plan_len[i] = 0;
                                         }
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;
