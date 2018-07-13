@@ -3,7 +3,7 @@
 #include "type.h"
 #include "vx.h"
 
-extern RING_ID rng_can[];
+extern RING_ID rng_can_fast[];
 extern SEM_ID sem_can[];
 
 static struct frame_can tx;
@@ -34,8 +34,8 @@ void input_passwd(u8 addr)
         tx.data[5] = '1';
         tx.data[6] = '1';
         tx.data[7] = '9';
-        rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
-        rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can_fast[0], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can_fast[1], (char *)&tx, sizeof(tx));
 }
 
 void save_config(u8 addr)
@@ -52,8 +52,8 @@ void save_config(u8 addr)
         tx.data[5] = 0x00;
         tx.data[6] = 0x00;
         tx.data[7] = 0x00;
-        rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
-        rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can_fast[0], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can_fast[1], (char *)&tx, sizeof(tx));
 }
 
 void set_addr(u8 old, u8 addr)
@@ -70,8 +70,8 @@ void set_addr(u8 old, u8 addr)
         tx.data[5] = addr;
         tx.data[6] = 0x00;
         tx.data[7] = 0x00;
-        rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
-        rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can_fast[0], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can_fast[1], (char *)&tx, sizeof(tx));
 }
 
 void set_ratio(u8 addr, u16 ratio)
@@ -87,8 +87,8 @@ void set_ratio(u8 addr, u16 ratio)
         tx.data[5] = 0x00;
         tx.data[6] = 0x00;
         tx.data[7] = 0x00;
-        rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
-        rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can_fast[0], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can_fast[1], (char *)&tx, sizeof(tx));
 }
 
 void set_zero(u8 addr)
@@ -105,8 +105,8 @@ void set_zero(u8 addr)
         tx.data[5] = 0x00;
         tx.data[6] = 0x00;
         tx.data[7] = 0x00;
-        rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
-        rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can_fast[0], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can_fast[1], (char *)&tx, sizeof(tx));
 }
 
 void query_fault(u8 addr)
@@ -123,6 +123,6 @@ void query_fault(u8 addr)
         tx.data[5] = 0x55;
         tx.data[6] = 0x66;
         tx.data[7] = 0x77;
-        rngBufPut(rng_can[0], (char *)&tx, sizeof(tx));
-        rngBufPut(rng_can[1], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can_fast[0], (char *)&tx, sizeof(tx));
+        rngBufPut(rng_can_fast[1], (char *)&tx, sizeof(tx));
 }

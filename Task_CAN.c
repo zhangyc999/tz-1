@@ -96,7 +96,8 @@ IMPORT u8 sysInumTbl[];
 
 MSG_Q_ID remap_addr_msg(u8 addr);
 
-extern RING_ID rng_can[];
+extern RING_ID rng_can_slow[];
+extern RING_ID rng_can_fast[];
 extern RING_ID rng_udp[];
 extern RING_ID rng_dbg[];
 
@@ -122,13 +123,15 @@ void t_can(void)
                                 init_can(i);
                                 continue;
                         }
-                        if (sizeof(buf) != rngBufGet(rng_can[i], (char *)&buf, sizeof(buf)))
-                                continue;
+                        if (sizeof(buf) != rngBufGet(rng_can_fast[i], (char *)&buf, sizeof(buf))) {
+                                if (sizeof(buf) != rngBufGet(rng_can_slow[i], (char *)&buf, sizeof(buf)))
+                                        continue;
+                        }
 #if 0
                         if (i == 0)
-                                printf("\033[25;1HCAN0:%8d", rngNBytes(rng_can[0]));
+                                printf("\033[25;1HCAN0:%8d", rngNBytes(rng_can_fast[0]));
                         if (i == 1)
-                                printf("\033[25;16HCAN1:%8d", rngNBytes(rng_can[1]));
+                                printf("\033[25;16HCAN1:%8d", rngNBytes(rng_can_fast[1]));
 #endif
                         buf.tsc = tickGet();
                         id[0] = buf.src;

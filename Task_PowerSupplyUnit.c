@@ -35,7 +35,7 @@ u8 check_xor(u8 *buf, int n);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_psu;
-extern RING_ID rng_can[];
+extern RING_ID rng_can_slow[];
 extern SEM_ID sem_can[];
 
 const static int addr = J1939_ADDR_PSU;
@@ -304,7 +304,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
                                 semTake(sem_can[cable], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                rngBufPut(rng_can_slow[cable], (char *)&tx, sizeof(tx));
                                 semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
@@ -318,7 +318,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
                                 semTake(sem_can[cable], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                rngBufPut(rng_can_slow[cable], (char *)&tx, sizeof(tx));
                                 semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
@@ -332,7 +332,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
                                 semTake(sem_can[cable], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                rngBufPut(rng_can_slow[cable], (char *)&tx, sizeof(tx));
                                 semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
@@ -345,7 +345,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
                                 semTake(sem_can[cable], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                rngBufPut(rng_can_slow[cable], (char *)&tx, sizeof(tx));
                                 semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
@@ -358,7 +358,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
                                 semTake(sem_can[cable], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                rngBufPut(rng_can_slow[cable], (char *)&tx, sizeof(tx));
                                 semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
@@ -371,7 +371,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.io.res = 0x66;
                                 tx.data.io.xor = check_xor((u8 *)&tx.data.io.brake, 7);
                                 semTake(sem_can[cable], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                rngBufPut(rng_can_slow[cable], (char *)&tx, sizeof(tx));
                                 semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;
@@ -389,7 +389,7 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 tx.data.query[6] = 0x66;
                                 tx.data.query[7] = check_xor((u8 *)&tx.data.io.brake, 7);
                                 semTake(sem_can[cable], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable], (char *)&tx, sizeof(tx));
+                                rngBufPut(rng_can_slow[cable], (char *)&tx, sizeof(tx));
                                 semGive(sem_can[cable]);
                                 period = PERIOD;
                                 break;

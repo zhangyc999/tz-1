@@ -11,6 +11,9 @@
 #define PERIOD_SLOW 200
 #define PERIOD_FAST 10
 
+#define PRIO_SLOW 90
+#define PRIO_FAST 40
+
 #define MAX_NUM_DEV   1
 #define MAX_NUM_FORM  1
 #define MAX_LEN_CLLST 3
@@ -41,7 +44,8 @@ void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_v
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID MSG;
-extern RING_ID rng_can[];
+extern RING_ID rng_can_slow[];
+extern RING_ID rng_can_fast[];
 extern SEM_ID sem_can[];
 
 const static int addr[MAX_NUM_DEV] = {
@@ -118,6 +122,7 @@ static int tmp_stop[MAX_NUM_DEV];
 static int tmp_zero[MAX_NUM_DEV];
 static int tmp_dest[MAX_NUM_DEV];
 static int result[MAX_NUM_DEV];
+static int all_stop;
 static int all_zero;
 static int all_dest;
 static int any_fault;
@@ -133,6 +138,7 @@ static int j;
 
 void t_top(void) /* Task: TOP lengthwise electric machinery */
 {
+        RING_ID rng_can[2] = {rng_can_slow[0], rng_can_slow[1]};
         for (i = 0; i < MAX_NUM_DEV; i++) {
                 for (j = 0; j < MAX_NUM_FORM; j++)
                         p[i][j] = (FRAME_RX *)can_cllst_init(rx[i][j], MAX_LEN_CLLST);
@@ -309,8 +315,8 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                                 tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
                                 tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
                                 tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
-                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], avg_pos[i], min_pos[i], pos_zero[i], MAX_LEN_CLLST);
-                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], avg_pos[i], pos_dest[i], max_pos[i], MAX_LEN_CLLST);
+                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], cur_pos[i], min_pos[i] - 600000, pos_zero[i], MAX_LEN_CLLST);
+                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], cur_pos[i], pos_dest[i], max_pos[i] + 600000, MAX_LEN_CLLST);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
                                     || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
@@ -349,12 +355,15 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                         default:
                                 break;
                         }
+                        all_stop = 0;
                         all_zero = 0;
                         all_dest = 0;
                         for (i = 0; i < MAX_NUM_DEV; i++) {
+                                all_stop &= result[i];
                                 all_zero &= result[i];
                                 all_dest &= result[i];
                         }
+                        all_stop &= RESULT_STOP;
                         all_zero &= RESULT_ZERO;
                         all_dest &= RESULT_DEST;
 #if 0
@@ -429,20 +438,21 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                                         tx[i].data.cmd.vel = 0;
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;
-                                        if (result[i] & RESULT_STOP)
-                                                tx[i].data.cmd.enable = 0x3C;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        if (tx[i].data.cmd.enable != 0x3C)
-                                                break;
-                                }
-                                if (i == MAX_NUM_DEV)
+                                if (all_stop == 0) {
+                                        rng_can[0] = rng_can_slow[0];
+                                        rng_can[1] = rng_can_slow[1];
+                                        taskPrioritySet(taskIdSelf(), PRIO_SLOW);
                                         period = PERIOD_SLOW;
-                                else
+                                } else {
+                                        rng_can[0] = rng_can_fast[0];
+                                        rng_can[1] = rng_can_fast[1];
+                                        taskPrioritySet(taskIdSelf(), PRIO_FAST);
                                         period = PERIOD_FAST;
+                                }
                                 break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
@@ -505,6 +515,9 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
+                                rng_can[0] = rng_can_fast[0];
+                                rng_can[1] = rng_can_fast[1];
+                                taskPrioritySet(taskIdSelf(), PRIO_FAST);
                                 period = PERIOD_FAST;
                                 break;
                         default:
@@ -522,6 +535,9 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
+                                rng_can[0] = rng_can_slow[0];
+                                rng_can[1] = rng_can_slow[1];
+                                taskPrioritySet(taskIdSelf(), PRIO_SLOW);
                                 period = PERIOD_SLOW;
                                 break;
                         }

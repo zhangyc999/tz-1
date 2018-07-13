@@ -7,7 +7,8 @@ MSG_Q_ID remap_addr_msg(u8 addr);
 int remap_addr_index(u8 addr);
 int remap_addr_period(u8 addr);
 
-extern RING_ID rng_can[];
+extern RING_ID rng_can_slow[];
+extern RING_ID rng_can_fast[];
 extern RING_ID rng_udp[];
 extern RING_ID rng_dbg[];
 
@@ -28,13 +29,15 @@ void t_dum(void)
         for (;;) {
                 taskDelay(1);
                 for (i = 0; i < 2; i++) {
-                        if (sizeof(rx) != rngBufGet(rng_can[i], (char *)&rx, sizeof(rx)))
-                                continue;
+                        if (sizeof(rx) != rngBufGet(rng_can_fast[i], (char *)&rx, sizeof(rx))) {
+                                if (sizeof(rx) != rngBufGet(rng_can_slow[i], (char *)&rx, sizeof(rx)))
+                                        continue;
+                        }
 #if 0
                         if (i == 0)
-                                printf("\033[25;1HCAN0:%8d", rngNBytes(rng_can[0]));
+                                printf("\033[25;1HCAN0:%8d", rngNBytes(rng_can_fast[0]));
                         if (i == 1)
-                                printf("\033[25;16HCAN1:%8d", rngNBytes(rng_can[1]));
+                                printf("\033[25;16HCAN1:%8d", rngNBytes(rng_can_fast[1]));
 #endif
                         j = remap_addr_index(rx.dest);
                         period[j] = remap_addr_period(rx.dest);

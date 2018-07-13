@@ -28,7 +28,7 @@ extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_lvl;
 extern MSG_Q_ID msg_rse;
 extern MSG_Q_ID msg_prp;
-extern RING_ID rng_can[];
+extern RING_ID rng_can_slow[];
 extern SEM_ID sem_can[];
 
 const static int addr[MAX_NUM_DEV] = {
@@ -208,7 +208,7 @@ void t_lvl(void) /* Task: LeVeL tilt sensor */
                                 tx[i].data.query[6] = 0x66;
                                 tx[i].data.query[7] = 0x77;
                                 semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                rngBufPut(rng_can_slow[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                 semGive(sem_can[cable[i]]);
                         }
                         period = PERIOD;

@@ -28,7 +28,7 @@ int filter_judge(int *ok, int *err, int value, int min, int max, int ctr);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_gen;
-extern RING_ID rng_can[];
+extern RING_ID rng_can_slow[];
 extern SEM_ID sem_can[];
 
 const static int addr[MAX_NUM_DEV] = {
@@ -241,7 +241,7 @@ void t_gen(void) /* Task: GENerator */
                                 tx[0].data.cmd.res2 = 0x00;
                                 tx[0].data.cmd.res3 = 0x00;
                                 semTake(sem_can[cable[0]], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable[0]], (char *)&tx[0], sizeof(tx[0]));
+                                rngBufPut(rng_can_slow[cable[0]], (char *)&tx[0], sizeof(tx[0]));
                                 semGive(sem_can[cable[0]]);
                                 period = PERIOD;
                                 break;
@@ -259,7 +259,7 @@ void t_gen(void) /* Task: GENerator */
                                 tx[0].data.cmd.res2 = 0x00;
                                 tx[0].data.cmd.res3 = 0x00;
                                 semTake(sem_can[cable[0]], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable[0]], (char *)&tx[0], sizeof(tx[0]));
+                                rngBufPut(rng_can_slow[cable[0]], (char *)&tx[0], sizeof(tx[0]));
                                 semGive(sem_can[cable[0]]);
                                 period = PERIOD;
                                 break;
@@ -277,7 +277,7 @@ void t_gen(void) /* Task: GENerator */
                                 tx[1].data.cmd.res2 = 0x00;
                                 tx[1].data.cmd.res3 = 0x00;
                                 semTake(sem_can[cable[1]], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable[1]], (char *)&tx[1], sizeof(tx[1]));
+                                rngBufPut(rng_can_slow[cable[1]], (char *)&tx[1], sizeof(tx[1]));
                                 semGive(sem_can[cable[1]]);
                                 period = PERIOD;
                                 break;
@@ -295,7 +295,7 @@ void t_gen(void) /* Task: GENerator */
                                 tx[1].data.cmd.res2 = 0x00;
                                 tx[1].data.cmd.res3 = 0x00;
                                 semTake(sem_can[cable[1]], WAIT_FOREVER);
-                                rngBufPut(rng_can[cable[1]], (char *)&tx[1], sizeof(tx[1]));
+                                rngBufPut(rng_can_slow[cable[1]], (char *)&tx[1], sizeof(tx[1]));
                                 semGive(sem_can[cable[1]]);
                                 period = PERIOD;
                                 break;
@@ -314,7 +314,7 @@ void t_gen(void) /* Task: GENerator */
                                         tx[i].data.cmd.res2 = 0x00;
                                         tx[i].data.cmd.res3 = 0x00;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
+                                        rngBufPut(rng_can_slow[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
                                 period = PERIOD;
