@@ -4,9 +4,9 @@
 #include "type.h"
 #include "vx.h"
 
-#define MSG    msg_top
-#define CMD    CMD_ACT_TOP
-#define NOTIFY TASK_NOTIFY_TOP
+#define MSG    msg_sdfb
+#define CMD    CMD_ACT_SDFB
+#define NOTIFY TASK_NOTIFY_SDFB
 
 #define PERIOD_SLOW 200
 #define PERIOD_FAST 10
@@ -14,7 +14,7 @@
 #define PRIO_SLOW 90
 #define PRIO_FAST 40
 
-#define MAX_NUM_DEV   1
+#define MAX_NUM_DEV   8
 #define MAX_NUM_FORM  1
 #define MAX_LEN_CLLST 3
 
@@ -41,6 +41,8 @@ typedef struct frame_cyl_tx FRAME_TX;
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int filter_judge(int *ok, int *err, int value, int min, int max, int ctr);
 void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
+int max_of_n(int buf[], int n);
+int min_of_n(int buf[], int n);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID MSG;
@@ -51,32 +53,38 @@ extern SEM_ID sem_can[];
 extern SEM_ID sem_result;
 
 const static int addr[MAX_NUM_DEV] = {
-        J1939_ADDR_TOP
+        J1939_ADDR_SDF0, J1939_ADDR_SDF1, J1939_ADDR_SDF2, J1939_ADDR_SDF3,
+        J1939_ADDR_SDB0, J1939_ADDR_SDB1, J1939_ADDR_SDB2, J1939_ADDR_SDB3
 };
-const static int cable[MAX_NUM_DEV] = {1};
-const static int sign[MAX_NUM_DEV] = {1};
-const static int io_pos_zero[MAX_NUM_DEV] = {100};
-const static int io_pos_dest[MAX_NUM_DEV] = {20000};
-const static int min_pos[MAX_NUM_DEV] = {-1000};
-const static int max_pos[MAX_NUM_DEV] = {36000};
-const static int min_vel[MAX_NUM_DEV] = {-1500};
-const static int max_vel[MAX_NUM_DEV] = {1500};
-const static int min_ampr[MAX_NUM_DEV] = {0};
-const static int max_ampr[MAX_NUM_DEV] = {200};
-const static int pos_zero[MAX_NUM_DEV] = {500};
-const static int pos_dest[MAX_NUM_DEV] = {20000};
+const static int cable[MAX_NUM_DEV] = {0, 0, 0, 0, 1, 1, 1, 1};
+const static int sign[MAX_NUM_DEV] = {1, 1, 1, 1, 1, 1, 1, 1};
+const static int io_pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100, 100, 100, 100, 100};
+const static int io_pos_dest[MAX_NUM_DEV] = {350000, 350000, 350000, 350000, 350000, 350000, 350000, 350000};
+const static int min_pos[MAX_NUM_DEV] = {-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000};
+const static int max_pos[MAX_NUM_DEV] = {35000, 35000, 35000, 35000, 35000, 35000, 35000, 35000};
+const static int min_vel[MAX_NUM_DEV] = {-1500, -1500, -1500, -1500, -1500, -1500, -1500};
+const static int max_vel[MAX_NUM_DEV] = {1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500};
+const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0, 0, 0, 0, 0};
+const static int max_ampr[MAX_NUM_DEV] = {200, 200, 200, 200, 200, 200, 200, 200};
+const static int pos_zero[MAX_NUM_DEV] = {200, 200, 200, 200, 200, 200, 200, 200};
+const static int pos_dest[MAX_NUM_DEV] = {34800, 34800, 34800, 34800, 34800, 34800, 34800, 34800};
+const static int pos_mid[MAX_NUM_DEV] = {16000, 16000, 16000, 16000, 16000, 16000, 16000, 16000};
+const static int err_sync = 1000;
 const static struct plan plan_len_auto[MAX_NUM_DEV] = {
-        1000, 4000, 10000
+        {2000, 4000, 22800}, {2000, 4000, 22800}, {2000, 4000, 22800}, {2000, 4000, 22800},
+        {2000, 4000, 22800}, {2000, 4000, 22800}, {2000, 4000, 22800}, {2000, 4000, 22800}
 };
 const static struct plan plan_len_manual[MAX_NUM_DEV] = {
-        1000, 8000, 2000
+        {2000, 8000, 14800}, {2000, 8000, 14800}, {2000, 8000, 14800}, {2000, 8000, 14800},
+        {2000, 8000, 14800}, {2000, 8000, 14800}, {2000, 8000, 14800}, {2000, 8000, 14800}
 };
 const static struct plan plan_len_repair[MAX_NUM_DEV] = {
-        1000, 8000, 40000
+        {2000, 8000, 60000}, {2000, 8000, 60000}, {2000, 8000, 60000}, {2000, 8000, 60000},
+        {2000, 8000, 60000}, {2000, 8000, 60000}, {2000, 8000, 60000}, {2000, 8000, 60000}
 };
-const static int plan_vel_low[MAX_NUM_DEV] = {100};
-const static int plan_vel_high[MAX_NUM_DEV] = {1000};
-const static int plan_vel_medium[MAX_NUM_DEV] = {500};
+const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100, 100, 100, 100, 100};
+const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000};
+const static int plan_vel_medium[MAX_NUM_DEV] = {500, 500, 500, 500, 500, 500, 500, 500};
 
 static int period = PERIOD_SLOW;
 static u32 prev;
@@ -108,12 +116,16 @@ static int ctr_ok_ampr[MAX_NUM_DEV];
 static int ctr_ok_stop[MAX_NUM_DEV];
 static int ctr_ok_zero[MAX_NUM_DEV];
 static int ctr_ok_dest[MAX_NUM_DEV];
+static int ctr_ok_mid [MAX_NUM_DEV];
+static int ctr_ok_sync;
 static int ctr_err_pos[MAX_NUM_DEV];
 static int ctr_err_vel[MAX_NUM_DEV];
 static int ctr_err_ampr[MAX_NUM_DEV];
 static int ctr_err_stop[MAX_NUM_DEV];
 static int ctr_err_zero[MAX_NUM_DEV];
 static int ctr_err_dest[MAX_NUM_DEV];
+static int ctr_err_mid [MAX_NUM_DEV];
+static int ctr_err_sync;
 static int ctr_fault[MAX_NUM_DEV];
 static int ctr_io[MAX_NUM_DEV];
 static int ctr_comm[MAX_NUM_DEV];
@@ -123,10 +135,14 @@ static int tmp_ampr[MAX_NUM_DEV];
 static int tmp_stop[MAX_NUM_DEV];
 static int tmp_zero[MAX_NUM_DEV];
 static int tmp_dest[MAX_NUM_DEV];
+static int tmp_mid[MAX_NUM_DEV];
+static int sub;
+static int tmp_sync;
 static int result[MAX_NUM_DEV];
 static int all_stop;
 static int all_zero;
 static int all_dest;
+static int all_mid;
 static int any_fault;
 static int plan_vel[MAX_NUM_DEV];
 static int plan_len_pass[MAX_NUM_DEV];
@@ -138,7 +154,7 @@ static int dir[MAX_NUM_DEV];
 static int i;
 static int j;
 
-void t_top(void) /* Task: TOP lengthwise electric machinery */
+void t_sdfb(void) /* Task: ShielD of Front and Back */
 {
         RING_ID rng_can[2] = {rng_can_slow[0], rng_can_slow[1]};
         for (i = 0; i < MAX_NUM_DEV; i++) {
@@ -368,6 +384,15 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                         all_stop &= RESULT_STOP;
                         all_zero &= RESULT_ZERO;
                         all_dest &= RESULT_DEST;
+                        sub = max_of_n(avg_pos, MAX_NUM_DEV) - min_of_n(avg_pos, MAX_NUM_DEV);
+                        tmp_sync = filter_judge(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
+                        if (tmp_sync == -1) {
+                                for (i = 0; i < MAX_NUM_DEV; i++)
+                                        result[i] |= RESULT_FAULT_SYNC;
+                        } else if (tmp_sync == 1) {
+                                for (i = 0; i < MAX_NUM_DEV; i++)
+                                        result[i] &= ~RESULT_FAULT_SYNC;
+                        }
                         period -= tickGet() - prev;
                         break;
                 default:
@@ -392,10 +417,10 @@ void t_top(void) /* Task: TOP lengthwise electric machinery */
                         any_fault = 0;
                         for (i = 0; i < MAX_NUM_DEV; i++)
                                 any_fault |= result[i];
-                        if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_AUTO)
-                                any_fault &= UNMASK_RESULT_FAULT;
-                        else if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_MANUAL)
+                        if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_REPAIR)
                                 any_fault = any_fault & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
+                        else
+                                any_fault &= UNMASK_RESULT_FAULT;
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
                                 if ((verify.type & UNMASK_CMD_ACT) == CMD)

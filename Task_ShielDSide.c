@@ -4,15 +4,9 @@
 #include "type.h"
 #include "vx.h"
 
-#include <math.h>
-
-#define PI 3.141592653589793
-#define AA 1000000
-#define BB 1000000
-
-#define MSG    msg_prp
-#define CMD    CMD_ACT_PRP
-#define NOTIFY TASK_NOTIFY_PRP
+#define MSG    msg_sds
+#define CMD    CMD_ACT_SDS
+#define NOTIFY TASK_NOTIFY_SDS
 
 #define PERIOD_SLOW 200
 #define PERIOD_FAST 10
@@ -49,8 +43,6 @@ int filter_judge(int *ok, int *err, int value, int min, int max, int ctr);
 void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 int max_of_n(int buf[], int n);
 int min_of_n(int buf[], int n);
-void lvl_posi(int delta[], int a, int b, int data);
-void lvl_nega(int delta[], int a, int b, int data);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID MSG;
@@ -61,41 +53,30 @@ extern SEM_ID sem_can[];
 extern SEM_ID sem_result;
 
 const static int addr[MAX_NUM_DEV] = {
-        J1939_ADDR_PRP0, J1939_ADDR_PRP1, J1939_ADDR_PRP2, J1939_ADDR_PRP3
+        J1939_ADDR_SDS0, J1939_ADDR_SDS1, J1939_ADDR_SDS2, J1939_ADDR_SDS3
 };
-const static int cable[MAX_NUM_DEV] = {0, 0, 1, 1};
-const static int sign[MAX_NUM_DEV] = {1, 1, 1, 1};
+const static int cable[MAX_NUM_DEV] = {1, 1, 1, 1};
+const static int sign[MAX_NUM_DEV] = {1, -1, 1, -1};
 const static int io_pos_zero[MAX_NUM_DEV] = {100, 100, 100, 100};
-const static int io_pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
+const static int io_pos_dest[MAX_NUM_DEV] = {350000, 350000, 350000, 350000};
 const static int min_pos[MAX_NUM_DEV] = {-1000, -1000, -1000, -1000};
-const static int max_pos[MAX_NUM_DEV] = {36000, 36000, 36000, 36000};
+const static int max_pos[MAX_NUM_DEV] = {35000, 35000, 35000, 35000};
 const static int min_vel[MAX_NUM_DEV] = {-1500, -1500, -1500, -1500};
 const static int max_vel[MAX_NUM_DEV] = {1500, 1500, 1500, 1500};
 const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200, 200, 200};
-const static int pos_zero[MAX_NUM_DEV] = {500, 500, 500, 500};
-const static int pos_dest[MAX_NUM_DEV] = {20000, 20000, 20000, 20000};
-const static int pos_mid_posi[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
-const static int pos_mid_nega[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
-const static int ampr_load[MAX_NUM_DEV] = {150, 150, 150, 150};
+const static int pos_zero[MAX_NUM_DEV] = {200, 200, 200, 200};
+const static int pos_dest[MAX_NUM_DEV] = {34800, 34800, 34800, 34800};
+const static int pos_mid[MAX_NUM_DEV] = {16000, 16000, 16000, 16000};
 const static int err_sync = 1000;
 const static struct plan plan_len_auto[MAX_NUM_DEV] = {
-        {1000, 4000, 10000},
-        {1000, 4000, 10000},
-        {1000, 4000, 10000},
-        {1000, 4000, 10000}
+        {2000, 4000, 22800}, {2000, 4000, 22800}, {2000, 4000, 22800}, {2000, 4000, 22800}
 };
 const static struct plan plan_len_manual[MAX_NUM_DEV] = {
-        {1000, 8000, 2000},
-        {1000, 8000, 2000},
-        {1000, 8000, 2000},
-        {1000, 8000, 2000}
+        {2000, 8000, 14800}, {2000, 8000, 14800}, {2000, 8000, 14800}, {2000, 8000, 14800}
 };
 const static struct plan plan_len_repair[MAX_NUM_DEV] = {
-        {1000, 8000, 40000},
-        {1000, 8000, 40000},
-        {1000, 8000, 40000},
-        {1000, 8000, 40000}
+        {2000, 8000, 60000}, {2000, 8000, 60000}, {2000, 8000, 60000}, {2000, 8000, 60000}
 };
 const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000};
@@ -131,7 +112,7 @@ static int ctr_ok_ampr[MAX_NUM_DEV];
 static int ctr_ok_stop[MAX_NUM_DEV];
 static int ctr_ok_zero[MAX_NUM_DEV];
 static int ctr_ok_dest[MAX_NUM_DEV];
-static int ctr_ok_load[MAX_NUM_DEV];
+static int ctr_ok_mid [MAX_NUM_DEV];
 static int ctr_ok_sync;
 static int ctr_err_pos[MAX_NUM_DEV];
 static int ctr_err_vel[MAX_NUM_DEV];
@@ -139,7 +120,7 @@ static int ctr_err_ampr[MAX_NUM_DEV];
 static int ctr_err_stop[MAX_NUM_DEV];
 static int ctr_err_zero[MAX_NUM_DEV];
 static int ctr_err_dest[MAX_NUM_DEV];
-static int ctr_err_load[MAX_NUM_DEV];
+static int ctr_err_mid [MAX_NUM_DEV];
 static int ctr_err_sync;
 static int ctr_fault[MAX_NUM_DEV];
 static int ctr_io[MAX_NUM_DEV];
@@ -150,29 +131,27 @@ static int tmp_ampr[MAX_NUM_DEV];
 static int tmp_stop[MAX_NUM_DEV];
 static int tmp_zero[MAX_NUM_DEV];
 static int tmp_dest[MAX_NUM_DEV];
-static int tmp_load[MAX_NUM_DEV];
+static int tmp_mid[MAX_NUM_DEV];
 static int sub;
 static int tmp_sync;
 static int result[MAX_NUM_DEV];
 static int all_stop;
 static int all_zero;
 static int all_dest;
-static int num_load;
+static int all_mid;
 static int any_fault;
 static int plan_vel[MAX_NUM_DEV];
 static int plan_len_pass[MAX_NUM_DEV];
-static int plan_len_posi[MAX_NUM_DEV];
+static int plan_len_posi_1st[MAX_NUM_DEV];
+static int plan_len_posi_2nd[MAX_NUM_DEV];
 static int plan_len_nega[MAX_NUM_DEV];
 static int plan_len[MAX_NUM_DEV];
 static struct plan max_plan_len[MAX_NUM_DEV];
 static int dir[MAX_NUM_DEV];
-static int delta_posi[MAX_NUM_DEV];
-static int delta_nega[MAX_NUM_DEV];
-static int segement;
 static int i;
 static int j;
 
-void t_prp(void) /* Task: PRoP */
+void t_sds(void) /* Task: ShielD of Side */
 {
         RING_ID rng_can[2] = {rng_can_slow[0], rng_can_slow[1]};
         for (i = 0; i < MAX_NUM_DEV; i++) {
@@ -187,112 +166,100 @@ void t_prp(void) /* Task: PRoP */
                 switch (len) {
                 case sizeof(struct main):
                         cmd = *(struct main *)tmp;
-                        if ((cmd.type & UNMASK_TASK_NOTIFY) == TASK_NOTIFY_LVL) {
-                                if ((cmd.type & UNMASK_TASK_STATE) == TASK_STATE_RUNNING && num_load > 2) {
-                                        lvl_posi(delta_posi, AA, BB, cmd.data);
-                                        lvl_nega(delta_nega, AA, BB, cmd.data);
-                                } else {
-                                        for (i = 0; i < MAX_NUM_DEV; i++) {
-                                                delta_posi[i] = 0;
-                                                delta_nega[i] = 0;
-                                        }
-                                }
-                        } else {
-                                switch (verify.type) {
+                        switch (verify.type) {
+                        case CMD_IDLE:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                switch (cmd.type) {
                                 case CMD_IDLE:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
                                 case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
-                                        switch (cmd.type) {
-                                        case CMD_IDLE:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
-                                        case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
-                                        case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
-                                        case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
-                                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
-                                        case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
-                                        case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
-                                                verify = cmd;
-                                                break;
-                                        default:
-                                                break;
-                                        }
-                                        break;
                                 case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
-                                        switch (cmd.type) {
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
-                                        case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
-                                                verify = cmd;
-                                                break;
-                                        default:
-                                                break;
-                                        }
-                                        break;
                                 case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
-                                        switch (cmd.type) {
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
-                                        case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
-                                                verify = cmd;
-                                                break;
-                                        default:
-                                                break;
-                                        }
-                                        break;
                                 case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
-                                        switch (cmd.type) {
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
-                                        case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
-                                                verify = cmd;
-                                                break;
-                                        default:
-                                                break;
-                                        }
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
-                                        switch (cmd.type) {
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
-                                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
-                                                verify = cmd;
-                                                break;
-                                        default:
-                                                break;
-                                        }
-                                        break;
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
-                                        switch (cmd.type) {
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
-                                        case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
-                                                verify = cmd;
-                                                break;
-                                        default:
-                                                break;
-                                        }
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
+                                        verify = cmd;
                                         break;
-                                case CMD | CMD_DIR_NEGA| CMD_MODE_REPAIR:
-                                        switch (cmd.type) {
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
-                                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
-                                        case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
-                                                verify = cmd;
-                                                break;
-                                        default:
-                                                break;
-                                        }
                                 default:
                                         break;
                                 }
+                                break;
+                        case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                                switch (cmd.type) {
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
+                                switch (cmd.type) {
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                                switch (cmd.type) {
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
+                                switch (cmd.type) {
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                                switch (cmd.type) {
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case CMD | CMD_DIR_NEGA| CMD_MODE_REPAIR:
+                                switch (cmd.type) {
+                                case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
+                                case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
+                                        verify = cmd;
+                                        break;
+                                default:
+                                        break;
+                                }
+                        default:
+                                break;
                         }
                         period -= tickGet() - prev;
                         break;
@@ -363,9 +330,9 @@ void t_prp(void) /* Task: PRoP */
                                 tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
                                 tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
                                 tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
-                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], cur_pos[i], min_pos[i] - 600000, pos_zero[i] + delta_nega[i], MAX_LEN_CLLST);
-                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], cur_pos[i], pos_dest[i] + delta_posi[i], max_pos[i] + 600000, MAX_LEN_CLLST);
-                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], cur_ampr[i], ampr_load[i], max_ampr[i] + 600000, MAX_LEN_CLLST);
+                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], cur_pos[i], min_pos[i] - 600000, pos_zero[i], MAX_LEN_CLLST);
+                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], cur_pos[i], pos_dest[i], max_pos[i] + 600000, MAX_LEN_CLLST);
+                                tmp_mid[i] = filter_judge(&ctr_ok_mid[i], &ctr_err_mid[i], cur_pos[i], pos_mid[i] - 100, pos_mid[i] + 100, MAX_LEN_CLLST);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
                                     || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
@@ -400,10 +367,10 @@ void t_prp(void) /* Task: PRoP */
                                         result[i] |= RESULT_DEST;
                                 else if (tmp_dest[i] == -1)
                                         result[i] &= ~RESULT_DEST;
-                                if (tmp_load[i] == 1)
-                                        result[i] |= RESULT_LOAD;
-                                else if (tmp_load[i] == -1)
-                                        result[i] &= ~RESULT_LOAD;
+                                if (tmp_mid[i] == 1)
+                                        result[i] |= RESULT_MID;
+                                else if (tmp_mid[i] == -1)
+                                        result[i] &= ~RESULT_MID;
                                 break;
                         default:
                                 break;
@@ -411,17 +378,17 @@ void t_prp(void) /* Task: PRoP */
                         all_stop = 0;
                         all_zero = 0;
                         all_dest = 0;
-                        num_load = 0;
+                        all_mid = 0;
                         for (i = 0; i < MAX_NUM_DEV; i++) {
                                 all_stop &= result[i];
                                 all_zero &= result[i];
                                 all_dest &= result[i];
-                                if (result[i] & RESULT_LOAD)
-                                        num_load++;
+                                all_mid &= result[i];
                         }
                         all_stop &= RESULT_STOP;
                         all_zero &= RESULT_ZERO;
                         all_dest &= RESULT_DEST;
+                        all_mid &= RESULT_MID;
                         sub = max_of_n(avg_pos, MAX_NUM_DEV) - min_of_n(avg_pos, MAX_NUM_DEV);
                         tmp_sync = filter_judge(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
                         if (tmp_sync == -1) {
@@ -467,7 +434,7 @@ void t_prp(void) /* Task: PRoP */
                                 state.type = TASK_STATE_RUNNING;
                                 if (all_zero)
                                         state.type = TASK_STATE_ZERO;
-                                else if (all_dest)
+                                else if (verify.data >> 16 == 2 && all_mid || verify.data >> 16 != 2 && all_dest)
                                         state.type = TASK_STATE_DEST;
                         }
                         state.type |= NOTIFY;
@@ -485,20 +452,12 @@ void t_prp(void) /* Task: PRoP */
                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
                         case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
-                                if (num_load > 2)
-                                        segement = 1;
-                                else
-                                        segement = 0;
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
                                         plan_vel[i] = 0;
                                         plan_len_pass[i] = 0;
-                                        if (segement == 1) {
-                                                plan_len_posi[i] = pos_dest[i] - cur_pos[i];
-                                                plan_len_nega[i] = cur_pos[i] - pos_mid_nega[i];
-                                        } else {
-                                                plan_len_posi[i] = pos_mid_posi[i] - cur_pos[i];
-                                                plan_len_nega[i] = cur_pos[i] - pos_zero[i];
-                                        }
+                                        plan_len_posi_1st[i] = pos_mid[i] - cur_pos[i];
+                                        plan_len_posi_2nd[i] = pos_dest[i] - cur_pos[i];
+                                        plan_len_nega[i] = cur_pos[i] - pos_zero[i];
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
                                         tx[i].form = 0xA5;
@@ -533,29 +492,25 @@ void t_prp(void) /* Task: PRoP */
                                         switch (verify.type & UNMASK_CMD_DIR) {
                                         case CMD_DIR_POSI:
                                                 dir[i] = 1;
-                                                if (segement == 0) {
-                                                        if (num_load > 2) {
-                                                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                                                        plan_len_pass[i] = 0;
-                                                                        plan_len_posi[i] = pos_dest[i] - cur_pos[i];
-                                                                }
-                                                                segement = 1;
-                                                        }
+                                                switch (verify.data >> 16) {
+                                                case 2:
+                                                        plan_len[i] = plan_len_posi_1st[i];
+                                                        break;
+                                                default:
+                                                        plan_len[i] = plan_len_posi_2nd[i];
+                                                        break;
                                                 }
-                                                plan_len[i] = plan_len_posi[i] + delta_posi[i];
                                                 break;
                                         case CMD_DIR_NEGA:
                                                 dir[i] = -1;
-                                                if (segement == 1) {
-                                                        if (num_load < 3) {
-                                                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                                                        plan_len_pass[i] = 0;
-                                                                        plan_len_nega[i] = cur_pos[i] - pos_zero[i];
-                                                                }
-                                                                segement = 0;
-                                                        }
+                                                switch (verify.data >> 16) {
+                                                case 2:
+                                                        plan_len[i] = plan_len_posi_2nd[i] - plan_len_posi_1st[i];
+                                                        break;
+                                                default:
+                                                        plan_len[i] = plan_len_nega[i];
+                                                        break;
                                                 }
-                                                plan_len[i] = plan_len_nega[i] + delta_nega[i];
                                                 break;
                                         default:
                                                 dir[i] = 0;
@@ -568,17 +523,6 @@ void t_prp(void) /* Task: PRoP */
                                                 break;
                                         case CMD_MODE_MANUAL:
                                                 max_plan_len[i] = plan_len_manual[i];
-                                                switch (verify.type & UNMASK_CMD_DIR) {
-                                                case CMD_DIR_POSI:
-                                                        plan_len[i] = pos_dest[i] - cur_pos[i];
-                                                        break;
-                                                case CMD_DIR_NEGA:
-                                                        plan_len[i] = cur_pos[i] - pos_zero[i];
-                                                        break;
-                                                default:
-                                                        plan_len[i] = 0;
-                                                        break;
-                                                }
                                                 break;
                                         case CMD_MODE_REPAIR:
                                                 max_plan_len[i] = plan_len_repair[i];
@@ -594,7 +538,8 @@ void t_prp(void) /* Task: PRoP */
                                         tx[i].data.cmd.pos = 0x1100;
                                         if (verify.data & 1 << i) {
                                                 if ((verify.type & UNMASK_CMD_DIR) == CMD_DIR_POSI && result[i] & RESULT_DEST ||
-                                                    (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO) {
+                                                    (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO ||
+                                                    verify.data >> 16 == 2 && result[i] & RESULT_MID) {
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len[i] = 0;
                                                 } else {

@@ -437,10 +437,10 @@ void t_x(void) /* Task: crane on the front for X-axis */
                         any_fault = 0;
                         for (i = 0; i < MAX_NUM_DEV; i++)
                                 any_fault |= result[i];
-                        if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_AUTO)
-                                any_fault &= UNMASK_RESULT_FAULT;
-                        else if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_MANUAL)
+                        if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_REPAIR)
                                 any_fault = any_fault & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
+                        else
+                                any_fault &= UNMASK_RESULT_FAULT;
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
                                 if ((verify.type & UNMASK_CMD_ACT) == CMD)

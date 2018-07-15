@@ -11,8 +11,9 @@ extern MSG_Q_ID msg_swh;
 extern MSG_Q_ID msg_rse;
 extern MSG_Q_ID msg_swv;
 extern MSG_Q_ID msg_prp;
-extern MSG_Q_ID msg_top;
-extern MSG_Q_ID msg_shd;
+extern MSG_Q_ID msg_sdt;
+extern MSG_Q_ID msg_sds;
+extern MSG_Q_ID msg_sdfb;
 extern MSG_Q_ID msg_x;
 extern MSG_Q_ID msg_y;
 extern MSG_Q_ID msg_z;
@@ -56,12 +57,13 @@ MSG_Q_ID remap_addr_msg(u8 addr)
         case J1939_ADDR_PRP2:
         case J1939_ADDR_PRP3:
                 return msg_prp;
-        case J1939_ADDR_TOP:
-                return msg_top;
+        case J1939_ADDR_SDT:
+                return msg_sdt;
         case J1939_ADDR_SDS0:
         case J1939_ADDR_SDS1:
         case J1939_ADDR_SDS2:
         case J1939_ADDR_SDS3:
+                return msg_sds;
         case J1939_ADDR_SDF0:
         case J1939_ADDR_SDF1:
         case J1939_ADDR_SDF2:
@@ -70,7 +72,7 @@ MSG_Q_ID remap_addr_msg(u8 addr)
         case J1939_ADDR_SDB1:
         case J1939_ADDR_SDB2:
         case J1939_ADDR_SDB3:
-                return msg_shd;
+                return msg_sdfb;
         case J1939_ADDR_FX:
         case J1939_ADDR_BX:
                 return msg_x;
@@ -160,7 +162,7 @@ int remap_addr_index(u8 addr)
                 return 34;
         case J1939_ADDR_MOM3:
                 return 35;
-        case J1939_ADDR_TOP:
+        case J1939_ADDR_SDT:
                 return 36;
         case J1939_ADDR_SDS0:
                 return 37;
@@ -227,7 +229,7 @@ int remap_addr_period(u8 addr)
         case J1939_ADDR_PRP2:
         case J1939_ADDR_PRP3:
                 return sysClkRateGet() / 10;
-        case J1939_ADDR_TOP:
+        case J1939_ADDR_SDT:
                 return sysClkRateGet() / 10;
         case J1939_ADDR_SDS0:
         case J1939_ADDR_SDS1:

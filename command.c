@@ -189,50 +189,74 @@ void prpn(int data)
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
-void top(void)
+void sdt(void)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_TOP | CMD_DIR_STOP | CMD_MODE_AUTO;
+        udp.cmd.type = CMD_ACT_SDT | CMD_DIR_STOP | CMD_MODE_AUTO;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
-void topp(int data)
+void sdtp(int data)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_TOP | CMD_DIR_POSI | CMD_MODE_AUTO;
+        udp.cmd.type = CMD_ACT_SDT | CMD_DIR_POSI | CMD_MODE_AUTO;
         udp.cmd.data = data;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
-void topn(int data)
+void sdtn(int data)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_TOP | CMD_DIR_NEGA | CMD_MODE_AUTO;
+        udp.cmd.type = CMD_ACT_SDT | CMD_DIR_NEGA | CMD_MODE_AUTO;
         udp.cmd.data = data;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
-void shd(void)
+void sds(void)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_SHD | CMD_DIR_STOP | CMD_MODE_AUTO;
+        udp.cmd.type = CMD_ACT_SDS | CMD_DIR_STOP | CMD_MODE_AUTO;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
-void shdp(int data)
+void sdsp(int data)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_SHD | CMD_DIR_POSI | CMD_MODE_AUTO;
+        udp.cmd.type = CMD_ACT_SDS | CMD_DIR_POSI | CMD_MODE_AUTO;
         udp.cmd.data = data;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
 
-void shdn(int data)
+void sdsn(int data)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_SHD | CMD_DIR_NEGA | CMD_MODE_AUTO;
+        udp.cmd.type = CMD_ACT_SDS | CMD_DIR_NEGA | CMD_MODE_AUTO;
+        udp.cmd.data = data;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void sdfb(void)
+{
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_SDFB | CMD_DIR_STOP | CMD_MODE_AUTO;
+        udp.cmd.data = 0;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void sdfbp(int data)
+{
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_SDFB | CMD_DIR_POSI | CMD_MODE_AUTO;
+        udp.cmd.data = data;
+        msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+}
+
+void sdfbn(int data)
+{
+        struct frame_udp_rx udp;
+        udp.cmd.type = CMD_ACT_SDFB | CMD_DIR_NEGA | CMD_MODE_AUTO;
         udp.cmd.data = data;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
