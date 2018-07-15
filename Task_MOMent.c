@@ -46,7 +46,9 @@ extern MSG_Q_ID msg_main;
 extern MSG_Q_ID MSG;
 extern RING_ID rng_can_slow[];
 extern RING_ID rng_can_fast[];
+extern RING_ID rng_result;
 extern SEM_ID sem_can[];
+extern SEM_ID sem_result;
 
 const static int addr[MAX_NUM_DEV] = {
         J1939_ADDR_MOM0, J1939_ADDR_MOM1, J1939_ADDR_MOM2, J1939_ADDR_MOM3
@@ -323,7 +325,7 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                         any_fault &= UNMASK_RESULT_FAULT;
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
-                                if (verify.type & UNMASK_CMD_ACT == CMD)
+                                if ((verify.type & UNMASK_CMD_ACT) == CMD)
                                         verify.type = verify.type & ~UNMASK_CMD_DIR | CMD_DIR_STOP;
                         } else {
                                 state.type = TASK_STATE_RUNNING;
@@ -335,6 +337,12 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                         if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         old_state = state;
+                        semTake(sem_result, WAIT_FOREVER);
+                        for (i = 0; i < MAX_NUM_DEV; i++) {
+                                rngBufPut(rng_result, (char *)&addr[i], sizeof(addr[i]));
+                                rngBufPut(rng_result, (char *)&result[i], sizeof(result[i]));
+                        }
+                        semGive(sem_result);
                         switch (verify.type) {
                         case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:

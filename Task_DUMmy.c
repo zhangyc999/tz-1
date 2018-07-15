@@ -24,8 +24,6 @@ static int j;
 
 void t_dum(void)
 {
-        pos[11] = 2000;
-        pos[13] = 2000;
         for (;;) {
                 taskDelay(1);
                 for (i = 0; i < 2; i++) {
@@ -129,12 +127,7 @@ void t_dum(void)
                                         tx[j].prio = 0x14;
                                         vel[j] = *(s16 *)&rx.data[2];
                                         pos[j] += vel[j] * period[j] / sysClkRateGet();
-                                        if (pos[j] < -100)
-                                                ampr[j] = (s16)pos[j];
-                                        else
-                                                ampr[j] = 0;
-                                        if (vel[j] == 0)
-                                                ampr[j] = 0;
+                                        ampr[j] = 0;
                                         *(s16 *)&tx[j].data[0] = (s16)(pos[j] / 20);
                                         *(s16 *)&tx[j].data[2] = (s16)vel[j];
                                         *(s16 *)&tx[j].data[4] = (s16)ampr[j];
@@ -204,12 +197,7 @@ void t_dum(void)
                                         tx[j].prio = 0x14;
                                         vel[j] = *(s16 *)&rx.data[2];
                                         pos[j] += vel[j] * period[j] / sysClkRateGet();
-                                        if (pos[j] < -100)
-                                                ampr[j] = (s16)pos[j];
-                                        else
-                                                ampr[j] = 0;
-                                        if (vel[j] == 0)
-                                                ampr[j] = 0;
+                                        ampr[j] = 0;
                                         *(s16 *)&tx[j].data[0] = (s16)(pos[j] / 20);
                                         *(s16 *)&tx[j].data[2] = (s16)vel[j];
                                         *(s16 *)&tx[j].data[4] = (s16)ampr[j];

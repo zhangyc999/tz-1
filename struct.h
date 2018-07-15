@@ -250,8 +250,8 @@ struct frame_udp_tx {
                 u8 data[8];
                 u32 tsc;
         } dev[50];
-        int res1;
-        int res2;
+        int result[50];
+        int res1[4];
 };
 
 struct plan {
