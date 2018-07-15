@@ -181,6 +181,7 @@ void t_y(void) /* Task: crane on the front for Y-axis */
         for (i = 0; i < MAX_NUM_DEV; i++) {
                 for (j = 0; j < MAX_NUM_FORM; j++)
                         p[i][j] = (FRAME_RX *)can_cllst_init(rx[i][j], MAX_LEN_CLLST);
+                tx[i].data.cmd.enable = 0x3C;
         }
         for (;;) {
                 prev = tickGet();
@@ -502,42 +503,6 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                         }
                         semGive(sem_result);
                         switch (verify.type) {
-                        case CMD | CMD_DIR_STOP | CMD_MODE_AUTO:
-                        case CMD | CMD_DIR_STOP | CMD_MODE_MANUAL:
-                        case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        plan_vel[i] = 0;
-                                        plan_len_pass[i] = 0;
-                                        plan_len_posi_auto[i] = abs(delta[i]);
-                                        plan_len_nega_auto[i] = abs(pos_mid[i] - cur_pos[i]);
-                                        sign_posi[i] = BIT_GET_SIGN(delta[i]);
-                                        sign_nega[i] = BIT_GET_SIGN(pos_mid[i] - cur_pos[i]);
-                                        plan_len_posi_manual[i] = pos_dest[i] - cur_pos[i];
-                                        plan_len_nega_manual[i] = cur_pos[i] - pos_zero[i];
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0xA5;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.cmd.pos = 0x1100;
-                                        tx[i].data.cmd.vel = 0;
-                                        tx[i].data.cmd.ampr = 1000;
-                                        tx[i].data.cmd.exec = 0x9A;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
-                                }
-                                if (all_stop == 0) {
-                                        rng_can[0] = rng_can_slow[0];
-                                        rng_can[1] = rng_can_slow[1];
-                                        taskPrioritySet(taskIdSelf(), PRIO_SLOW);
-                                        period = PERIOD_SLOW;
-                                } else {
-                                        rng_can[0] = rng_can_fast[0];
-                                        rng_can[1] = rng_can_fast[1];
-                                        taskPrioritySet(taskIdSelf(), PRIO_FAST);
-                                        period = PERIOD_FAST;
-                                }
-                                break;
                         case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                         case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                         case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
@@ -627,6 +592,14 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                                 break;
                         default:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        plan_vel[i] = 0;
+                                        plan_len_pass[i] = 0;
+                                        plan_len_posi_auto[i] = abs(delta[i]);
+                                        plan_len_nega_auto[i] = abs(pos_mid[i] - cur_pos[i]);
+                                        sign_posi[i] = BIT_GET_SIGN(delta[i]);
+                                        sign_nega[i] = BIT_GET_SIGN(pos_mid[i] - cur_pos[i]);
+                                        plan_len_posi_manual[i] = pos_dest[i] - cur_pos[i];
+                                        plan_len_nega_manual[i] = cur_pos[i] - pos_zero[i];
                                         tx[i].src = J1939_ADDR_MAIN;
                                         tx[i].dest = addr[i];
                                         tx[i].form = 0xA5;
@@ -635,15 +608,21 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                                         tx[i].data.cmd.vel = 0;
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;
-                                        tx[i].data.cmd.enable = 0x3C;
                                         semTake(sem_can[cable[i]], WAIT_FOREVER);
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
-                                rng_can[0] = rng_can_slow[0];
-                                rng_can[1] = rng_can_slow[1];
-                                taskPrioritySet(taskIdSelf(), PRIO_SLOW);
-                                period = PERIOD_SLOW;
+                                if (all_stop == 0) {
+                                        rng_can[0] = rng_can_slow[0];
+                                        rng_can[1] = rng_can_slow[1];
+                                        taskPrioritySet(taskIdSelf(), PRIO_SLOW);
+                                        period = PERIOD_SLOW;
+                                } else {
+                                        rng_can[0] = rng_can_fast[0];
+                                        rng_can[1] = rng_can_fast[1];
+                                        taskPrioritySet(taskIdSelf(), PRIO_FAST);
+                                        period = PERIOD_FAST;
+                                }
                                 break;
                         }
                         break;
