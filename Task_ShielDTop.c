@@ -123,8 +123,8 @@ static int tmp_ampr[MAX_NUM_DEV];
 static int tmp_stop[MAX_NUM_DEV];
 static int tmp_zero[MAX_NUM_DEV];
 static int tmp_dest[MAX_NUM_DEV];
-static int result[MAX_NUM_DEV];
-static int all_stop;
+static int result[MAX_NUM_DEV] = {RESULT_STOP};
+static int all_stop = RESULT_STOP;
 static int all_zero;
 static int all_dest;
 static int any_fault;
@@ -184,6 +184,10 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
+                                        if (all_stop)
+                                                verify = cmd;
+                                        break;
                                 default:
                                         break;
                                 }
@@ -195,6 +199,10 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                         verify = cmd;
+                                        break;
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                                        if (all_stop)
+                                                verify = cmd;
                                         break;
                                 default:
                                         break;
@@ -208,6 +216,10 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
                                         verify = cmd;
                                         break;
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
+                                        if (all_stop)
+                                                verify = cmd;
+                                        break;
                                 default:
                                         break;
                                 }
@@ -218,6 +230,10 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                         verify = cmd;
+                                        break;
+                                case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                                        if (all_stop)
+                                                verify = cmd;
                                         break;
                                 default:
                                         break;
@@ -231,6 +247,10 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
+                                case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                                        if (all_stop)
+                                                verify = cmd;
+                                        break;
                                 default:
                                         break;
                                 }
@@ -242,6 +262,10 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
                                         verify = cmd;
+                                        break;
+                                case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                                        if (all_stop)
+                                                verify = cmd;
                                         break;
                                 default:
                                         break;
@@ -314,12 +338,12 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 }
                                 if (ctr_io[i] > 5)
                                         result[i] = result[i] & ~UNMASK_RESULT_IO | p[i][j]->data.state.io;
-                                tmp_pos[i] = filter_judge(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
-                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
-                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
-                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], cur_pos[i], min_pos[i] - 600000, pos_zero[i], MAX_LEN_CLLST);
-                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], cur_pos[i], pos_dest[i], max_pos[i] + 600000, MAX_LEN_CLLST);
+                                tmp_pos[i] = filter_judge(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], 3);
+                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], 3);
+                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], 3);
+                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -3, 3, 3);
+                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], cur_pos[i], min_pos[i] - 600000, pos_zero[i], 3);
+                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], cur_pos[i], pos_dest[i], max_pos[i] + 600000, 3);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
                                     || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
@@ -358,17 +382,9 @@ void t_sdt(void) /* Task: ShielD of Top */
                         default:
                                 break;
                         }
-                        all_stop = 0;
-                        all_zero = 0;
-                        all_dest = 0;
-                        for (i = 0; i < MAX_NUM_DEV; i++) {
-                                all_stop &= result[i];
-                                all_zero &= result[i];
-                                all_dest &= result[i];
-                        }
-                        all_stop &= RESULT_STOP;
-                        all_zero &= RESULT_ZERO;
-                        all_dest &= RESULT_DEST;
+                        all_stop = RESULT_STOP & result[0];
+                        all_zero = RESULT_ZERO & result[0];
+                        all_dest = RESULT_DEST & result[0];
                         period -= tickGet() - prev;
                         break;
                 default:
@@ -391,12 +407,11 @@ void t_sdt(void) /* Task: ShielD of Top */
                                 }
                         }
                         any_fault = 0;
-                        for (i = 0; i < MAX_NUM_DEV; i++)
-                                any_fault |= result[i];
-                        if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_REPAIR)
-                                any_fault = any_fault & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
-                        else
+                        if ((verify.type & UNMASK_CMD_MODE) != CMD_MODE_REPAIR) {
+                                for (i = 0; i < MAX_NUM_DEV; i++)
+                                        any_fault |= result[i];
                                 any_fault &= UNMASK_RESULT_FAULT;
+                        }
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
                                 if ((verify.type & UNMASK_CMD_ACT) == CMD)
@@ -487,10 +502,21 @@ void t_sdt(void) /* Task: ShielD of Top */
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
-                                rng_can[0] = rng_can_fast[0];
-                                rng_can[1] = rng_can_fast[1];
-                                taskPrioritySet(taskIdSelf(), PRIO_FAST);
-                                period = PERIOD_FAST;
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        if (tx[i].data.cmd.vel != 0)
+                                                break;
+                                }
+                                if (all_stop && i == MAX_NUM_DEV) {
+                                        rng_can[0] = rng_can_slow[0];
+                                        rng_can[1] = rng_can_slow[1];
+                                        taskPrioritySet(taskIdSelf(), PRIO_SLOW);
+                                        period = PERIOD_SLOW;
+                                } else {
+                                        rng_can[0] = rng_can_fast[0];
+                                        rng_can[1] = rng_can_fast[1];
+                                        taskPrioritySet(taskIdSelf(), PRIO_FAST);
+                                        period = PERIOD_FAST;
+                                }
                                 break;
                         default:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
@@ -510,11 +536,15 @@ void t_sdt(void) /* Task: ShielD of Top */
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
-                                if (all_stop == 0) {
+                                if (all_stop) {
                                         rng_can[0] = rng_can_slow[0];
                                         rng_can[1] = rng_can_slow[1];
                                         taskPrioritySet(taskIdSelf(), PRIO_SLOW);
                                         period = PERIOD_SLOW;
+#if 0
+                                        for (i = 0; i < MAX_NUM_DEV; i++)
+                                                tx[i].data.cmd.enable = 0x3C;
+#endif
                                 } else {
                                         rng_can[0] = rng_can_fast[0];
                                         rng_can[1] = rng_can_fast[1];

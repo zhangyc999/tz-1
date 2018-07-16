@@ -416,3 +416,10 @@ int psu_delay(int cur, int old)
                 old &= ~(1 << i);
         return old;
 }
+
+u8 check_xor(u8 *buf, int n)
+{
+        if (n > 1)
+                return *buf ^ check_xor(buf + 1, n - 1);
+        return *buf;
+}

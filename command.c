@@ -72,7 +72,7 @@ void psu_500(int data)
 void mom(void)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_MOM | CMD_DIR_STOP | CMD_MODE_AUTO;
+        udp.cmd.type = CMD_ACT_MOM | CMD_DIR_STOP | CMD_MODE_MANUAL;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
@@ -80,7 +80,7 @@ void mom(void)
 void momp(int data)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_MOM | CMD_DIR_POSI | CMD_MODE_AUTO;
+        udp.cmd.type = CMD_ACT_MOM | CMD_DIR_POSI | CMD_MODE_MANUAL;
         udp.cmd.data = data;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
@@ -88,7 +88,7 @@ void momp(int data)
 void momn(int data)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_MOM | CMD_DIR_NEGA | CMD_MODE_AUTO;
+        udp.cmd.type = CMD_ACT_MOM | CMD_DIR_NEGA | CMD_MODE_MANUAL;
         udp.cmd.data = data;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }

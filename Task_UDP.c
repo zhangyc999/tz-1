@@ -11,7 +11,6 @@
 void t_udp_rx(int fd);
 void t_udp_tx(int fd);
 int remap_addr_index(u8 addr);
-u8 check_xor(u8 *buf, int n);
 
 extern MSG_Q_ID msg_main;
 extern RING_ID rng_udp[];
@@ -83,11 +82,4 @@ void t_udp_tx(int fd)
                 }
                 sendto(fd, (caddr_t)&tx, sizeof(tx), 0, (struct sockaddr *)&client, size);
         }
-}
-
-u8 check_xor(u8 *buf, int n)
-{
-        if (n > 1)
-                return *buf ^ check_xor(buf + 1, n - 1);
-        return *buf;
 }

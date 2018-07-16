@@ -2,7 +2,7 @@
 #include "type.h"
 #include "vx.h"
 
-#define DUMMY
+#undef DUMMY
 
 #define SYS_TICK_PER_SEC 100
 

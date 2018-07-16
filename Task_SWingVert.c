@@ -66,7 +66,7 @@ const static int max_vel[MAX_NUM_DEV] = {1100, 1100, 1100, 1100};
 const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200, 200, 200};
 const static int pos_zero[MAX_NUM_DEV] = {500, 500, 500, 500};
-const static int pos_dest[MAX_NUM_DEV] = {51700, 51700, 51700, 51700};
+const static int pos_dest[MAX_NUM_DEV] = {2000, 2000, 2000, 2000};/*{51700, 51700, 51700, 51700};*/
 const static int ampr_load[MAX_NUM_DEV] = {120, 120, 120, 120};
 const static int err_sync = 1000;
 const static struct plan plan_len_auto[MAX_NUM_DEV] = {
@@ -143,8 +143,8 @@ static int tmp_dest[MAX_NUM_DEV];
 static int tmp_load[MAX_NUM_DEV];
 static int sub;
 static int tmp_sync;
-static int result[MAX_NUM_DEV];
-static int all_stop;
+static int result[MAX_NUM_DEV] = {RESULT_STOP, RESULT_STOP, RESULT_STOP, RESULT_STOP};
+static int all_stop = RESULT_STOP;
 static int all_zero;
 static int all_dest;
 static int any_fault;
@@ -205,6 +205,10 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
                                         verify = cmd;
                                         break;
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
+                                        if (all_stop)
+                                                verify = cmd;
+                                        break;
                                 default:
                                         break;
                                 }
@@ -216,6 +220,10 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                         verify = cmd;
+                                        break;
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
+                                        if (all_stop)
+                                                verify = cmd;
                                         break;
                                 default:
                                         break;
@@ -229,6 +237,10 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
                                         verify = cmd;
                                         break;
+                                case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
+                                        if (all_stop)
+                                                verify = cmd;
+                                        break;
                                 default:
                                         break;
                                 }
@@ -239,6 +251,10 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_AUTO:
                                         verify = cmd;
+                                        break;
+                                case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                                        if (all_stop)
+                                                verify = cmd;
                                         break;
                                 default:
                                         break;
@@ -252,6 +268,10 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                         verify = cmd;
                                         break;
+                                case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                                        if (all_stop)
+                                                verify = cmd;
+                                        break;
                                 default:
                                         break;
                                 }
@@ -263,6 +283,10 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 case CMD | CMD_DIR_STOP | CMD_MODE_REPAIR:
                                 case CMD | CMD_DIR_NEGA | CMD_MODE_REPAIR:
                                         verify = cmd;
+                                        break;
+                                case CMD | CMD_DIR_POSI | CMD_MODE_REPAIR:
+                                        if (all_stop)
+                                                verify = cmd;
                                         break;
                                 default:
                                         break;
@@ -335,13 +359,13 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 }
                                 if (ctr_io[i] > 5)
                                         result[i] = result[i] & ~UNMASK_RESULT_IO | p[i][j]->data.state.io;
-                                tmp_pos[i] = filter_judge(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], MAX_LEN_CLLST);
-                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
-                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
-                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -5, 5, MAX_LEN_CLLST);
-                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], cur_pos[i], min_pos[i] - 600000, pos_zero[i], MAX_LEN_CLLST);
-                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], cur_pos[i], pos_dest[i], max_pos[i] + 600000, MAX_LEN_CLLST);
-                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], cur_ampr[i], ampr_load[i], max_ampr[i] + 600000, MAX_LEN_CLLST);
+                                tmp_pos[i] = filter_judge(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], 3);
+                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], 3);
+                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], 3);
+                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -3, 3, 3);
+                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], cur_pos[i], min_pos[i] - 600000, pos_zero[i], 3);
+                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], cur_pos[i], pos_dest[i], max_pos[i] + 600000, 3);
+                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], cur_ampr[i], ampr_load[i], max_ampr[i] + 600000, 3);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
                                     || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
@@ -384,17 +408,9 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                         default:
                                 break;
                         }
-                        all_stop = 0;
-                        all_zero = 0;
-                        all_dest = 0;
-                        for (i = 0; i < MAX_NUM_DEV; i++) {
-                                all_stop &= result[i];
-                                all_zero &= result[i];
-                                all_dest &= result[i];
-                        }
-                        all_stop &= RESULT_STOP;
-                        all_zero &= RESULT_ZERO;
-                        all_dest &= RESULT_DEST;
+                        all_stop = RESULT_STOP & result[0] & result[1] & result[2] & result[3];
+                        all_zero = RESULT_ZERO & result[0] & result[1] & result[2] & result[3];
+                        all_dest = RESULT_DEST & result[0] & result[1] & result[2] & result[3];
                         sub = max_of_n(avg_pos, MAX_NUM_DEV) - min_of_n(avg_pos, MAX_NUM_DEV);
                         tmp_sync = filter_judge(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
                         if (tmp_sync == -1) {
@@ -426,12 +442,11 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                 }
                         }
                         any_fault = 0;
-                        for (i = 0; i < MAX_NUM_DEV; i++)
-                                any_fault |= result[i];
-                        if ((verify.type & UNMASK_CMD_MODE) == CMD_MODE_REPAIR)
-                                any_fault = any_fault & UNMASK_RESULT_FAULT & ~RESULT_FAULT_SYNC;
-                        else
+                        if ((verify.type & UNMASK_CMD_MODE) != CMD_MODE_REPAIR) {
+                                for (i = 0; i < MAX_NUM_DEV; i++)
+                                        any_fault |= result[i];
                                 any_fault &= UNMASK_RESULT_FAULT;
+                        }
                         if (any_fault) {
                                 state.type = TASK_STATE_FAULT;
                                 if ((verify.type & UNMASK_CMD_ACT) == CMD)
@@ -496,7 +511,7 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         tx[i].prio = 0x08;
                                         tx[i].data.cmd.pos = 0x1100;
                                         if (verify.data & 1 << i) {
-                                                if ((verify.type & UNMASK_CMD_DIR) == CMD_DIR_POSI && result[i] & RESULT_DEST && avg_ampr[i] > ampr[i] + 20 ||
+                                                if ((verify.type & UNMASK_CMD_DIR) == CMD_DIR_POSI && result[i] & RESULT_DEST/* && avg_ampr[i] > ampr[i] + 20*/ ||
                                                     (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO && avg_ampr[i] > ampr[i] + 20) {
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len[i] = 0;
@@ -523,10 +538,21 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
-                                rng_can[0] = rng_can_fast[0];
-                                rng_can[1] = rng_can_fast[1];
-                                taskPrioritySet(taskIdSelf(), PRIO_FAST);
-                                period = PERIOD_FAST;
+                                for (i = 0; i < MAX_NUM_DEV; i++) {
+                                        if (tx[i].data.cmd.vel != 0)
+                                                break;
+                                }
+                                if (all_stop && i == MAX_NUM_DEV) {
+                                        rng_can[0] = rng_can_slow[0];
+                                        rng_can[1] = rng_can_slow[1];
+                                        taskPrioritySet(taskIdSelf(), PRIO_SLOW);
+                                        period = PERIOD_SLOW;
+                                } else {
+                                        rng_can[0] = rng_can_fast[0];
+                                        rng_can[1] = rng_can_fast[1];
+                                        taskPrioritySet(taskIdSelf(), PRIO_FAST);
+                                        period = PERIOD_FAST;
+                                }
                                 break;
                         default:
                                 for (i = 0; i < MAX_NUM_DEV; i++) {
@@ -546,11 +572,15 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         rngBufPut(rng_can[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                         semGive(sem_can[cable[i]]);
                                 }
-                                if (all_stop == 0) {
+                                if (all_stop) {
                                         rng_can[0] = rng_can_slow[0];
                                         rng_can[1] = rng_can_slow[1];
                                         taskPrioritySet(taskIdSelf(), PRIO_SLOW);
                                         period = PERIOD_SLOW;
+#if 0
+                                        for (i = 0; i < MAX_NUM_DEV; i++)
+                                                tx[i].data.cmd.enable = 0x3C;
+#endif
                                 } else {
                                         rng_can[0] = rng_can_fast[0];
                                         rng_can[1] = rng_can_fast[1];
