@@ -530,6 +530,13 @@ void t_z(void) /* Task: crane on the front for Z-axis */
                                                     (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO && result[i] & RESULT_LOAD) {
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len[i] = 0;
+                                                        plan_len_pass[i] = 0;
+                                                        plan_len_posi_auto[i] = abs(delta[i]);
+                                                        plan_len_nega_auto[i] = abs(pos_zero[i] - cur_pos[i]);
+                                                        sign_posi[i] = BIT_GET_SIGN(delta[i]);
+                                                        sign_nega[i] = BIT_GET_SIGN(pos_zero[i] - cur_pos[i]);
+                                                        plan_len_posi_manual[i] = pos_dest[i] - cur_pos[i];
+                                                        plan_len_nega_manual[i] = cur_pos[i] - pos_zero[i];
                                                 } else {
                                                         plan(&plan_vel[i], &plan_len_pass[i], plan_len[i],
                                                              max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
@@ -538,6 +545,13 @@ void t_z(void) /* Task: crane on the front for Z-axis */
                                         } else {
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len[i] = 0;
+                                                plan_len_pass[i] = 0;
+                                                plan_len_posi_auto[i] = abs(delta[i]);
+                                                plan_len_nega_auto[i] = abs(pos_zero[i] - cur_pos[i]);
+                                                sign_posi[i] = BIT_GET_SIGN(delta[i]);
+                                                sign_nega[i] = BIT_GET_SIGN(pos_zero[i] - cur_pos[i]);
+                                                plan_len_posi_manual[i] = pos_dest[i] - cur_pos[i];
+                                                plan_len_nega_manual[i] = cur_pos[i] - pos_zero[i];
                                         }
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;

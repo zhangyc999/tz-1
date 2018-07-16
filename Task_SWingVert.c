@@ -500,6 +500,9 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                                     (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO && avg_ampr[i] > ampr[i] + 20) {
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len[i] = 0;
+                                                        plan_len_pass[i] = 0;
+                                                        plan_len_posi[i] = pos_dest[i] - cur_pos[i];
+                                                        plan_len_nega[i] = cur_pos[i] - pos_zero[i];
                                                 } else {
                                                         plan(&plan_vel[i], &plan_len_pass[i], plan_len[i],
                                                              max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
@@ -509,6 +512,9 @@ void t_swv(void) /* Task: SWing leg of Vertical */
                                         } else {
                                                 tx[i].data.cmd.vel = 0;
                                                 plan_len[i] = 0;
+                                                plan_len_pass[i] = 0;
+                                                plan_len_posi[i] = pos_dest[i] - cur_pos[i];
+                                                plan_len_nega[i] = cur_pos[i] - pos_zero[i];
                                         }
                                         tx[i].data.cmd.ampr = 1000;
                                         tx[i].data.cmd.exec = 0x9A;
