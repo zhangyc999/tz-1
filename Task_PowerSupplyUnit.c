@@ -8,7 +8,7 @@
 
 #define MAX_NUM_DEV   1
 #define MAX_NUM_FORM  2
-#define MAX_LEN_CLLST 3
+#define MAX_LEN_CLLST 4
 
 #define UNMASK_RESULT_IO      0x000000FF
 #define UNMASK_RESULT_FAULT   0x0000FF00
@@ -196,13 +196,13 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 }
                                 switch (p[j]->data.io.fault) {
                                 case 0x00:
-                                case 0x03:
+                                case 0x0C:
                                         if (ctr_fault < 2)
                                                 break;
                                         result &= ~RESULT_FAULT_GENERAL;
                                         result &= ~RESULT_FAULT_SERIOUS;
                                         break;
-                                case 0x0C:
+                                case 0x03:
                                         if (ctr_fault < 1)
                                                 break;
                                         result |= RESULT_FAULT_GENERAL;

@@ -264,7 +264,7 @@ void sdfbn(int data)
 void x(void)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_X | CMD_DIR_STOP | CMD_MODE_AUTO;
+        udp.cmd.type = CMD_ACT_X | CMD_DIR_STOP | CMD_MODE_MANUAL;
         udp.cmd.data = 0;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
@@ -272,7 +272,7 @@ void x(void)
 void xp(int data)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_X | CMD_DIR_POSI | CMD_MODE_AUTO;
+        udp.cmd.type = CMD_ACT_X | CMD_DIR_POSI | CMD_MODE_MANUAL;
         udp.cmd.data = data;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
@@ -280,7 +280,7 @@ void xp(int data)
 void xn(int data)
 {
         struct frame_udp_rx udp;
-        udp.cmd.type = CMD_ACT_X | CMD_DIR_NEGA | CMD_MODE_AUTO;
+        udp.cmd.type = CMD_ACT_X | CMD_DIR_NEGA | CMD_MODE_MANUAL;
         udp.cmd.data = data;
         msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
 }
@@ -337,22 +337,14 @@ void myswh(void)
 {
         struct frame_udp_rx udp;
         for (;;) {
-                udp.cmd.type = CMD_ACT_SWH | CMD_DIR_STOP | CMD_MODE_AUTO;
-                udp.cmd.data = 0;
-                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
-                taskDelay(200);
                 udp.cmd.type = CMD_ACT_SWH | CMD_DIR_POSI | CMD_MODE_AUTO;
-                udp.cmd.data = 0x0000000F;
+                udp.cmd.data = 0x0000000C;
                 msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
-                taskDelay(200 * 100);
-                udp.cmd.type = CMD_ACT_SWH | CMD_DIR_STOP | CMD_MODE_AUTO;
-                udp.cmd.data = 0;
-                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
-                taskDelay(200);
+                taskDelay(sysClkRateGet() * 90);
                 udp.cmd.type = CMD_ACT_SWH | CMD_DIR_NEGA | CMD_MODE_AUTO;
-                udp.cmd.data = 0x0000000F;
+                udp.cmd.data = 0x0000000C;
                 msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
-                taskDelay(200 * 100);
+                taskDelay(sysClkRateGet() * 90);
         }
 }
 
@@ -360,21 +352,13 @@ void myswv(void)
 {
         struct frame_udp_rx udp;
         for (;;) {
-                udp.cmd.type = CMD_ACT_SWV | CMD_DIR_STOP | CMD_MODE_AUTO;
-                udp.cmd.data = 0;
-                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
-                taskDelay(200);
                 udp.cmd.type = CMD_ACT_SWV | CMD_DIR_POSI | CMD_MODE_AUTO;
-                udp.cmd.data = 0x0000000F;
+                udp.cmd.data = 0x0000000D;
                 msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
-                taskDelay(200 * 50);
-                udp.cmd.type = CMD_ACT_SWV | CMD_DIR_STOP | CMD_MODE_AUTO;
-                udp.cmd.data = 0;
-                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
-                taskDelay(200);
+                taskDelay(sysClkRateGet() * 35);
                 udp.cmd.type = CMD_ACT_SWV | CMD_DIR_NEGA | CMD_MODE_AUTO;
-                udp.cmd.data = 0x0000000F;
+                udp.cmd.data = 0x0000000D;
                 msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
-                taskDelay(200 * 50);
+                taskDelay(sysClkRateGet() * 35);
         }
 }

@@ -16,7 +16,7 @@
 
 #define MAX_NUM_DEV   4
 #define MAX_NUM_FORM  1
-#define MAX_LEN_CLLST 3
+#define MAX_LEN_CLLST 4
 
 #define UNMASK_RESULT_IO     0x000000FF
 #define UNMASK_RESULT_FAULT  0x0000FF00
@@ -291,10 +291,10 @@ void t_mom(void) /* Task: constant MOMent electric machinery */
                                 default:
                                         break;
                                 }
-                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], 3);
-                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], 3);
-                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -3, 3, 3);
-                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], cur_ampr[i], ampr_load[i], max_ampr[i] + 600000, 3);
+                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
+                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
+                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -3, 3, MAX_LEN_CLLST);
+                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], cur_ampr[i], ampr_load[i], max_ampr[i] + 600000, MAX_LEN_CLLST);
                                 if (tmp_vel[i] == -1)
                                         result[i] |= RESULT_FAULT_VEL;
                                 else if (tmp_vel[i] == 1)

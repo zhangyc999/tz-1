@@ -16,7 +16,7 @@
 
 #define MAX_NUM_DEV   4
 #define MAX_NUM_FORM  1
-#define MAX_LEN_CLLST 3
+#define MAX_LEN_CLLST 4
 
 #define UNMASK_RESULT_IO     0x000000FF
 #define UNMASK_RESULT_FAULT  0x0000FF00
@@ -169,7 +169,7 @@ static int plan_len_nega[MAX_NUM_DEV];
 static int plan_len[MAX_NUM_DEV];
 static struct plan max_plan_len[MAX_NUM_DEV];
 static int dir[MAX_NUM_DEV];
-static int ampr[MAX_NUM_DEV];
+static int ampr_nega[MAX_NUM_DEV] = {150, 150, 150, 150};
 static int i;
 static int j;
 
@@ -373,14 +373,14 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                 }
                                 if (ctr_io[i] > 5)
                                         result[i] = result[i] & ~UNMASK_RESULT_IO | p[i][j]->data.state.io;
-                                tmp_pos[i] = filter_judge(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], 3);
-                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], 3);
-                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], 3);
-                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -3, 3, 3);
-                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], cur_pos[i], min_pos[i] - 600000, pos_zero[i], 3);
-                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], cur_pos[i], pos_dest[i], max_pos[i] + 600000, 3);
-                                tmp_mid[i] = filter_judge(&ctr_ok_mid[i], &ctr_err_mid[i], cur_pos[i], pos_mid[i] - 100, pos_mid[i] + 100, 3);
-                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], cur_ampr[i], ampr_load[i], max_ampr[i] + 600000, 3);
+                                tmp_pos[i] = filter_judge(&ctr_ok_pos[i], &ctr_err_pos[i], avg_pos[i], min_pos[i], max_pos[i], MAX_LEN_CLLST);
+                                tmp_vel[i] = filter_judge(&ctr_ok_vel[i], &ctr_err_vel[i], avg_vel[i], min_vel[i], max_vel[i], MAX_LEN_CLLST);
+                                tmp_ampr[i] = filter_judge(&ctr_ok_ampr[i], &ctr_err_ampr[i], avg_ampr[i], min_ampr[i], max_ampr[i], MAX_LEN_CLLST);
+                                tmp_stop[i] = filter_judge(&ctr_ok_stop[i], &ctr_err_stop[i], avg_vel[i], -3, 3, MAX_LEN_CLLST);
+                                tmp_zero[i] = filter_judge(&ctr_ok_zero[i], &ctr_err_zero[i], cur_pos[i], min_pos[i] - 600000, pos_zero[i], MAX_LEN_CLLST);
+                                tmp_dest[i] = filter_judge(&ctr_ok_dest[i], &ctr_err_dest[i], cur_pos[i], pos_dest[i], max_pos[i] + 600000, MAX_LEN_CLLST);
+                                tmp_mid[i] = filter_judge(&ctr_ok_mid[i], &ctr_err_mid[i], cur_pos[i], pos_mid[i] - 100, pos_mid[i] + 100, MAX_LEN_CLLST);
+                                tmp_load[i] = filter_judge(&ctr_ok_load[i], &ctr_err_load[i], cur_ampr[i], ampr_load[i], max_ampr[i] + 600000, MAX_LEN_CLLST);
 #if 0
                                 if (avg_pos[i] < io_pos_zero[i] - 500 && (result[i] & 0x00000003) != 0x00000002
                                     || avg_pos[i] > io_pos_dest[i] + 500 && (result[i] & 0x00000003) != 0x00000001
@@ -434,9 +434,9 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                         sub_01 = avg_pos[0] - avg_pos[1];
                         sub_23 = avg_pos[2] - avg_pos[3];
                         sub = (avg_pos[0] - avg_pos[3] + avg_pos[1] - avg_pos[2]) / 2;
-                        tmp_sync_01 = filter_judge(&ctr_ok_sync_01, &ctr_err_sync_01, sub_01, -err_sync_01, err_sync_01, 3);
-                        tmp_sync_23 = filter_judge(&ctr_ok_sync_23, &ctr_err_sync_23, sub_23, -err_sync_23, err_sync_23, 3);
-                        tmp_sync = filter_judge(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, 3);
+                        tmp_sync_01 = filter_judge(&ctr_ok_sync_01, &ctr_err_sync_01, sub_01, -err_sync_01, err_sync_01, MAX_LEN_CLLST);
+                        tmp_sync_23 = filter_judge(&ctr_ok_sync_23, &ctr_err_sync_23, sub_23, -err_sync_23, err_sync_23, MAX_LEN_CLLST);
+                        tmp_sync = filter_judge(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
                         if (tmp_sync_01 == -1 || tmp_sync == -1) {
                                 result[0] |= RESULT_FAULT_SYNC;
                                 result[1] |= RESULT_FAULT_SYNC;
@@ -557,7 +557,7 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                         tx[i].data.cmd.pos = 0x1100;
                                         if (verify.data & 1 << i) {
                                                 if ((verify.type & UNMASK_CMD_DIR) == CMD_DIR_POSI && result[i] & RESULT_DEST ||
-                                                    (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO && avg_ampr[i] > ampr[i] + 20 ||
+                                                    (verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && result[i] & RESULT_ZERO && avg_ampr[i] > ampr_nega[i] * 7 / 5 ||
                                                     verify.data >> 16 == 5 && result[i] & RESULT_MID) {
                                                         tx[i].data.cmd.vel = 0;
                                                         plan_len[i] = 0;
@@ -569,7 +569,8 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
                                                         plan(&plan_vel[i], &plan_len_pass[i], plan_len[i],
                                                              max_plan_len[i], plan_vel_low[i], plan_vel_high[i], PERIOD_FAST);
                                                         tx[i].data.cmd.vel = dir[i] * sign[i] * (s16)plan_vel[i];
-                                                        ampr[i] = avg_ampr[i];
+                                                        if ((verify.type & UNMASK_CMD_DIR) == CMD_DIR_NEGA && (result[i] & RESULT_ZERO) == 0)
+                                                                ampr_nega[i] = avg_ampr[i];
                                                 }
                                         } else {
                                                 tx[i].data.cmd.vel = 0;

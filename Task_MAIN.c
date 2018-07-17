@@ -40,6 +40,9 @@ static struct main verify = {CMD_IDLE, 0};
 static int overtime;
 static int tmp;
 static int fault;
+static int running;
+static int zero;
+static int dest;
 
 void t_main(void)
 {

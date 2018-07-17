@@ -8,7 +8,7 @@
 
 #define MAX_NUM_DEV   2
 #define MAX_NUM_FORM  2
-#define MAX_LEN_CLLST 3
+#define MAX_LEN_CLLST 4
 
 #define UNMASK_RESULT_FAULT  0x0000FF00
 #define UNMASK_RESULT_MISC   0xFFFF0000
