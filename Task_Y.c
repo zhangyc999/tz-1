@@ -69,7 +69,7 @@ const static int min_ampr[MAX_NUM_DEV] = {0, 0, 0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200, 200, 200};
 const static int pos_zero[MAX_NUM_DEV] = {500, 500, 500, 500};
 const static int pos_dest[MAX_NUM_DEV] = {12000, 12000, 12000, 12000};
-const static int pos_mid[MAX_NUM_DEV] = {10000, 10000};
+const static int pos_mid[MAX_NUM_DEV] = {10000, 10000, 10000, 10000};
 const static int err_sync_f = 200;
 const static int err_sync_b = 200;
 const static int err_sync = 1000;
@@ -531,7 +531,9 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                                                         break;
                                                 default:
                                                         plan_len[i] = 0;
+                                                        break;
                                                 }
+                                                break;
                                         case CMD_DIR_NEGA:
                                                 dir[i] = -1;
                                                 switch (verify.type & UNMASK_CMD_MODE) {
@@ -544,6 +546,7 @@ void t_y(void) /* Task: crane on the front for Y-axis */
                                                         break;
                                                 default:
                                                         plan_len[i] = 0;
+                                                        break;
                                                 }
                                                 break;
                                         default:

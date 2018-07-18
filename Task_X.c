@@ -62,26 +62,26 @@ const static int sign[MAX_NUM_DEV] = {1, -1};
 const static int io_pos_zero[MAX_NUM_DEV] = {500, 500};
 const static int io_pos_dest[MAX_NUM_DEV] = {20000, 20000};
 const static int min_pos[MAX_NUM_DEV] = {-1000, -1000};
-const static int max_pos[MAX_NUM_DEV] = {30000, 30000}; /* 117000 */
+const static int max_pos[MAX_NUM_DEV] = {117000, 117000};
 const static int min_vel[MAX_NUM_DEV] = {-1500, -1500};
 const static int max_vel[MAX_NUM_DEV] = {1500, 1500};
 const static int min_ampr[MAX_NUM_DEV] = {0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200};
-const static int pos_zero[MAX_NUM_DEV] = {500, 500};
-const static int pos_dest[MAX_NUM_DEV] = {20000, 20000};
+const static int pos_zero[MAX_NUM_DEV] = {200, 200};
+const static int pos_dest[MAX_NUM_DEV] = {115000, 115000};
 const static int pos_mid[MAX_NUM_DEV] = {10000, 10000};
 const static int err_sync = 1000;
 const static struct plan plan_len_auto[MAX_NUM_DEV] = {
-        {1000, 4000, 10000},
-        {1000, 4000, 10000}
+        {2000, 4000, 103000},
+        {2000, 4000, 103000}
 };
 const static struct plan plan_len_manual[MAX_NUM_DEV] = {
-        {1000, 8000, 2000},
-        {1000, 8000, 2000}
+        {2000, 8000, 95000},
+        {2000, 8000, 95000}
 };
 const static struct plan plan_len_repair[MAX_NUM_DEV] = {
-        {1000, 8000, 40000},
-        {1000, 8000, 40000}
+        {2000, 8000, 600000},
+        {2000, 8000, 600000}
 };
 const static int plan_vel_low[MAX_NUM_DEV] = {100, 100};
 const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000};
@@ -500,7 +500,9 @@ void t_x(void) /* Task: crane on the front for X-axis */
                                                         break;
                                                 default:
                                                         plan_len[i] = 0;
+                                                        break;
                                                 }
+                                                break;
                                         case CMD_DIR_NEGA:
                                                 dir[i] = -1;
                                                 switch (verify.type & UNMASK_CMD_MODE) {
@@ -513,6 +515,7 @@ void t_x(void) /* Task: crane on the front for X-axis */
                                                         break;
                                                 default:
                                                         plan_len[i] = 0;
+                                                        break;
                                                 }
                                                 break;
                                         default:

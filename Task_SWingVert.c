@@ -82,10 +82,10 @@ const static struct plan plan_len_manual[MAX_NUM_DEV] = {
         {2000, 8000, 31700}
 };
 const static struct plan plan_len_repair[MAX_NUM_DEV] = {
-        {2000, 8000, 60000},
-        {2000, 8000, 60000},
-        {2000, 8000, 60000},
-        {2000, 8000, 60000}
+        {2000, 8000, 600000},
+        {2000, 8000, 600000},
+        {2000, 8000, 600000},
+        {2000, 8000, 600000}
 };
 const static int plan_vel_low[MAX_NUM_DEV] = {100, 100, 100, 100};
 const static int plan_vel_high[MAX_NUM_DEV] = {1000, 1000, 1000, 1000};

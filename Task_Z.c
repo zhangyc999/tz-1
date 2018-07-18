@@ -500,7 +500,9 @@ void t_z(void) /* Task: crane on the front for Z-axis */
                                                         break;
                                                 default:
                                                         plan_len[i] = 0;
+                                                        break;
                                                 }
+                                                break;
                                         case CMD_DIR_NEGA:
                                                 dir[i] = -1;
                                                 switch (verify.type & UNMASK_CMD_MODE) {
@@ -513,6 +515,7 @@ void t_z(void) /* Task: crane on the front for Z-axis */
                                                         break;
                                                 default:
                                                         plan_len[i] = 0;
+                                                        break;
                                                 }
                                                 break;
                                         default:
