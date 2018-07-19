@@ -362,3 +362,18 @@ void myswv(void)
                 taskDelay(sysClkRateGet() * 35);
         }
 }
+
+void myx(void)
+{
+        struct frame_udp_rx udp;
+        for (;;) {
+                udp.cmd.type = CMD_ACT_X | CMD_DIR_POSI | CMD_MODE_MANUAL;
+                udp.cmd.data = 0x00000003;
+                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+                taskDelay(sysClkRateGet() * 160);
+                udp.cmd.type = CMD_ACT_X | CMD_DIR_NEGA | CMD_MODE_MANUAL;
+                udp.cmd.data = 0x00000003;
+                msgQSend(msg_main, (char *)&udp.cmd, sizeof(udp.cmd), NO_WAIT, MSG_PRI_NORMAL);
+                taskDelay(sysClkRateGet() * 160);
+        }
+}

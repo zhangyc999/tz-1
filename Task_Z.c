@@ -277,7 +277,7 @@ void t_z(void) /* Task: crane on the front for Z-axis */
                                         case CMD | CMD_DIR_NEGA | CMD_MODE_MANUAL:
                                                 verify = cmd;
                                                 break;
-                                        case CMD | CMD_DIR_POSI | CMD_MODE_AUTO:
+                                        case CMD | CMD_DIR_POSI | CMD_MODE_MANUAL:
                                                 if (all_stop)
                                                         verify = cmd;
                                                 break;
