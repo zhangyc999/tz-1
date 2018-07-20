@@ -40,7 +40,7 @@ typedef struct frame_cyl_tx FRAME_TX;
 
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int filter_judge(int *ok, int *err, int value, int min, int max, int ctr);
-void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
+void plan(double *vel, double *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID MSG;
@@ -161,8 +161,8 @@ static int all_zero;
 static int all_dest;
 static int all_mid;
 static int any_fault;
-static int plan_vel[MAX_NUM_DEV];
-static int plan_len_pass[MAX_NUM_DEV];
+static double plan_vel[MAX_NUM_DEV];
+static double plan_len_pass[MAX_NUM_DEV];
 static int plan_len_posi_1st[MAX_NUM_DEV];
 static int plan_len_posi_2nd[MAX_NUM_DEV];
 static int plan_len_nega[MAX_NUM_DEV];
@@ -644,10 +644,10 @@ void t_swh(void) /* Task: SWing arm of Horizontal */
         }
 }
 
-void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period)
+void plan(double *vel, double *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period)
 {
         struct plan tmp;
-        int acc = 0;
+        double acc = 0;
         if (len <= 0) {
                 *vel = 0;
                 return;
@@ -666,7 +666,7 @@ void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_v
                 tmp.high = len - max_plan_len.low * 2 - max_plan_len.acc * 2;
         }
         if (max_plan_len.acc)
-                acc = (plan_vel_high - plan_vel_low) * (plan_vel_high + plan_vel_low) * period / max_plan_len.acc / 2 / sysClkRateGet();
+                acc = 1.0 * (plan_vel_high - plan_vel_low) * (plan_vel_high + plan_vel_low) * period / max_plan_len.acc / 2 / sysClkRateGet();
         else
                 acc = 0;
         if (*len_pass < tmp.low) {
@@ -682,7 +682,7 @@ void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_v
         } else if (*len_pass < tmp.low * 2 + tmp.acc * 2 + tmp.high) {
                 *vel = plan_vel_low;
         }
-        *len_pass += *vel * period / sysClkRateGet();
+        *len_pass += 1.0 * *vel * period / sysClkRateGet();
 }
 
 int filter_judge(int *ok, int *err, int value, int min, int max, int ctr)

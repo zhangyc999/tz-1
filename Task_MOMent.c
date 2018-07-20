@@ -40,7 +40,6 @@ typedef struct frame_cyl_tx FRAME_TX;
 
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int filter_judge(int *ok, int *err, int value, int min, int max, int ctr);
-void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID MSG;

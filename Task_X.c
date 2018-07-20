@@ -42,7 +42,7 @@ typedef struct frame_cyl_tx FRAME_TX;
 
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int filter_judge(int *ok, int *err, int value, int min, int max, int ctr);
-void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
+void plan(double *vel, double *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 int max_of_n(int buf[], int n);
 int min_of_n(int buf[], int n);
 
@@ -67,17 +67,17 @@ const static int min_vel[MAX_NUM_DEV] = {-1500, -1500};
 const static int max_vel[MAX_NUM_DEV] = {1500, 1500};
 const static int min_ampr[MAX_NUM_DEV] = {0, 0};
 const static int max_ampr[MAX_NUM_DEV] = {200, 200};
-const static int pos_zero[MAX_NUM_DEV] = {200, 200};
-const static int pos_dest[MAX_NUM_DEV] = {115000, 115000};
+const static int pos_zero[MAX_NUM_DEV] = {500, 500};
+const static int pos_dest[MAX_NUM_DEV] = {100500, 100500};
 const static int pos_mid[MAX_NUM_DEV] = {10000, 10000};
 const static int err_sync = 1000;
 const static struct plan plan_len_auto[MAX_NUM_DEV] = {
-        {2000, 4000, 103000},
-        {2000, 4000, 103000}
+        {2000, 4000, 88000},
+        {2000, 4000, 88000}
 };
 const static struct plan plan_len_manual[MAX_NUM_DEV] = {
-        {2000, 8000, 95000},
-        {2000, 8000, 95000}
+        {2000, 8000, 80000},
+        {2000, 8000, 80000}
 };
 const static struct plan plan_len_repair[MAX_NUM_DEV] = {
         {2000, 8000, 600000},
@@ -144,8 +144,8 @@ static int all_stop = RESULT_STOP;
 static int all_zero;
 static int all_dest;
 static int any_fault;
-static int plan_vel[MAX_NUM_DEV];
-static int plan_len_pass[MAX_NUM_DEV];
+static double plan_vel[MAX_NUM_DEV];
+static double plan_len_pass[MAX_NUM_DEV];
 static int plan_len_posi_auto[MAX_NUM_DEV];
 static int plan_len_nega_auto[MAX_NUM_DEV];
 static int plan_len_posi_manual[MAX_NUM_DEV];
@@ -421,6 +421,7 @@ void t_x(void) /* Task: crane on the front for X-axis */
                         all_stop = RESULT_STOP & result[0] & result[1];
                         all_zero = RESULT_ZERO & result[0] & result[1];
                         all_dest = RESULT_DEST & result[0] & result[1];
+#if 0
                         sub = max_of_n(avg_pos, MAX_NUM_DEV) - min_of_n(avg_pos, MAX_NUM_DEV);
                         tmp_sync = filter_judge(&ctr_ok_sync, &ctr_err_sync, sub, -err_sync, err_sync, MAX_LEN_CLLST);
                         if (tmp_sync == -1) {
@@ -430,6 +431,7 @@ void t_x(void) /* Task: crane on the front for X-axis */
                                 for (i = 0; i < MAX_NUM_DEV; i++)
                                         result[i] &= ~RESULT_FAULT_SYNC;
                         }
+#endif
                         period -= tickGet() - prev;
                         break;
                 default:

@@ -40,7 +40,7 @@ typedef struct frame_cyl_tx FRAME_TX;
 
 struct frame_can *can_cllst_init(struct frame_can buf[], int len);
 int filter_judge(int *ok, int *err, int value, int min, int max, int ctr);
-void plan(int *vel, int *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
+void plan(double *vel, double *len_pass, int len, struct plan max_plan_len, int plan_vel_low, int plan_vel_high, int period);
 int max_of_n(int buf[], int n);
 int min_of_n(int buf[], int n);
 
@@ -140,8 +140,8 @@ static int all_zero;
 static int all_dest;
 static int all_mid;
 static int any_fault;
-static int plan_vel[MAX_NUM_DEV];
-static int plan_len_pass[MAX_NUM_DEV];
+static double plan_vel[MAX_NUM_DEV];
+static double plan_len_pass[MAX_NUM_DEV];
 static int plan_len_posi_1st[MAX_NUM_DEV];
 static int plan_len_posi_2nd[MAX_NUM_DEV];
 static int plan_len_nega[MAX_NUM_DEV];

@@ -54,6 +54,12 @@ void t_main(void)
                 }
                 tmp = 0;
                 switch (rx.type & UNMASK_TASK_NOTIFY) {
+                case TASK_NOTIFY_LVL:
+                        tmp = FLAG_LVL;
+                        break;
+                case TASK_NOTIFY_VSL:
+                        tmp = FLAG_VSL;
+                        break;
                 case TASK_NOTIFY_GEN:
                         tmp = FLAG_GEN;
                         break;
@@ -93,17 +99,38 @@ void t_main(void)
                 case TASK_NOTIFY_Z:
                         tmp = FLAG_Z;
                         break;
-                case TASK_NOTIFY_LVL:
-                        tmp = FLAG_LVL;
-                        break;
                 default:
                         break;
                 }
                 if (tmp) {
-                        if ((rx.type & UNMASK_TASK_STATE) == TASK_STATE_FAULT)
-                                fault &= ~tmp;
-                        else
+                        switch (rx.type & UNMASK_TASK_STATE) {
+                        case TASK_STATE_FAULT:
                                 fault |= tmp;
+                                running &= ~tmp;
+                                zero &= ~tmp;
+                                dest &= ~tmp;
+                                break;
+                        case TASK_STATE_RUNNING:
+                                fault &= ~tmp;
+                                running |= tmp;
+                                zero &= ~tmp;
+                                dest &= ~tmp;
+                                break;
+                        case TASK_STATE_ZERO:
+                                fault &= ~tmp;
+                                running &= ~tmp;
+                                zero |= tmp;
+                                dest &= ~tmp;
+                                break;
+                        case TASK_STATE_DEST:
+                                fault &= ~tmp;
+                                running &= ~tmp;
+                                zero &= ~tmp;
+                                dest |= tmp;
+                                break;
+                        default:
+                                break;
+                        }
                 }
                 switch (verify.type & UNMASK_CMD_ACT) {
                 case CMD_IDLE:
