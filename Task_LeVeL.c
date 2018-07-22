@@ -7,7 +7,7 @@
 #define PERIOD 200
 
 #define MAX_NUM_DEV   2
-#define MAX_NUM_FORM  1
+#define MAX_NUM_FORM  4
 #define MAX_LEN_CLLST 4
 
 #define UNMASK_RESULT_FAULT  0x0000FF00
@@ -51,7 +51,7 @@ static struct main old_state;
 static struct frame_can can;
 static struct frame_can rx[MAX_NUM_DEV][MAX_NUM_FORM][MAX_LEN_CLLST];
 static FRAME_RX *p[MAX_NUM_DEV][MAX_NUM_FORM];
-static FRAME_TX tx[MAX_NUM_DEV];
+static FRAME_TX tx[MAX_NUM_DEV][MAX_NUM_FORM];
 static int has_received[MAX_NUM_DEV];
 static int cur_x[MAX_NUM_DEV];
 static int cur_y[MAX_NUM_DEV];
@@ -79,6 +79,18 @@ void t_lvl(void) /* Task: LeVeL tilt sensor */
         for (i = 0; i < MAX_NUM_DEV; i++) {
                 for (j = 0; j < MAX_NUM_FORM; j++)
                         p[i][j] = (FRAME_RX *)can_cllst_init(rx[i][j], MAX_LEN_CLLST);
+                tx[i][0].src = J1939_ADDR_MAIN;
+                tx[i][0].dest = addr[i];
+                tx[i][0].form = 0x5C;
+                tx[i][0].prio = 0x0C;
+                tx[i][0].data.query[0] = 0x00;
+                tx[i][0].data.query[1] = 0x11;
+                tx[i][0].data.query[2] = 0x22;
+                tx[i][0].data.query[3] = 0x33;
+                tx[i][0].data.query[4] = 0x44;
+                tx[i][0].data.query[5] = 0x55;
+                tx[i][0].data.query[6] = 0x66;
+                tx[i][0].data.query[7] = 0x77;
         }
         for (;;) {
                 prev = tickGet();
@@ -195,18 +207,7 @@ void t_lvl(void) /* Task: LeVeL tilt sensor */
                         }
                         old_state = state;
                         for (i = 0; i < MAX_NUM_DEV; i++) {
-                                tx[i].src = J1939_ADDR_MAIN;
-                                tx[i].dest = addr[i];
-                                tx[i].form = 0x5C;
-                                tx[i].prio = 0x0C;
-                                tx[i].data.query[0] = 0x00;
-                                tx[i].data.query[1] = 0x11;
-                                tx[i].data.query[2] = 0x22;
-                                tx[i].data.query[3] = 0x33;
-                                tx[i].data.query[4] = 0x44;
-                                tx[i].data.query[5] = 0x55;
-                                tx[i].data.query[6] = 0x66;
-                                tx[i].data.query[7] = 0x77;
+                                j = 0;
                                 semTake(sem_can[cable[i]], WAIT_FOREVER);
                                 rngBufPut(rng_can_slow[cable[i]], (char *)&tx[i], sizeof(tx[i]));
                                 semGive(sem_can[cable[i]]);

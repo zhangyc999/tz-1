@@ -7,7 +7,7 @@
 #define PERIOD 200
 
 #define MAX_NUM_DEV   2
-#define MAX_NUM_FORM  2
+#define MAX_NUM_FORM  4
 #define MAX_LEN_CLLST 4
 
 #define UNMASK_RESULT_FAULT  0x0000FF00
@@ -55,7 +55,7 @@ static struct main old_state;
 static struct frame_can can;
 static struct frame_can rx[MAX_NUM_DEV][MAX_NUM_FORM][MAX_LEN_CLLST];
 static FRAME_RX *p[MAX_NUM_DEV][MAX_NUM_FORM];
-static FRAME_TX tx[MAX_NUM_DEV];
+static FRAME_TX tx[MAX_NUM_DEV][MAX_NUM_FORM];
 static int has_received[MAX_NUM_DEV];
 static int cur_volt[MAX_NUM_DEV];
 static int cur_ampr[MAX_NUM_DEV];
@@ -94,6 +94,30 @@ void t_gen(void) /* Task: GENerator */
         for (i = 0; i < MAX_NUM_DEV; i++) {
                 for (j = 0; j < MAX_NUM_FORM; j++)
                         p[i][j] = (FRAME_RX *)can_cllst_init(rx[i][j], MAX_LEN_CLLST);
+                tx[i][0].src = J1939_ADDR_MAIN;
+                tx[i][0].dest = addr[i];
+                tx[i][0].form = 0x6E;
+                tx[i][0].prio = 0x08;
+                tx[i][0].data.cmd.type = 0x11;
+                tx[i][0].data.cmd.enable = 0xBB;
+                tx[i][0].data.cmd.toggle = 0x00;
+                tx[i][0].data.cmd.protect = 0xAA;
+                tx[i][0].data.cmd.res0 = 0x00;
+                tx[i][0].data.cmd.res1 = 0x00;
+                tx[i][0].data.cmd.res2 = 0x00;
+                tx[i][0].data.cmd.res3 = 0x00;
+                tx[i][1].src = J1939_ADDR_MAIN;
+                tx[i][1].dest = addr[i];
+                tx[i][1].form = 0x6E;
+                tx[i][1].prio = 0x08;
+                tx[i][1].data.cmd.type = 0x12;
+                tx[i][1].data.cmd.enable = 0xBB;
+                tx[i][1].data.cmd.toggle = 0x00;
+                tx[i][1].data.cmd.protect = 0xAA;
+                tx[i][1].data.cmd.res0 = 0x00;
+                tx[i][1].data.cmd.res1 = 0x00;
+                tx[i][1].data.cmd.res2 = 0x00;
+                tx[i][1].data.cmd.res3 = 0x00;
         }
         for (;;) {
                 prev = tickGet();
@@ -226,100 +250,47 @@ void t_gen(void) /* Task: GENerator */
                         if (old_state.type != state.type)
                                 msgQSend(msg_main, (char *)&state, sizeof(state), NO_WAIT, MSG_PRI_NORMAL);
                         old_state = state;
-                        switch (verify.type) {
-                        case CMD_ACT_GEND | CMD_DIR_POSI:
-                                tx[0].src = J1939_ADDR_MAIN;
-                                tx[0].dest = addr[0];
-                                tx[0].form = 0x6E;
-                                tx[0].prio = 0x08;
-                                tx[0].data.cmd.type = 0x12;
-                                tx[0].data.cmd.enable = 0xBB;
-                                tx[0].data.cmd.toggle = 0x55;
-                                tx[0].data.cmd.protect = 0xAA;
-                                tx[0].data.cmd.res0 = 0x00;
-                                tx[0].data.cmd.res1 = 0x00;
-                                tx[0].data.cmd.res2 = 0x00;
-                                tx[0].data.cmd.res3 = 0x00;
-                                semTake(sem_can[cable[0]], WAIT_FOREVER);
-                                rngBufPut(rng_can_slow[cable[0]], (char *)&tx[0], sizeof(tx[0]));
-                                semGive(sem_can[cable[0]]);
-                                period = PERIOD;
-                                break;
-                        case CMD_ACT_GEND | CMD_DIR_NEGA:
-                                tx[0].src = J1939_ADDR_MAIN;
-                                tx[0].dest = addr[0];
-                                tx[0].form = 0x6E;
-                                tx[0].prio = 0x08;
-                                tx[0].data.cmd.type = 0x12;
-                                tx[0].data.cmd.enable = 0xBB;
-                                tx[0].data.cmd.toggle = 0x00;
-                                tx[0].data.cmd.protect = 0xAA;
-                                tx[0].data.cmd.res0 = 0x00;
-                                tx[0].data.cmd.res1 = 0x00;
-                                tx[0].data.cmd.res2 = 0x00;
-                                tx[0].data.cmd.res3 = 0x00;
-                                semTake(sem_can[cable[0]], WAIT_FOREVER);
-                                rngBufPut(rng_can_slow[cable[0]], (char *)&tx[0], sizeof(tx[0]));
-                                semGive(sem_can[cable[0]]);
-                                period = PERIOD;
-                                break;
-                        case CMD_ACT_GENS | CMD_DIR_POSI:
-                                tx[1].src = J1939_ADDR_MAIN;
-                                tx[1].dest = addr[1];
-                                tx[1].form = 0x6E;
-                                tx[1].prio = 0x08;
-                                tx[1].data.cmd.type = 0x12;
-                                tx[1].data.cmd.enable = 0xBB;
-                                tx[1].data.cmd.toggle = 0x55;
-                                tx[1].data.cmd.protect = 0xAA;
-                                tx[1].data.cmd.res0 = 0x00;
-                                tx[1].data.cmd.res1 = 0x00;
-                                tx[1].data.cmd.res2 = 0x00;
-                                tx[1].data.cmd.res3 = 0x00;
-                                semTake(sem_can[cable[1]], WAIT_FOREVER);
-                                rngBufPut(rng_can_slow[cable[1]], (char *)&tx[1], sizeof(tx[1]));
-                                semGive(sem_can[cable[1]]);
-                                period = PERIOD;
-                                break;
-                        case CMD_ACT_GENS | CMD_DIR_NEGA:
-                                tx[1].src = J1939_ADDR_MAIN;
-                                tx[1].dest = addr[1];
-                                tx[1].form = 0x6E;
-                                tx[1].prio = 0x08;
-                                tx[1].data.cmd.type = 0x12;
-                                tx[1].data.cmd.enable = 0xBB;
-                                tx[1].data.cmd.toggle = 0x00;
-                                tx[1].data.cmd.protect = 0xAA;
-                                tx[1].data.cmd.res0 = 0x00;
-                                tx[1].data.cmd.res1 = 0x00;
-                                tx[1].data.cmd.res2 = 0x00;
-                                tx[1].data.cmd.res3 = 0x00;
-                                semTake(sem_can[cable[1]], WAIT_FOREVER);
-                                rngBufPut(rng_can_slow[cable[1]], (char *)&tx[1], sizeof(tx[1]));
-                                semGive(sem_can[cable[1]]);
-                                period = PERIOD;
-                                break;
-                        default:
-                                for (i = 0; i < MAX_NUM_DEV; i++) {
-                                        tx[i].src = J1939_ADDR_MAIN;
-                                        tx[i].dest = addr[i];
-                                        tx[i].form = 0x6E;
-                                        tx[i].prio = 0x08;
-                                        tx[i].data.cmd.type = 0x11;
-                                        tx[i].data.cmd.enable = 0xBB;
-                                        tx[i].data.cmd.toggle = 0x00;
-                                        tx[i].data.cmd.protect = 0xAA;
-                                        tx[i].data.cmd.res0 = 0x00;
-                                        tx[i].data.cmd.res1 = 0x00;
-                                        tx[i].data.cmd.res2 = 0x00;
-                                        tx[i].data.cmd.res3 = 0x00;
-                                        semTake(sem_can[cable[i]], WAIT_FOREVER);
-                                        rngBufPut(rng_can_slow[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                        semGive(sem_can[cable[i]]);
+                        if ((verify.type & UNMASK_CMD_ACT) != CMD_ACT_GEND) {
+                                i = 0;
+                                j = 0;
+                        } else {
+                                i = 0;
+                                j = 1;
+                                switch (verify.type & UNMASK_CMD_DIR) {
+                                case CMD_DIR_POSI:
+                                        tx[i][j].data.cmd.toggle = 0x55;
+                                        break;
+                                case CMD_DIR_NEGA:
+                                        tx[i][j].data.cmd.toggle = 0x00;
+                                        break;
+                                default:
+                                        break;
                                 }
-                                period = PERIOD;
-                                break;
                         }
+                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                        rngBufPut(rng_can_slow[cable[i]], (char *)&tx[i][j], sizeof(tx[i][j]));
+                        semGive(sem_can[cable[i]]);
+                        if ((verify.type & UNMASK_CMD_ACT) != CMD_ACT_GENS) {
+                                i = 1;
+                                j = 0;
+                        } else {
+                                i = 1;
+                                j = 1;
+                                switch (verify.type & UNMASK_CMD_DIR) {
+                                case CMD_DIR_POSI:
+                                        tx[i][j].data.cmd.toggle = 0x55;
+                                        break;
+                                case CMD_DIR_NEGA:
+                                        tx[i][j].data.cmd.toggle = 0x00;
+                                        break;
+                                default:
+                                        break;
+                                }
+                        }
+                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                        rngBufPut(rng_can_slow[cable[i]], (char *)&tx[i][j], sizeof(tx[i][j]));
+                        semGive(sem_can[cable[i]]);
+                        period = PERIOD;
                         break;
                 }
         }

@@ -9,6 +9,7 @@
 void t_main(void);
 void t_can(void);
 void t_lvl(void);
+void t_gen(void);
 void t_psu(void);
 void t_mom(void);
 void t_swh(void);
@@ -88,6 +89,9 @@ void tz(void)
         taskSpawn("CAN", 90, VX_FP_TASK, 20000, (FUNCPTR)t_can, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #endif /* DUMMY */
         taskSpawn("LVL", 90, VX_FP_TASK, 20000, (FUNCPTR)t_lvl, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+#if 0
+        taskSpawn("GEN", 90, VX_FP_TASK, 20000, (FUNCPTR)t_gen, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+#endif
         taskSpawn("PSU", 90, VX_FP_TASK, 20000, (FUNCPTR)t_psu, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("MOM", 90, VX_FP_TASK, 20000, (FUNCPTR)t_mom, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         taskSpawn("SWH", 90, VX_FP_TASK, 20000, (FUNCPTR)t_swh, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
