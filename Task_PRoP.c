@@ -57,7 +57,8 @@ extern MSG_Q_ID MSG;
 extern RING_ID rng_can_slow[];
 extern RING_ID rng_can_fast[];
 extern RING_ID rng_result;
-extern SEM_ID sem_can[];
+extern SEM_ID sem_can_slow[];
+extern SEM_ID sem_can_fast[];
 extern SEM_ID sem_result;
 
 const static int addr[MAX_NUM_DEV] = {
@@ -175,6 +176,7 @@ static int j;
 void t_prp(void) /* Task: PRoP */
 {
         RING_ID rng_can[2] = {rng_can_slow[0], rng_can_slow[1]};
+        SEM_ID sem_can[2] = {rng_can_slow[0], rng_can_slow[1]};
         for (i = 0; i < MAX_NUM_DEV; i++) {
                 for (j = 0; j < MAX_NUM_FORM; j++)
                         p[i][j] = (FRAME_RX *)can_cllst_init(rx[i][j], MAX_LEN_CLLST);
@@ -541,6 +543,8 @@ void t_prp(void) /* Task: PRoP */
                                 }
                                 rng_can[0] = rng_can_slow[0];
                                 rng_can[1] = rng_can_slow[1];
+                                sem_can[0] = sem_can_slow[0];
+                                sem_can[1] = sem_can_slow[1];
                                 taskPrioritySet(taskIdSelf(), PRIO_SLOW);
                                 period = PERIOD_SLOW;
                         } else if ((verify.type & UNMASK_CMD_DIR) == CMD_DIR_STOP) {
@@ -567,6 +571,8 @@ void t_prp(void) /* Task: PRoP */
                                 if (all_stop) {
                                         rng_can[0] = rng_can_slow[0];
                                         rng_can[1] = rng_can_slow[1];
+                                        sem_can[0] = sem_can_slow[0];
+                                        sem_can[1] = sem_can_slow[1];
                                         taskPrioritySet(taskIdSelf(), PRIO_SLOW);
                                         period = PERIOD_SLOW;
 #if 0
@@ -576,6 +582,8 @@ void t_prp(void) /* Task: PRoP */
                                 } else {
                                         rng_can[0] = rng_can_fast[0];
                                         rng_can[1] = rng_can_fast[1];
+                                        sem_can[0] = sem_can_fast[0];
+                                        sem_can[1] = sem_can_fast[1];
                                         taskPrioritySet(taskIdSelf(), PRIO_FAST);
                                         period = PERIOD_FAST;
                                 }
@@ -681,11 +689,15 @@ void t_prp(void) /* Task: PRoP */
                                 if (all_stop && i == MAX_NUM_DEV) {
                                         rng_can[0] = rng_can_slow[0];
                                         rng_can[1] = rng_can_slow[1];
+                                        sem_can[0] = sem_can_slow[0];
+                                        sem_can[1] = sem_can_slow[1];
                                         taskPrioritySet(taskIdSelf(), PRIO_SLOW);
                                         period = PERIOD_SLOW;
                                 } else {
                                         rng_can[0] = rng_can_fast[0];
                                         rng_can[1] = rng_can_fast[1];
+                                        sem_can[0] = sem_can_fast[0];
+                                        sem_can[1] = sem_can_fast[1];
                                         taskPrioritySet(taskIdSelf(), PRIO_FAST);
                                         period = PERIOD_FAST;
                                 }
