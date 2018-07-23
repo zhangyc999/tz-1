@@ -357,6 +357,8 @@ void t_psu(void) /* Task: Power Supply Unit */
                         rngBufPut(rng_can_slow[cable], (char *)&tx[j], sizeof(tx[j]));
                         semGive(sem_can[cable]);
                         period = PERIOD;
+                        verify.type = CMD_IDLE;
+                        verify.data = 0;
                         break;
                 }
         }
