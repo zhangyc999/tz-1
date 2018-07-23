@@ -50,7 +50,8 @@ RING_ID rng_can_fast[2];
 RING_ID rng_udp[2];
 RING_ID rng_result;
 RING_ID rng_dbg[2];
-SEM_ID sem_can[2];
+SEM_ID sem_can_slow[2];
+SEM_ID sem_can_fast[2];
 SEM_ID sem_result;
 
 void tz(void)
@@ -81,8 +82,10 @@ void tz(void)
         rng_result = rngCreate(1024 * sizeof(int));
         rng_dbg[0] = rngCreate(64 * sizeof(struct frame_can));
         rng_dbg[1] = rngCreate(64 * sizeof(struct frame_can));
-        sem_can[0] = semMCreate(SEM_Q_FIFO);
-        sem_can[1] = semMCreate(SEM_Q_FIFO);
+        sem_can_slow[0] = semMCreate(SEM_Q_FIFO);
+        sem_can_slow[1] = semMCreate(SEM_Q_FIFO);
+        sem_can_fast[0] = semMCreate(SEM_Q_FIFO);
+        sem_can_fast[1] = semMCreate(SEM_Q_FIFO);
         sem_result = semMCreate(SEM_Q_FIFO);
         taskSpawn("MAIN", 90, VX_FP_TASK, 20000, (FUNCPTR)t_main, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 #ifndef DUMMY

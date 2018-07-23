@@ -31,7 +31,7 @@ extern MSG_Q_ID msg_x;
 extern MSG_Q_ID msg_y;
 extern MSG_Q_ID msg_z;
 extern RING_ID rng_can_slow[];
-extern SEM_ID sem_can[];
+extern SEM_ID sem_can_slow[];
 
 const static int addr[MAX_NUM_DEV] = {
         J1939_ADDR_VSLF, J1939_ADDR_VSLB
@@ -241,9 +241,9 @@ void t_vsl(void) /* Task: ViSual Locator */
                         old_state_z = state;
                         for (i = 0; i < MAX_NUM_DEV; i++) {
                                 j = 0;
-                                semTake(sem_can[cable[i]], WAIT_FOREVER);
+                                semTake(sem_can_slow[cable[i]], WAIT_FOREVER);
                                 rngBufPut(rng_can_slow[cable[i]], (char *)&tx[i], sizeof(tx[i]));
-                                semGive(sem_can[cable[i]]);
+                                semGive(sem_can_slow[cable[i]]);
                         }
                         period = PERIOD;
                         break;

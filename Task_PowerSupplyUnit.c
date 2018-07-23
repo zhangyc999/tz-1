@@ -36,7 +36,7 @@ u8 check_xor(u8 *buf, int n);
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_psu;
 extern RING_ID rng_can_slow[];
-extern SEM_ID sem_can[];
+extern SEM_ID sem_can_slow[];
 
 const static int addr = J1939_ADDR_PSU;
 const static int cable = 0;
@@ -353,9 +353,9 @@ void t_psu(void) /* Task: Power Supply Unit */
                                 }
                                 tx[j].data.io.xor = check_xor((u8 *)&tx[j].data.io.brake, 7);
                         }
-                        semTake(sem_can[cable], WAIT_FOREVER);
+                        semTake(sem_can_slow[cable], WAIT_FOREVER);
                         rngBufPut(rng_can_slow[cable], (char *)&tx[j], sizeof(tx[j]));
-                        semGive(sem_can[cable]);
+                        semGive(sem_can_slow[cable]);
                         period = PERIOD;
                         verify.type = CMD_IDLE;
                         verify.data = 0;

@@ -29,7 +29,7 @@ int filter_judge(int *ok, int *err, int value, int min, int max, int ctr);
 extern MSG_Q_ID msg_main;
 extern MSG_Q_ID msg_gen;
 extern RING_ID rng_can_slow[];
-extern SEM_ID sem_can[];
+extern SEM_ID sem_can_slow[];
 
 const static int addr[MAX_NUM_DEV] = {
         J1939_ADDR_GEND, J1939_ADDR_GENS
@@ -267,9 +267,9 @@ void t_gen(void) /* Task: GENerator */
                                         break;
                                 }
                         }
-                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                        semTake(sem_can_slow[cable[i]], WAIT_FOREVER);
                         rngBufPut(rng_can_slow[cable[i]], (char *)&tx[i][j], sizeof(tx[i][j]));
-                        semGive(sem_can[cable[i]]);
+                        semGive(sem_can_slow[cable[i]]);
                         if ((verify.type & UNMASK_CMD_ACT) != CMD_ACT_GENS) {
                                 i = 1;
                                 j = 0;
@@ -287,9 +287,9 @@ void t_gen(void) /* Task: GENerator */
                                         break;
                                 }
                         }
-                        semTake(sem_can[cable[i]], WAIT_FOREVER);
+                        semTake(sem_can_slow[cable[i]], WAIT_FOREVER);
                         rngBufPut(rng_can_slow[cable[i]], (char *)&tx[i][j], sizeof(tx[i][j]));
-                        semGive(sem_can[cable[i]]);
+                        semGive(sem_can_slow[cable[i]]);
                         period = PERIOD;
                         break;
                 }
